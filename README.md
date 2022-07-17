@@ -21,3 +21,9 @@ pip install flake8-trio
 ```console
 pip install git+https://github.com/Zac-HD/flake8-trio
 ```
+
+## List of warnings
+
+- **TRIO100**: a `with trio.fail_after(...):` or `with trio.move_on_after(...):`
+  context does not contain any `await` statements.  This makes it pointless, as
+  the timeout can only be triggered by a checkpoint.
