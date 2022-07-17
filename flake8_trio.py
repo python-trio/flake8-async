@@ -10,8 +10,7 @@ Pairs well with flake8-async and flake8-bugbear.
 """
 
 import ast
-import importlib.metadata
-from typing import Optional, Type, Any, Generator
+from typing import Any, Generator, List, Optional, Tuple, Type
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.1"
@@ -34,15 +33,19 @@ def is_trio_call(node: ast.AST, *names: str) -> Optional[str]:
 class Visitor(ast.NodeVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self.problems: list[tuple[int, int]] = []
+        self.problems: List[Tuple[int, int, str]] = []
 
     def visit_With(self, node: ast.With) -> None:
-        for item in node.items:
-            call = is_trio_call(item.context_expr, "fail_after", "move_on_after")
-            if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
-                self.problems.append(
-                    (item.lineno, item.col_offset, TRIO100.format(call))
-                )
+
+        # Context manager with no `await` call within
+        calls = [
+            is_trio_call(item.context_expr, "fail_after", "move_on_after")
+            for item in node.items
+        ]
+        if any(calls) and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
+            self.problems.append(
+                (node.lineno, node.col_offset, TRIO100.format(calls.pop()))
+            )
 
         # Don't forget to visit the child nodes for other errors!
         self.generic_visit(node)
@@ -55,7 +58,7 @@ class Plugin:
     def __init__(self, tree: ast.AST) -> None:
         self._tree = tree
 
-    def run(self) -> Generator[tuple[int, int, str, Type[Any]], None, None]:
+    def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
         visitor = Visitor()
         visitor.visit(self._tree)
         for line, col, message in visitor.problems:
