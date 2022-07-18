@@ -21,5 +21,6 @@ class Flake8TrioTestCase(unittest.TestCase):
         errors = list(plugin.run())
         expected = self.errors(
             TRIO100(3, 5, "trio.move_on_after"),
+            TRIO100(25, 8, "trio.fail_after"),
         )
         self.assertEqual(errors, expected)

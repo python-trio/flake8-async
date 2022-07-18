@@ -19,3 +19,9 @@ async def function_name():
 
     with open("filename") as _:
         pass
+
+    with (
+        open("veryverylongfilenamesoshedsplitsthisintotwolines") as _,
+        trio.fail_after(10),
+    ):
+        pass
