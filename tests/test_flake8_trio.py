@@ -14,7 +14,7 @@ from flake8_trio import TRIO100, Error, Plugin, Visitor
 
 class Flake8TrioTestCase(unittest.TestCase):
     def errors(self, *errors: Error) -> List[Tuple[int, int, str, Type[Any]]]:
-        return [e.flake_yield() for e in errors]
+        return [e.values() for e in errors]
 
     def test_tree(self):
         plugin = Plugin(tree=ast.parse(""))
@@ -47,7 +47,7 @@ class TestFuzz(unittest.TestCase):
     @settings(suppress_health_check=[HealthCheck.too_slow])
     @given(from_grammar().map(ast.parse))
     def test_does_not_crash_on_any_valid_code(self, syntax_tree: ast.AST):
-        # Given any syntatically-valid source code, flake8-bugbear should
+        # Given any syntatically-valid source code, the checker should
         # not crash.  This tests doesn't check that we do the *right* thing,
         # just that we don't crash on valid-if-poorly-styled code!
         Visitor().visit(syntax_tree)

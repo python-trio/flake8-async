@@ -42,7 +42,6 @@ class Visitor(ast.NodeVisitor):
             if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
                 self.problems.append(TRIO100(item.lineno, item.col_offset, call))
 
-        # Don't forget to visit the child nodes for other errors!
         self.generic_visit(node)
 
 
@@ -60,8 +59,7 @@ class Plugin:
             self._tree = tree
 
     def load_file(self, filename: str) -> ast.AST:
-        """Loads the file in a way that auto-detects source encoding and deals
-        with broken terminal encodings for stdin.
+        """Loads the file in a way that auto-detects source encoding.
 
         Stolen from flake8_import_order because it's good.
         """
@@ -72,7 +70,7 @@ class Plugin:
         visitor = Visitor()
         visitor.visit(self._tree)
         for problem in visitor.problems:
-            yield problem.flake_yield()
+            yield problem.values()
 
 
 class Error:
@@ -82,7 +80,7 @@ class Error:
         self.message = message
         self.err_type = type(Plugin)
 
-    def flake_yield(self):
+    def values(self):
         return (self.lineno, self.col, self.message, self.err_type)
 
 
