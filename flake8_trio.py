@@ -38,9 +38,7 @@ class Visitor(ast.NodeVisitor):
         for item in (i.context_expr for i in node.items):
             call = is_trio_call(item, "fail_after", "move_on_after")
             if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
-                self.problems.append(
-                    TRIO100(item.lineno, item.col_offset, call)
-                )
+                self.problems.append(TRIO100(item.lineno, item.col_offset, call))
 
         # Don't forget to visit the child nodes for other errors!
         self.generic_visit(node)

@@ -1,6 +1,5 @@
 import trio
 
-
 with trio.move_on_after(10):
     pass
 
@@ -10,15 +9,13 @@ async def function_name():
         await trio.sleep(1)
 
     with trio.move_on_after(10):
-        pass
         await trio.sleep(1)
-        print('hello')
+        print("hello")
 
     with trio.move_on_after(10):
-        pass
         while True:
             await trio.sleep(1)
-        print('hello')
+        print("hello")
 
-    with open('filename') as _:
+    with open("filename") as _:
         pass
