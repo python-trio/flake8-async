@@ -1,6 +1,7 @@
 import ast
 import os
 import site
+import sys
 import unittest
 from pathlib import Path
 from typing import Any, List, Tuple, Type
@@ -26,7 +27,18 @@ class Flake8TrioTestCase(unittest.TestCase):
         errors = list(plugin.run())
         expected = self.errors(
             TRIO100(3, 5, "trio.move_on_after"),
-            TRIO100(25, 8, "trio.fail_after"),
+        )
+        self.assertEqual(errors, expected)
+
+    @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
+    def test_trio100_py39(self):
+        filename = Path(__file__).absolute().parent / "trio100_py39.py"
+        plugin = Plugin(filename=str(filename))
+        errors = list(plugin.run())
+        expected = self.errors(
+            TRIO100(7, 8, "trio.fail_after"),
+            TRIO100(12, 8, "trio.fail_after"),
+            TRIO100(14, 8, "trio.move_on_after"),
         )
         self.assertEqual(errors, expected)
 
