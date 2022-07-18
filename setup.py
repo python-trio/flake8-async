@@ -50,4 +50,5 @@ setuptools.setup(
     entry_points={
         "flake8.extension": ["TRIO = flake8_trio:Plugin"],
     },
+    extras_require={"dev": ["hypothesis", "hypothesmith>=0.2"]},
 )

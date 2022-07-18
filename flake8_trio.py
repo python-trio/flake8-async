@@ -12,6 +12,8 @@ Pairs well with flake8-async and flake8-bugbear.
 import ast
 from typing import Any, Generator, List, Optional, Tuple, Type
 
+import pycodestyle
+
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.1"
 
@@ -51,12 +53,22 @@ class Plugin:
     def __init__(
         self, tree: Optional[ast.AST] = None, filename: Optional[str] = None
     ) -> None:
-        if tree is not None:
+        if tree is None:
+            assert filename is not None
+            self._tree = self.load_file(filename)
+        else:
             self._tree = tree
-            return
-        assert filename is not None
-        with open(filename, encoding="utf-8") as file:
-            self._tree = ast.parse(file.read())
+
+    def load_file(self, filename: str) -> ast.AST:
+        """Loads the file in a way that auto-detects source encoding and deals
+        with broken terminal encodings for stdin.
+
+        Stolen from flake8_import_order because it's good.
+        """
+
+        lines = pycodestyle.readlines(filename)
+
+        return ast.parse("".join(lines))
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
         visitor = Visitor()
