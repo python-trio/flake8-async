@@ -24,7 +24,7 @@ def test_unrelated_with():
 
 def test_context_no_checkpoint1():
     code = "import trio\nwith trio.move_on_after(10):\n  pass"
-    assert _results(code) == {"1:0 " + flake8_trio.TRIO100.format("trio.move_on_after")}
+    assert _results(code) == {"1:5 " + flake8_trio.TRIO100.format("trio.move_on_after")}
 
 
 def test_context_no_checkpoint2():

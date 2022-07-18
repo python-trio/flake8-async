@@ -36,16 +36,13 @@ class Visitor(ast.NodeVisitor):
         self.problems: List[Tuple[int, int, str]] = []
 
     def visit_With(self, node: ast.With) -> None:
-
         # Context manager with no `await` call within
-        calls = [
-            is_trio_call(item.context_expr, "fail_after", "move_on_after")
-            for item in node.items
-        ]
-        if any(calls) and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
-            self.problems.append(
-                (node.lineno, node.col_offset, TRIO100.format(calls.pop()))
-            )
+        for item in (i.context_expr for i in node.items):
+            call = is_trio_call(item, "fail_after", "move_on_after")
+            if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
+                self.problems.append(
+                    (item.lineno, item.col_offset, TRIO100.format(call))
+                )
 
         # Don't forget to visit the child nodes for other errors!
         self.generic_visit(node)
