@@ -15,8 +15,6 @@ from typing import Any, Generator, List, Optional, Tuple, Type
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.1"
 
-TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
-
 
 def is_trio_call(node: ast.AST, *names: str) -> Optional[str]:
     if (
@@ -33,7 +31,7 @@ def is_trio_call(node: ast.AST, *names: str) -> Optional[str]:
 class Visitor(ast.NodeVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self.problems: List[Tuple[int, int, str]] = []
+        self.problems: List[Error] = []
 
     def visit_With(self, node: ast.With) -> None:
         # Context manager with no `await` call within
@@ -41,7 +39,7 @@ class Visitor(ast.NodeVisitor):
             call = is_trio_call(item, "fail_after", "move_on_after")
             if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
                 self.problems.append(
-                    (item.lineno, item.col_offset, TRIO100.format(call))
+                    TRIO100(item.lineno, item.col_offset, call)
                 )
 
         # Don't forget to visit the child nodes for other errors!
@@ -52,11 +50,39 @@ class Plugin:
     name = __name__
     version = __version__
 
-    def __init__(self, tree: ast.AST) -> None:
-        self._tree = tree
+    def __init__(
+        self, tree: Optional[ast.AST] = None, filename: Optional[str] = None
+    ) -> None:
+        if tree is not None:
+            self._tree = tree
+            return
+        assert filename is not None
+        with open(filename, encoding="utf-8") as file:
+            self._tree = ast.parse(file.read())
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
         visitor = Visitor()
         visitor.visit(self._tree)
-        for line, col, message in visitor.problems:
-            yield line, col, message, type(self)
+        for problem in visitor.problems:
+            yield problem.flake_yield()
+
+
+class Error:
+    def __init__(self, lineno: int = -1, col: int = -1, message: str = ""):
+        self.lineno = lineno
+        self.col = col
+        self.message = message
+        self.err_type = type(Plugin)
+
+    def flake_yield(self):
+        return (self.lineno, self.col, self.message, self.err_type)
+
+
+class TRIO100(Error):
+    def __init__(self, lineno: int, col: int, context: str):
+        super().__init__(
+            lineno,
+            col,
+            f"TRIO100: {context} context contains no checkpoints, "
+            "add `await trio.sleep(0)`",
+        )
