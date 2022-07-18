@@ -19,3 +19,6 @@ async def function_name():
 
     with open("filename") as _:
         pass
+
+    async with trio.fail_after(10):
+        pass
