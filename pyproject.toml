@@ -1,0 +1,2 @@
+[tool.pyright]
+strict = ["*.py", "tests/test_flake8_trio.py", "tests/conftest.py"]

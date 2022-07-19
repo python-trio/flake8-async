@@ -13,6 +13,9 @@ with local_file("flake8_trio.py").open("r") as o:
     for line in o:
         if line.startswith("__version__"):
             _, __version__, _ = line.split('"')
+            break
+    else:
+        raise AssertionError("__version__ must be set")
 
 
 setuptools.setup(
@@ -47,4 +50,5 @@ setuptools.setup(
     entry_points={
         "flake8.extension": ["TRIO = flake8_trio:Plugin"],
     },
+    extras_require={"dev": ["hypothesis", "hypothesmith>=0.2"]},
 )
