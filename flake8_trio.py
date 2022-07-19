@@ -18,6 +18,13 @@ __version__ = "22.7.1"
 
 
 Error = Tuple[int, int, str, Type[Any]]
+cancel_scope_names = (
+    "fail_after",
+    "fail_at",
+    "move_on_after",
+    "move_at",
+    "CancelScope",
+)
 
 
 def make_error(error: str, lineno: int, col: int, *args: Any, **kwargs: Any) -> Error:
@@ -40,13 +47,52 @@ class Visitor(ast.NodeVisitor):
     def __init__(self) -> None:
         super().__init__()
         self.problems: List[Error] = []
+        self.safe_yields: Set[ast.Yield] = set()
+        self._yield_is_error = False
+        self._context_manager = False
+
+    def visit_generic_with(self, node: Union[ast.With, ast.AsyncWith]):
+        self.check_for_trio100(node)
+
+        outer = self._yield_is_error
+        if not self._context_manager and any(
+            is_trio_call(item, "open_nursery", *cancel_scope_names)
+            for item in (i.context_expr for i in node.items)
+        ):
+            self._yield_is_error = True
+
+        self.generic_visit(node)
+        self._yield_is_error = outer
 
     def visit_With(self, node: ast.With) -> None:
-        self.check_for_trio100(node)
-        self.generic_visit(node)
+        self.visit_generic_with(node)
 
     def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
-        self.check_for_trio100(node)
+        self.visit_generic_with(node)
+
+    def visit_generic_FunctionDef(
+        self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]
+    ):
+        outer = self._context_manager
+        if any(
+            isinstance(d, ast.Name)
+            and d.id in ("contextmanager", "asynccontextmanager")
+            for d in node.decorator_list
+        ):
+            self._context_manager = True
+        self.generic_visit(node)
+        self._context_manager = outer
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self.visit_generic_FunctionDef(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.visit_generic_FunctionDef(node)
+
+    def visit_Yield(self, node: ast.Yield) -> None:
+        if self._yield_is_error:
+            self.problems.append(make_error(TRIO101, node.lineno, node.col_offset))
+
         self.generic_visit(node)
 
     def visit_Try(self, node: ast.Try) -> None:
@@ -56,7 +102,7 @@ class Visitor(ast.NodeVisitor):
     def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]) -> None:
         # Context manager with no `await` call within
         for item in (i.context_expr for i in node.items):
-            call = is_trio_call(item, "fail_after", "move_on_after")
+            call = is_trio_call(item, *cancel_scope_names)
             if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
                 self.problems.append(
                     make_error(TRIO100, item.lineno, item.col_offset, call)
@@ -138,18 +184,14 @@ class Plugin:
     name = __name__
     version = __version__
 
-    def __init__(
-        self, tree: Optional[ast.AST] = None, filename: Optional[str] = None
-    ) -> None:
-        if tree is None:
-            assert filename is not None
-            self._tree = self.load_file(filename)
-        else:
-            self._tree = tree
+    def __init__(self, tree: ast.AST) -> None:
+        self._tree = tree
 
-    def load_file(self, filename: str) -> ast.AST:
+    @classmethod
+    def from_filename(cls, filename: str) -> "Plugin":
         with tokenize.open(filename) as f:
-            return ast.parse(f.read())
+            source = f.read()
+        return cls(ast.parse(source))
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
         visitor = Visitor()
@@ -158,4 +200,5 @@ class Plugin:
 
 
 TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
+TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
 TRIO102 = "TRIO102: await in finally without a cancel scope and shielding"
