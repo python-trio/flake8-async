@@ -120,4 +120,4 @@ class Plugin:
 
 
 TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
-TRIO101 = "TRIO101: {} never yield inside a nursery or cancel scope"
+TRIO101 = "TRIO101: yield inside a {} context is only safe when implementing a context manager - otherwise, it breaks exception handling"
