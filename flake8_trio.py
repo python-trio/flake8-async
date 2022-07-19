@@ -11,7 +11,7 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Generator, List, Optional, Set, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.1"
@@ -49,6 +49,10 @@ class Visitor(ast.NodeVisitor):
         self.check_for_trio100(node)
         self.generic_visit(node)
 
+    def visit_Try(self, node: ast.Try) -> None:
+        self.check_for_trio102(node)
+        self.generic_visit(node)
+
     def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]) -> None:
         # Context manager with no `await` call within
         for item in (i.context_expr for i in node.items):
@@ -56,6 +60,77 @@ class Visitor(ast.NodeVisitor):
             if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
                 self.problems.append(
                     make_error(TRIO100, item.lineno, item.col_offset, call)
+                )
+
+    def check_for_trio102(self, node: ast.Try) -> None:
+        safe_awaits: Set[ast.Await] = set()
+        # find safe awaits
+        for item in node.finalbody:
+            for withnode in (x for x in ast.walk(item) if isinstance(x, ast.With)):
+                for withitem in withnode.items:
+                    # check there is a cancel scope
+                    if not is_trio_call(
+                        withitem.context_expr,
+                        "fail_after",
+                        "move_on_after",
+                        "fail_at",
+                        "move_on_at",
+                    ):
+                        continue
+
+                    # check for timeout
+                    # assume that if any non-kw parameter is passed, there's a timeout value
+                    if not (
+                        isinstance(withitem.context_expr, ast.Call)
+                        and (
+                            (withitem.context_expr.args)
+                            or any(
+                                kw
+                                for kw in withitem.context_expr.keywords
+                                if kw.arg == "deadline"
+                            )
+                        )
+                    ):
+                        continue
+
+                    # check that the context is saved in a variable
+                    if not (
+                        withitem.optional_vars
+                        and isinstance(withitem.optional_vars, ast.Name)
+                    ):
+                        continue
+
+                    # save the variable name
+                    scopename = withitem.optional_vars.id
+
+                    shielded = False
+                    for stmt in withnode.body:
+                        for walknode in ast.walk(stmt):
+                            # update shielded value
+                            if (
+                                isinstance(walknode, ast.Assign)
+                                and walknode.targets
+                                and isinstance(walknode.targets[0], ast.Attribute)
+                                and isinstance(walknode.targets[0].value, ast.Name)
+                                and walknode.targets[0].value.id == scopename
+                                and isinstance(walknode.value, ast.Constant)
+                            ):
+                                shielded = walknode.value.value
+
+                            # mark awaits as safe
+                            if isinstance(walknode, ast.Await) and shielded:
+                                safe_awaits.add(walknode)
+
+        # report unsafe awaits
+        # TODO: reports duplicates with nested try's atm.
+        for item in node.finalbody:
+            for awaitnode in (
+                x
+                for x in ast.walk(item)
+                if isinstance(x, ast.Await) and x not in safe_awaits
+            ):
+                self.problems.append(
+                    make_error(TRIO102, awaitnode.lineno, awaitnode.col_offset)
                 )
 
 
@@ -83,3 +158,4 @@ class Plugin:
 
 
 TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
+TRIO102 = "TRIO102: await in finally without a cancel scope and shielding"
