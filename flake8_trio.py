@@ -69,8 +69,8 @@ class Plugin:
 
         Stolen from flake8_import_order because it's good.
         """
-        lines = pycodestyle.readlines(filename)
-        return ast.parse("".join(lines))
+        with tokenize.open(filename) as f:
+            return ast.parse(f.read())
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
         visitor = Visitor()
