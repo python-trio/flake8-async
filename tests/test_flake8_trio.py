@@ -4,17 +4,20 @@ import site
 import sys
 import unittest
 from pathlib import Path
-from typing import Any, List, Tuple, Type
 
+import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar
 
-from flake8_trio import TRIO100, Error, Plugin, Visitor
+from flake8_trio import TRIO100, Error, Plugin, Visitor, make_error
 
 
 class Flake8TrioTestCase(unittest.TestCase):
-    def errors(self, *errors: Error) -> List[Tuple[int, int, str, Type[Any]]]:
-        return [e.values() for e in errors]
+    def assert_expected_errors(self, test_file: str, *expected: Error) -> None:
+        filename = Path(__file__).absolute().parent / test_file
+        plugin = Plugin(filename=str(filename))
+        errors = tuple(plugin.run())
+        self.assertEqual(errors, expected)
 
     def test_tree(self):
         plugin = Plugin(tree=ast.parse(""))
@@ -22,28 +25,23 @@ class Flake8TrioTestCase(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_trio100(self):
-        filename = Path(__file__).absolute().parent / "trio100.py"
-        plugin = Plugin(filename=str(filename))
-        errors = list(plugin.run())
-        expected = self.errors(
-            TRIO100(3, 5, "trio.move_on_after"),
-            TRIO100(23, 15, "trio.fail_after"),
+        self.assert_expected_errors(
+            "trio100.py",
+            make_error(TRIO100, 3, 5, ("trio.move_on_after",)),
+            make_error(TRIO100, 23, 15, ("trio.fail_after",)),
         )
-        self.assertEqual(errors, expected)
 
     @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
     def test_trio100_py39(self):
-        filename = Path(__file__).absolute().parent / "trio100_py39.py"
-        plugin = Plugin(filename=str(filename))
-        errors = list(plugin.run())
-        expected = self.errors(
-            TRIO100(7, 8, "trio.fail_after"),
-            TRIO100(12, 8, "trio.fail_after"),
-            TRIO100(14, 8, "trio.move_on_after"),
+        self.assert_expected_errors(
+            "trio100_py39.py",
+            make_error(TRIO100, 7, 8, ("trio.fail_after",)),
+            make_error(TRIO100, 12, 8, ("trio.fail_after",)),
+            make_error(TRIO100, 14, 8, ("trio.move_on_after",)),
         )
-        self.assertEqual(errors, expected)
 
 
+@pytest.mark.fuzz
 class TestFuzz(unittest.TestCase):
     @settings(suppress_health_check=[HealthCheck.too_slow])
     @given(from_grammar().map(ast.parse))
