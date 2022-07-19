@@ -11,7 +11,7 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Generator, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Generator, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.1"
@@ -20,8 +20,8 @@ __version__ = "22.7.1"
 Error = Tuple[int, int, str, Type[Any]]
 
 
-def make_error(error: str, lineno: int, col: int, context: Iterable[str]) -> Error:
-    return (lineno, col, error.format(*context), type(Plugin))
+def make_error(error: str, lineno: int, col: int, *args: Any, **kwargs: Any) -> Error:
+    return (lineno, col, error.format(*args, **kwargs), type(Plugin))
 
 
 def is_trio_call(node: ast.AST, *names: str) -> Optional[str]:
@@ -55,7 +55,7 @@ class Visitor(ast.NodeVisitor):
             call = is_trio_call(item, "fail_after", "move_on_after")
             if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
                 self.problems.append(
-                    make_error(TRIO100, item.lineno, item.col_offset, (call,))
+                    make_error(TRIO100, item.lineno, item.col_offset, call)
                 )
 
 

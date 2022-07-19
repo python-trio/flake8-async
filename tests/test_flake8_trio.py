@@ -27,17 +27,17 @@ class Flake8TrioTestCase(unittest.TestCase):
     def test_trio100(self):
         self.assert_expected_errors(
             "trio100.py",
-            make_error(TRIO100, 3, 5, ("trio.move_on_after",)),
-            make_error(TRIO100, 23, 15, ("trio.fail_after",)),
+            make_error(TRIO100, 3, 5, "trio.move_on_after"),
+            make_error(TRIO100, 23, 15, "trio.fail_after"),
         )
 
     @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
     def test_trio100_py39(self):
         self.assert_expected_errors(
             "trio100_py39.py",
-            make_error(TRIO100, 7, 8, ("trio.fail_after",)),
-            make_error(TRIO100, 12, 8, ("trio.fail_after",)),
-            make_error(TRIO100, 14, 8, ("trio.move_on_after",)),
+            make_error(TRIO100, 7, 8, "trio.fail_after"),
+            make_error(TRIO100, 12, 8, "trio.fail_after"),
+            make_error(TRIO100, 14, 8, "trio.move_on_after"),
         )
 
 
