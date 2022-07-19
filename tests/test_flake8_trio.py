@@ -41,10 +41,12 @@ class Flake8TrioTestCase(unittest.TestCase):
         )
 
     def test_trio101(self):
+        self.maxDiff = None
         self.assert_expected_errors(
             "trio101.py",
-            make_error(TRIO101, 7, 9, "trio.open_nursery"),
-            make_error(TRIO101, 12, 15, "trio.open_nursery"),
+            make_error(TRIO101, 8, 8),
+            make_error(TRIO101, 13, 8),
+            make_error(TRIO101, 25, 8),
         )
 
 

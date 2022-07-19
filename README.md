@@ -27,3 +27,4 @@ pip install git+https://github.com/Zac-HD/flake8-trio
 - **TRIO100**: a `with trio.fail_after(...):` or `with trio.move_on_after(...):`
   context does not contain any `await` statements.  This makes it pointless, as
   the timeout can only be triggered by a checkpoint.
+- **TRIO101** `yield` inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
