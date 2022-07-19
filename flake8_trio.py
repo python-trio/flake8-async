@@ -63,18 +63,14 @@ class Plugin:
     name = __name__
     version = __version__
 
-    def __init__(
-        self, tree: Optional[ast.AST] = None, filename: Optional[str] = None
-    ) -> None:
-        if tree is None:
-            assert filename is not None
-            self._tree = self.load_file(filename)
-        else:
-            self._tree = tree
+    def __init__(self, tree: ast.AST) -> None:
+        self._tree = tree
 
-    def load_file(self, filename: str) -> ast.AST:
+    @classmethod
+    def from_filename(cls, filename: str) -> "Plugin":
         with tokenize.open(filename) as f:
-            return ast.parse(f.read())
+            source = f.read()
+        return cls(ast.parse(source))
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
         visitor = Visitor()
