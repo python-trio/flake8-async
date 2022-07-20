@@ -25,6 +25,10 @@ cancel_scope_names = (
     "move_at",
     "CancelScope",
 )
+context_manager_names = (
+    "contextmanager",
+    "asynccontextmanager",
+)
 
 
 def make_error(error: str, lineno: int, col: int, *args: Any, **kwargs: Any) -> Error:
@@ -73,15 +77,18 @@ class Visitor(ast.NodeVisitor):
     def visit_generic_FunctionDef(
         self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]
     ):
-        outer = self._context_manager
+        outer_cm = self._context_manager
+        outer_yie = self._yield_is_error
+        self._yield_is_error = False
         if any(
-            isinstance(d, ast.Name)
-            and d.id in ("contextmanager", "asynccontextmanager")
+            (isinstance(d, ast.Name) and d.id in context_manager_names)
+            or (isinstance(d, ast.Attribute) and d.attr in context_manager_names)
             for d in node.decorator_list
         ):
             self._context_manager = True
         self.generic_visit(node)
-        self._context_manager = outer
+        self._context_manager = outer_cm
+        self._yield_is_error = outer_yie
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self.visit_generic_FunctionDef(node)
