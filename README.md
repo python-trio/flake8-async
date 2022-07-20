@@ -16,12 +16,6 @@ Pairs well with flake8-async and flake8-bugbear.
 pip install flake8-trio
 ```
 
-- Or from GitHub
-
-```console
-pip install git+https://github.com/Zac-HD/flake8-trio
-```
-
 ## List of warnings
 
 - **TRIO100**: a `with trio.fail_after(...):` or `with trio.move_on_after(...):`
