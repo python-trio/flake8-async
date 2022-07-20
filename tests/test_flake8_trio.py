@@ -9,7 +9,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import TRIO100, Error, Plugin, Visitor, make_error
+from flake8_trio import TRIO100, TRIO101, Error, Plugin, Visitor, make_error
 
 
 class Flake8TrioTestCase(unittest.TestCase):
@@ -40,10 +40,20 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO100, 14, 8, "trio.move_on_after"),
         )
 
+    def test_trio101(self):
+        self.maxDiff = None
+        self.assert_expected_errors(
+            "trio101.py",
+            make_error(TRIO101, 10, 8),
+            make_error(TRIO101, 15, 8),
+            make_error(TRIO101, 27, 8),
+            make_error(TRIO101, 38, 8),
+        )
+
 
 @pytest.mark.fuzz
 class TestFuzz(unittest.TestCase):
-    @settings(max_examples=10_000, suppress_health_check=[HealthCheck.too_slow])
+    @settings(max_examples=1_000, suppress_health_check=[HealthCheck.too_slow])
     @given((from_grammar() | from_node()).map(ast.parse))
     def test_does_not_crash_on_any_valid_code(self, syntax_tree: ast.AST):
         # Given any syntatically-valid source code, the checker should
