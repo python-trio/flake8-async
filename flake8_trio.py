@@ -184,7 +184,7 @@ class Visitor(ast.NodeVisitor):
         # There's no visit_Finally, so we need to manually visit the Try fields.
         # It's important to do self.visit instead of self.generic_visit since
         # the nodes in the fields might be registered elsewhere in this class.
-        for item in *node.body, *node.handlers, *node.orelse:
+        for item in (*node.body, *node.handlers, *node.orelse):
             self.visit(item)
 
         outer = self._inside_finally
