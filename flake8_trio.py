@@ -44,6 +44,7 @@ class TrioScope:
         self.variable_name: Optional[str] = None
         self.shielded: bool = False
         self.timeout: bool = False
+
         if self.funcname == "CancelScope":
             for kw in node.keywords:
                 # Only accepts constant values
@@ -56,7 +57,7 @@ class TrioScope:
             self.timeout = True
 
     def __str__(self):
-        # Not supporting other trio imports
+        # Not supporting other ways of importing trio
         # if self.packagename is None:
         # return self.funcname
         return f"{self.packagename}.{self.funcname}"
@@ -90,6 +91,8 @@ class Visitor(ast.NodeVisitor):
 
         outer_yie = self._yield_is_error
         outer_scope = self._scope
+
+        # Check for a `with trio.<scope_creater>`
         trio_scope = next(
             (
                 get_trio_scope(item, "open_nursery", *cancel_scope_names)
@@ -100,6 +103,8 @@ class Visitor(ast.NodeVisitor):
         if trio_scope is not None:
             if not self._context_manager:
                 self._yield_is_error = True
+
+            # Check for `with [...] as <varname>`
             trio_scope.variable_name = next(
                 (
                     item.optional_vars.id
@@ -131,7 +136,7 @@ class Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Await(self, node: ast.Await) -> None:
-        # if we're inside a finally, and not inside a context_manager, and we're in a scope, and it doesn't have both a timeout and shield
+        # if we're inside a finally, and not inside a context_manager, and we're either not in a scope, or in a scope that doesn't have both a timeout and shield
         if (
             self._inside_finally is not None
             and not self._context_manager
@@ -158,6 +163,8 @@ class Visitor(ast.NodeVisitor):
         outer_cm = self._context_manager
         outer_yie = self._yield_is_error
         self._yield_is_error = False
+
+        # check for @<context_manager_name> and @<library>.<context_manager_name>
         if any(
             (isinstance(d, ast.Name) and d.id in context_manager_names)
             or (isinstance(d, ast.Attribute) and d.attr in context_manager_names)
