@@ -72,10 +72,22 @@ async def foo():
         pass
     finally:
         with open("bar"):
-            await foo()
+            await foo()  # safe
         with open("bar"):
             pass
         with trio.move_on_after():
-            await foo()
+            await foo()  # error
         with trio.move_on_after(foo=bar):
-            await foo()
+            await foo()  # error
+        with trio.CancelScope(deadline=30, shield=True):
+            await foo()  # safe
+        with trio.CancelScope(shield=True):
+            await foo()  # error
+        with trio.CancelScope(deadline=30):
+            await foo()  # error
+        with trio.CancelScope(deadline=30, shield=(1 == 1)):
+            await foo()  # safe in theory, but deemed error
+        myvar = True
+        with trio.open_nursery(10) as s:
+            s.shield = myvar
+            await foo()  # safe in theory, but deemed error
