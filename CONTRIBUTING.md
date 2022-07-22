@@ -7,8 +7,8 @@ Contributions welcome!  We'll expand this guide as we go.
 
 When you wish to add a check to `flake8-trio` please ensure the following:
 
-- This `README.md` gets a one line about your new warning
-- CHANGELOG gets added to a `## UNRELEASED` section
+- `README.md` gets a one line about your new warning
+- Add a CHANGELOG entry (see 'Releasing a new version' below)
 - Unittests are added showing the check highlight where it should and shouldn't
   (see flake8-bugbear for examples of good linter tests)
 
@@ -20,6 +20,18 @@ tox -e check
 # Test Running
 tox -e test
 ```
+
+
+## Style Guide
+
+**Code style:** code review should focus on correctness, performance, and readability.
+Low-level nitpicks are handled *exclusively* by our formatters and linters, so if
+`tox` passes there's nothing else to say.
+
+**Terminology:** use "false/missed alarm" rather than "true/false positive", or the
+even worse "type I/II error".  "False alarm" or "missed alarm" have obvious meanings
+which do not rely on confusing conventions (is noticing an error positive or negative?)
+or rote memorization of an arbitrary convention.
 
 
 ## Releasing a new version

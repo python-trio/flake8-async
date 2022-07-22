@@ -14,10 +14,11 @@ import tokenize
 from typing import Any, Generator, List, Optional, Set, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.7.2"
+__version__ = "22.7.3"
 
 
 Error = Tuple[int, int, str, Type[Any]]
+checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
 cancel_scope_names = (
     "fail_after",
     "fail_at",
@@ -57,7 +58,7 @@ class TrioScope:
     def __str__(self):
         # Not supporting other trio imports
         # if self.packagename is None:
-            # return self.funcname
+        # return self.funcname
         return f"{self.packagename}.{self.funcname}"
 
 
@@ -196,7 +197,9 @@ class Visitor(ast.NodeVisitor):
         # Context manager with no `await` call within
         for item in (i.context_expr for i in node.items):
             call = get_trio_scope(item, *cancel_scope_names)
-            if call and not any(isinstance(x, ast.Await) for x in ast.walk(node)):
+            if call and not any(
+                isinstance(x, checkpoint_node_types) for x in ast.walk(node)
+            ):
                 self.problems.append(
                     make_error(TRIO100, item.lineno, item.col_offset, call)
                 )
