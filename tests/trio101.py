@@ -1,6 +1,6 @@
 import contextlib
 import contextlib as bla
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, contextmanager as blahabla
 
 import trio
 
@@ -51,3 +51,9 @@ async def foo7():
 def foo8():
     with trio.open_nursery() as _:
         yield 1  # safe
+
+
+@blahabla
+def foo9():
+    with trio.open_nursery() as _:
+        yield 1  # error

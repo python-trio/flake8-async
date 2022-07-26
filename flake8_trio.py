@@ -11,7 +11,7 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Collection, Generator, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.3"
@@ -76,6 +76,15 @@ def get_trio_scope(node: ast.AST, *names: str) -> Optional[TrioScope]:
     return None
 
 
+def has_decorator(decorator_list: List[ast.expr], names: Collection[str]):
+    for dec in decorator_list:
+        if (isinstance(dec, ast.Name) and dec.id in names) or (
+            isinstance(dec, ast.Attribute) and dec.attr in names
+        ):
+            return True
+    return False
+
+
 class Visitor102(ast.NodeVisitor):
     def __init__(self) -> None:
         super().__init__()
@@ -86,15 +95,15 @@ class Visitor102(ast.NodeVisitor):
 
     def visit_Assign(self, node: ast.Assign) -> None:
         # checks for <scopename>.shield = [True/False]
-        if self._scopes:
+        if self._scopes and len(node.targets) == 1:
             last_scope = self._scopes[-1]
+            target = node.targets[0]
             if (
                 last_scope.variable_name is not None
-                and len(node.targets) == 1
-                and isinstance(node.targets[0], ast.Attribute)
-                and isinstance(node.targets[0].value, ast.Name)
-                and node.targets[0].value.id == last_scope.variable_name
-                and node.targets[0].attr == "shield"
+                and isinstance(target, ast.Attribute)
+                and isinstance(target.value, ast.Name)
+                and target.value.id == last_scope.variable_name
+                and target.attr == "shield"
                 and isinstance(node.value, ast.Constant)
             ):
                 last_scope.shielded = node.value.value
@@ -140,12 +149,9 @@ class Visitor102(ast.NodeVisitor):
         outer_cm = self._context_manager
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if any(
-            (isinstance(d, ast.Name) and d.id in context_manager_names)
-            or (isinstance(d, ast.Attribute) and d.attr in context_manager_names)
-            for d in node.decorator_list
-        ):
+        if has_decorator(node.decorator_list, context_manager_names):
             self._context_manager = True
+
         self.generic_visit(node)
         self._context_manager = outer_cm
 
@@ -220,14 +226,11 @@ class Visitor(ast.NodeVisitor):
         self._yield_is_error = False
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if any(
-            (isinstance(d, ast.Name) and d.id in context_manager_names)
-            or (isinstance(d, ast.Attribute) and d.attr in context_manager_names)
-            for d in node.decorator_list
-        ):
+        if has_decorator(node.decorator_list, context_manager_names):
             self._context_manager = True
 
         self.generic_visit(node)
+
         self._context_manager = outer_cm
         self._yield_is_error = outer_yie
 

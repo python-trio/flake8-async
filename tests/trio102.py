@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 import trio
 
 
@@ -97,3 +99,11 @@ async def foo():
             pass
         finally:
             await foo()  # error
+
+
+@asynccontextmanager
+async def foo4():
+    try:
+        yield 1
+    finally:
+        await foo()  # safe
