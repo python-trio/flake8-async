@@ -100,16 +100,6 @@ class Visitor102(ast.NodeVisitor):
                 last_scope.shielded = node.value.value
         self.generic_visit(node)
 
-    def check_for_trio102(self, node: Union[ast.Await, ast.AsyncFor, ast.AsyncWith]):
-        # if we're inside a finally, and not inside a context_manager, and we're not
-        # inside a scope that doesn't have both a timeout and shield
-        if self._inside_finally is not None and not self._context_manager:
-            for scope in self._scopes:
-                if scope.timeout and scope.shielded:
-                    break
-            else:
-                self.problems.append(make_error(TRIO102, node.lineno, node.col_offset))
-
     def visit_Await(self, node: ast.Await) -> None:
         self.check_for_trio102(node)
         self.generic_visit(node)
@@ -180,6 +170,16 @@ class Visitor102(ast.NodeVisitor):
 
         self._scopes = outer_scopes
         self._inside_finally = outer
+
+    def check_for_trio102(self, node: Union[ast.Await, ast.AsyncFor, ast.AsyncWith]):
+        # if we're inside a finally, and not inside a context_manager, and we're not
+        # inside a scope that doesn't have both a timeout and shield
+        if self._inside_finally is not None and not self._context_manager:
+            for scope in self._scopes:
+                if scope.timeout and scope.shielded:
+                    break
+            else:
+                self.problems.append(make_error(TRIO102, node.lineno, node.col_offset))
 
 
 class Visitor(ast.NodeVisitor):
