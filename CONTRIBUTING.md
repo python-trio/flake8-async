@@ -18,7 +18,9 @@ To run our test suite please use tox.
 # Formatting and Linting
 tox -e check
 # Test Running
-tox -e test
+tox -e py310-test
+# Run checks and all tests
+tox -e ALL
 ```
 
 
