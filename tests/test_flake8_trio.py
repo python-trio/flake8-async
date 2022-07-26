@@ -56,14 +56,24 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO102, 22, 8),
             make_error(TRIO102, 28, 12),
             make_error(TRIO102, 34, 12),
-            make_error(TRIO102, 67, 12),
-            make_error(TRIO102, 75, 12),
-            make_error(TRIO102, 79, 12),
-            make_error(TRIO102, 81, 12),
-            make_error(TRIO102, 85, 12),
-            make_error(TRIO102, 87, 12),
-            make_error(TRIO102, 89, 12),
-            make_error(TRIO102, 93, 12),
+            make_error(TRIO102, 60, 12),
+            make_error(TRIO102, 68, 12),
+            make_error(TRIO102, 72, 12),
+            make_error(TRIO102, 74, 12),
+            make_error(TRIO102, 78, 12),
+            make_error(TRIO102, 80, 12),
+            make_error(TRIO102, 82, 12),
+            make_error(TRIO102, 86, 12),
+            make_error(TRIO102, 90, 8),
+            make_error(TRIO102, 92, 8),
+            make_error(TRIO102, 99, 12),
+        )
+
+    @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
+    def test_trio102_py39(self):
+        self.assert_expected_errors(
+            "trio102_py39.py",
+            make_error(TRIO102, 15, 12),
         )
 
 
