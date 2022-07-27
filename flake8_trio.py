@@ -255,6 +255,99 @@ class Visitor(ast.NodeVisitor):
                 )
 
 
+def has_exception(node: ast.expr):
+    return (isinstance(node, ast.Name) and node.id == "BaseException") or (
+        isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "trio"
+        and node.attr == "Cancelled"
+    )
+
+
+# Never have an except Cancelled or except BaseException block with a code path that
+# doesn't re-raise the error
+class Visitor103(ast.NodeVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.problems: List[Error] = []
+
+        # Likely overkill, but need to figure out nested try's first.
+        self.except_names: List[Optional[str]] = []
+        self.unraised: bool = False
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler):
+        outer_unraised = self.unraised
+        must_raise = False
+        if node.type is not None:
+            if (
+                isinstance(node.type, ast.Tuple)
+                and any(has_exception(v) for v in node.type.elts)
+            ) or has_exception(node.type):
+                must_raise = True
+                self.except_names.append(node.name)
+                self.unraised = True
+
+        self.generic_visit(node)
+        if must_raise:
+            if self.unraised:
+                # TODO: point at correct exception
+                self.problems.append(make_error(TRIO103, node.lineno, node.col_offset))
+            self.except_names.pop()
+
+        self.unraised = outer_unraised
+
+    def visit_Raise(self, node: ast.Raise):
+        if self.unraised:
+            assert self.except_names
+            name = self.except_names[-1]
+            if (name is None and node.exc is None) or (
+                isinstance(node.exc, ast.Name) and node.exc.id == name
+            ):
+                self.unraised = False
+            else:
+                # Error: something other than the exception was raised
+                # TODO: give separate error message
+                self.problems.append(make_error(TRIO103, node.lineno, node.col_offset))
+                self.unraised = False
+        self.generic_visit(node)
+
+    def visit_Return(self, node: ast.Return):
+        if self.unraised:
+            # Error, only good way of stopping the function is to raise
+            self.problems.append(make_error(TRIO103, node.lineno, node.col_offset))
+            self.unraised = False
+        self.generic_visit(node)
+
+    def visit_If(self, node: Union[ast.If, ast.For, ast.While]):
+        if not self.unraised:
+            self.generic_visit(node)
+            return
+
+        body_raised = False
+        for n in node.body:
+            self.visit(n)
+
+        # does body always raise correctly
+        body_raised = not self.unraised
+
+        self.unraised = True
+        for n in node.orelse:
+            self.visit(n)
+        # does orelse always raise correctly
+        orelse_raised = not self.unraised
+
+        # if both paths always raises, unset unraised.
+        self.unraised = not (body_raised and orelse_raised)
+
+    # checking for/while in this context doesn't make *that* much sense
+    # but I see no harm in it.
+    def visit_For(self, node: ast.For):
+        self.visit_If(node)
+
+    def visit_While(self, node: ast.While):
+        self.visit_If(node)
+
+
 class Plugin:
     name = __name__
     version = __version__
@@ -269,7 +362,7 @@ class Plugin:
         return cls(ast.parse(source))
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
-        for v in (Visitor, Visitor102):
+        for v in (Visitor, Visitor102, Visitor103):
             visitor = v()
             visitor.visit(self._tree)
             yield from visitor.problems
@@ -278,3 +371,4 @@ class Plugin:
 TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
 TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
 TRIO102 = "TRIO102: it's unsafe to await inside `finally:` unless you use a shielded cancel scope with a timeout"
+TRIO103 = "TRIO103: except Cancelled or except BaseException block with a code path that doesn't re-raise the error"
