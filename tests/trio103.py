@@ -78,7 +78,7 @@ def foo(var):
 
     try:
         pass
-    except BaseException as e: # TODO: nested try's
+    except BaseException as e:  # TODO: nested try's
         try:
             raise e
         except:
