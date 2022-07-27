@@ -2,8 +2,7 @@
 *[CalVer, YY.month.patch](https://calver.org/)*
 
 ## 22.7.3
-Added:
-- **TRIO102** `await` in `finally` must have a cancel scope with shielding.
+- Added TRIO102 check for unsafe checkpoints inside `finally:` blocks
 
 ## 22.7.2
 - Avoid `TRIO100` false-alarms on cancel scopes containing `async for` or `async with`.

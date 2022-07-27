@@ -43,7 +43,7 @@ class TrioScope:
         self.packagename = packagename
         self.variable_name: Optional[str] = None
         self.shielded: bool = False
-        self.timeout: bool = False
+        self.has_timeout: bool = False
 
         if self.funcname == "CancelScope":
             for kw in node.keywords:
@@ -52,9 +52,9 @@ class TrioScope:
                     self.shielded = kw.value.value
                 # sets to True even if timeout is explicitly set to inf
                 if kw.arg == "deadline":
-                    self.timeout = True
+                    self.has_timeout = True
         else:
-            self.timeout = True
+            self.has_timeout = True
 
     def __str__(self):
         # Not supporting other ways of importing trio
@@ -89,7 +89,7 @@ class Visitor102(ast.NodeVisitor):
     def __init__(self) -> None:
         super().__init__()
         self.problems: List[Error] = []
-        self._inside_finally: Optional[ast.Try] = None
+        self._inside_finally: bool = False
         self._scopes: List[TrioScope] = []
         self._context_manager = False
 
@@ -169,7 +169,7 @@ class Visitor102(ast.NodeVisitor):
         outer_scopes = self._scopes
 
         self._scopes = []
-        self._inside_finally = node
+        self._inside_finally = True
 
         for item in node.finalbody:
             self.visit(item)
@@ -180,12 +180,12 @@ class Visitor102(ast.NodeVisitor):
     def check_for_trio102(self, node: Union[ast.Await, ast.AsyncFor, ast.AsyncWith]):
         # if we're inside a finally, and not inside a context_manager, and we're not
         # inside a scope that doesn't have both a timeout and shield
-        if self._inside_finally is not None and not self._context_manager:
-            for scope in self._scopes:
-                if scope.timeout and scope.shielded:
-                    break
-            else:
-                self.problems.append(make_error(TRIO102, node.lineno, node.col_offset))
+        if (
+            self._inside_finally
+            and not self._context_manager
+            and not any(scope.has_timeout and scope.shielded for scope in self._scopes)
+        ):
+            self.problems.append(make_error(TRIO102, node.lineno, node.col_offset))
 
 
 class Visitor(ast.NodeVisitor):
@@ -277,4 +277,4 @@ class Plugin:
 
 TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
 TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
-TRIO102 = "TRIO102: await in finally without a cancel scope and shielding"
+TRIO102 = "TRIO102: it's unsafe to await inside `finally:` unless you use a shielded cancel scope with a timeout"
