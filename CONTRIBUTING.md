@@ -19,8 +19,10 @@ To run our test suite please use tox.
 tox -e check
 # Test Running
 tox -e test
-# Run checks and tests against Python 3.8, 3.9 and 3.10, in parallell
-tox -e ALL -p
+# Run checks and tests against Python 3.8, 3.9 and 3.10
+tox -e ALL
+# Tip: Use -p (run tests in parallel) and --develop (install package with -e) to save time when modifying and rerunning
+tox -e ALL -p --develop
 ```
 
 
