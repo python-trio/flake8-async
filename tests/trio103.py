@@ -44,26 +44,6 @@ def foo(var):
         pass
     except BaseException:
         return  # error
-    except trio.Cancelled:
-        while True:
-            raise
-        else:
-            raise
-    except trio.Cancelled:
-        for i in var:
-            raise
-        else:
-            raise
-    except trio.Cancelled:  # error
-        while True:
-            raise
-        else:
-            pass
-    except trio.Cancelled:  # error
-        for i in var:
-            pass
-        else:
-            raise
 
     if True:
         return
@@ -98,6 +78,13 @@ def foo(var):
         pass
     except BaseException as e:
         raise  # In theory safe? But godawful ugly so treat as error anyway
+    except trio.Cancelled:  # error
+        while var:
+            raise
+
+        for i in var:
+            if var:
+                return  # error
 
 
 # TODO: how to handle raise from?

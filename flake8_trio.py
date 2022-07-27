@@ -318,7 +318,7 @@ class Visitor103(ast.NodeVisitor):
             self.unraised = False
         self.generic_visit(node)
 
-    def visit_If(self, node: Union[ast.If, ast.For, ast.While]):
+    def visit_If(self, node: ast.If):
         if not self.unraised:
             self.generic_visit(node)
             return
@@ -339,13 +339,16 @@ class Visitor103(ast.NodeVisitor):
         # if both paths always raises, unset unraised.
         self.unraised = not (body_raised and orelse_raised)
 
-    # checking for/while in this context doesn't make *that* much sense
-    # but I see no harm in it.
+    # disregard any raise's inside loops
     def visit_For(self, node: ast.For):
-        self.visit_If(node)
+        outer_unraised = self.unraised
+        self.generic_visit(node)
+        self.unraised = outer_unraised
 
     def visit_While(self, node: ast.While):
-        self.visit_If(node)
+        outer_unraised = self.unraised
+        self.generic_visit(node)
+        self.unraised = outer_unraised
 
 
 class Plugin:
