@@ -9,7 +9,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import TRIO100, TRIO101, Error, Plugin, Visitor, make_error
+from flake8_trio import TRIO100, TRIO101, TRIO102, Error, Plugin, Visitor, make_error
 
 
 class Flake8TrioTestCase(unittest.TestCase):
@@ -48,6 +48,33 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO101, 15, 8),
             make_error(TRIO101, 27, 8),
             make_error(TRIO101, 38, 8),
+            make_error(TRIO101, 59, 8),
+        )
+
+    def test_trio102(self):
+        self.assert_expected_errors(
+            "trio102.py",
+            make_error(TRIO102, 24, 8),
+            make_error(TRIO102, 30, 12),
+            make_error(TRIO102, 36, 12),
+            make_error(TRIO102, 62, 12),
+            make_error(TRIO102, 70, 12),
+            make_error(TRIO102, 74, 12),
+            make_error(TRIO102, 76, 12),
+            make_error(TRIO102, 80, 12),
+            make_error(TRIO102, 82, 12),
+            make_error(TRIO102, 84, 12),
+            make_error(TRIO102, 88, 12),
+            make_error(TRIO102, 92, 8),
+            make_error(TRIO102, 94, 8),
+            make_error(TRIO102, 101, 12),
+        )
+
+    @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
+    def test_trio102_py39(self):
+        self.assert_expected_errors(
+            "trio102_py39.py",
+            make_error(TRIO102, 15, 12),
         )
 
 
