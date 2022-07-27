@@ -18,9 +18,9 @@ To run our test suite please use tox.
 # Formatting and Linting
 tox -e check
 # Test Running
-tox -e py310-test
-# Run checks and all tests
-tox -e ALL
+tox -e test
+# Run checks and tests against Python 3.8, 3.9 and 3.10, in parallell
+tox -e ALL -p
 ```
 
 
