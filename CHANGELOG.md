@@ -3,6 +3,7 @@
 
 ## Future
 - Added TRIO105 check for not immediately `await`ing async trio functions.
+- Added TRIO106 check that trio is imported in a form that the plugin can easily parse.
 
 ## 22.7.3
 - Added TRIO102 check for unsafe checkpoints inside `finally:` blocks
