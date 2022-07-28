@@ -264,7 +264,7 @@ trio_async_functions = (
     "open_tcp_stream",
     "open_unix_socket",
     "run_process",
-    "server_listeners",
+    "serve_listeners",
     "serve_ssl_over_tcp",
     "serve_tcp",
     "sleep",
