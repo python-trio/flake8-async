@@ -14,7 +14,7 @@ import tokenize
 from typing import Any, Collection, Generator, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.7.3"
+__version__ = "22.7.4"
 
 
 Error = Tuple[int, int, str, Type[Any]]
@@ -255,68 +255,103 @@ class Visitor(ast.NodeVisitor):
                 )
 
 
-def has_exception(node: ast.expr):
-    return (isinstance(node, ast.Name) and node.id == "BaseException") or (
-        isinstance(node, ast.Attribute)
-        and isinstance(node.value, ast.Name)
-        and node.value.id == "trio"
-        and node.attr == "Cancelled"
-    )
-
-
 # Never have an except Cancelled or except BaseException block with a code path that
 # doesn't re-raise the error
-class Visitor103(ast.NodeVisitor):
+class Visitor103_104(ast.NodeVisitor):
     def __init__(self) -> None:
         super().__init__()
         self.problems: List[Error] = []
 
-        # Likely overkill, but need to figure out nested try's first.
-        self.except_names: List[Optional[str]] = []
+        self.except_name: Optional[str] = None
         self.unraised: bool = False
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
+        def has_exception(node: Optional[ast.expr]):
+            return (isinstance(node, ast.Name) and node.id == "BaseException") or (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "trio"
+                and node.attr == "Cancelled"
+            )
+
         outer_unraised = self.unraised
-        must_raise = False
-        if node.type is not None:
-            if (
-                isinstance(node.type, ast.Tuple)
-                and any(has_exception(v) for v in node.type.elts)
-            ) or has_exception(node.type):
-                must_raise = True
-                self.except_names.append(node.name)
-                self.unraised = True
+        exc_node = None
+
+        if isinstance(node.type, ast.Tuple):
+            for element in node.type.elts:
+                if has_exception(element):
+                    exc_node = element
+                    break
+        elif has_exception(node.type):
+            exc_node = node.type
+
+        if exc_node is not None:
+            self.except_name = node.name
+            self.unraised = True
 
         self.generic_visit(node)
-        if must_raise:
+
+        if exc_node is not None:
             if self.unraised:
-                # TODO: point at correct exception
-                self.problems.append(make_error(TRIO103, node.lineno, node.col_offset))
-            self.except_names.pop()
+                self.problems.append(
+                    make_error(TRIO103, exc_node.lineno, exc_node.col_offset)
+                )
 
         self.unraised = outer_unraised
 
     def visit_Raise(self, node: ast.Raise):
-        if self.unraised:
-            assert self.except_names
-            name = self.except_names[-1]
-            if (name is None and node.exc is None) or (
-                isinstance(node.exc, ast.Name) and node.exc.id == name
-            ):
-                self.unraised = False
-            else:
-                # Error: something other than the exception was raised
-                # TODO: give separate error message
-                self.problems.append(make_error(TRIO103, node.lineno, node.col_offset))
-                self.unraised = False
+        # if there's an exception that must be raised
+        # and none of the valid ways of re-raising it is done
+        if self.unraised and not (
+            # bare except and no named exception
+            (self.except_name is None and node.exc is None)
+            # re-raised by name
+            or (isinstance(node.exc, ast.Name) and node.exc.id == self.except_name)
+            # new valid exception raised
+            or (
+                isinstance(node.exc, ast.Call)
+                and (
+                    (
+                        isinstance(node.exc.func, ast.Name)
+                        and node.exc.func.id == "BaseException"
+                    )
+                    or (
+                        isinstance(node.exc.func, ast.Attribute)
+                        and isinstance(node.exc.func.value, ast.Name)
+                        and node.exc.func.value.id == "trio"
+                        and node.exc.func.attr == "Cancelled"
+                    )
+                )
+            )
+        ):
+            # Error: something other than the exception was raised
+            self.problems.append(make_error(TRIO104, node.lineno, node.col_offset))
+        self.unraised = False
         self.generic_visit(node)
 
     def visit_Return(self, node: ast.Return):
         if self.unraised:
-            # Error, only good way of stopping the function is to raise
-            self.problems.append(make_error(TRIO103, node.lineno, node.col_offset))
-            self.unraised = False
+            # Error: must re-raise
+            self.problems.append(make_error(TRIO104, node.lineno, node.col_offset))
         self.generic_visit(node)
+
+    def visit_Try(self, node: ast.Try):
+        if not self.unraised:
+            self.generic_visit(node)
+            return
+
+        # in theory it's okay if the try and all excepts re-raise,
+        # and there is a bare except
+        # but is a pain to parse and would require a special case for bare raises in
+        # nested excepts.
+        for n in (*node.body, *node.handlers, *node.orelse):
+            self.visit(n)
+            # re-set unraised to warn about returns in each block
+            self.unraised = True
+
+        # but it's fine if we raise in finally
+        for n in node.finalbody:
+            self.visit(n)
 
     def visit_If(self, node: ast.If):
         if not self.unraised:
@@ -333,11 +368,9 @@ class Visitor103(ast.NodeVisitor):
         self.unraised = True
         for n in node.orelse:
             self.visit(n)
-        # does orelse always raise correctly
-        orelse_raised = not self.unraised
 
-        # if both paths always raises, unset unraised.
-        self.unraised = not (body_raised and orelse_raised)
+        # if body didn't raise, or it's unraised after else, set unraise
+        self.unraised = not body_raised or self.unraised
 
     # disregard any raise's inside loops
     def visit_For(self, node: ast.For):
@@ -365,7 +398,7 @@ class Plugin:
         return cls(ast.parse(source))
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
-        for v in (Visitor, Visitor102, Visitor103):
+        for v in (Visitor, Visitor102, Visitor103_104):
             visitor = v()
             visitor.visit(self._tree)
             yield from visitor.problems
@@ -375,3 +408,4 @@ TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)
 TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
 TRIO102 = "TRIO102: it's unsafe to await inside `finally:` unless you use a shielded cancel scope with a timeout"
 TRIO103 = "TRIO103: except Cancelled or except BaseException block with a code path that doesn't re-raise the error"
+TRIO104 = "TRIO104: Cancelled and BaseException must be re-raised"

@@ -14,6 +14,7 @@ from flake8_trio import (
     TRIO101,
     TRIO102,
     TRIO103,
+    TRIO104,
     Error,
     Plugin,
     Visitor,
@@ -86,17 +87,27 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO102, 15, 12),
         )
 
-    def test_trio103(self):
+    def test_trio103_104(self):
         self.assert_expected_errors(
-            "trio103.py",
-            make_error(TRIO103, 7, 0),
-            make_error(TRIO103, 19, 4),
-            make_error(TRIO103, 25, 4),
-            make_error(TRIO103, 27, 4),
-            make_error(TRIO103, 46, 8),
-            make_error(TRIO103, 80, 8),
-            make_error(TRIO103, 87, 16),
-            make_error(TRIO103, 81, 4),
+            "trio103_104.py",
+            make_error(TRIO103, 7, 33),
+            make_error(TRIO104, 19, 4),
+            make_error(TRIO103, 25, 11),
+            make_error(TRIO103, 27, 11),
+            make_error(TRIO103, 37, 11),
+            make_error(TRIO104, 46, 8),
+            make_error(TRIO103, 45, 11),
+            make_error(TRIO104, 54, 8),
+            make_error(TRIO104, 61, 16),
+            make_error(TRIO103, 55, 11),
+            make_error(TRIO104, 63, 8),
+            make_error(TRIO103, 73, 11),
+            make_error(TRIO104, 84, 12),
+            make_error(TRIO104, 86, 12),
+            make_error(TRIO104, 88, 12),
+            make_error(TRIO104, 90, 12),
+            make_error(TRIO103, 82, 11),
+            make_error(TRIO103, 98, 8),
         )
 
 

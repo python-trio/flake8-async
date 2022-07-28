@@ -1,6 +1,10 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.7.4
+- Add TRIO103: `except BaseException` or `except trio.Cancelled` with a code path that doesn't re-raise
+- Add TRIO104: "Cancelled and BaseException must be re-raised" if user tries to return or raise a different exception.
+
 ## 22.7.3
 - Added TRIO102 check for unsafe checkpoints inside `finally:` blocks
 

@@ -24,3 +24,5 @@ pip install flake8-trio
 - **TRIO101** `yield` inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
 - **TRIO102** it's unsafe to await inside `finally:` unless you use a shielded
   cancel scope with a timeout"
+- **TRIO103** `except BaseException` and `except trio.Cancelled` with a code path that doesn't re-raise
+- **TRIO104** `Cancelled` and `BaseException` must be re-raised - when a user tries to `return` or `raise` a different exception.
