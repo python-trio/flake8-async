@@ -1,4 +1,5 @@
 import ast
+import inspect
 import os
 import site
 import sys
@@ -6,10 +7,21 @@ import unittest
 from pathlib import Path
 
 import pytest
+import trio  # type: ignore
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import TRIO100, TRIO101, TRIO102, Error, Plugin, Visitor, make_error
+from flake8_trio import (
+    TRIO100,
+    TRIO101,
+    TRIO102,
+    TRIO105,
+    Error,
+    Plugin,
+    Visitor,
+    make_error,
+    trio_async_functions,
+)
 
 
 class Flake8TrioTestCase(unittest.TestCase):
@@ -69,6 +81,36 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO102, 94, 8),
             make_error(TRIO102, 101, 12),
             make_error(TRIO102, 123, 12),
+        )
+
+    def test_trio105(self):
+        self.assert_expected_errors(
+            "trio105.py",
+            make_error(TRIO105, 25, 4, "aclose_forcefully"),
+            make_error(TRIO105, 26, 4, "open_file"),
+            make_error(TRIO105, 27, 4, "open_ssl_over_tcp_listeners"),
+            make_error(TRIO105, 28, 4, "open_ssl_over_tcp_stream"),
+            make_error(TRIO105, 29, 4, "open_tcp_listeners"),
+            make_error(TRIO105, 30, 4, "open_tcp_stream"),
+            make_error(TRIO105, 31, 4, "open_unix_socket"),
+            make_error(TRIO105, 32, 4, "run_process"),
+            make_error(TRIO105, 33, 4, "serve_listeners"),
+            make_error(TRIO105, 34, 4, "serve_ssl_over_tcp"),
+            make_error(TRIO105, 35, 4, "serve_tcp"),
+            make_error(TRIO105, 36, 4, "sleep"),
+            make_error(TRIO105, 37, 4, "sleep_forever"),
+            make_error(TRIO105, 38, 4, "sleep_until"),
+            make_error(TRIO105, 45, 15, "open_file"),
+            make_error(TRIO105, 50, 8, "open_file"),
+        )
+
+        self.assertEqual(
+            set(trio_async_functions),
+            {
+                o[0]
+                for o in inspect.getmembers(trio)  # type: ignore
+                if inspect.iscoroutinefunction(o[1])
+            },
         )
 
 
