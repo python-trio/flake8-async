@@ -254,6 +254,16 @@ class Visitor(ast.NodeVisitor):
                     make_error(TRIO100, item.lineno, item.col_offset, call)
                 )
 
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if node.module == "trio":
+            self.problems.append(make_error(TRIO106, node.lineno, node.col_offset))
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import):
+        for name in node.names:
+            if name.name == "trio" and name.asname is not None:
+                self.problems.append(make_error(TRIO106, node.lineno, node.col_offset))
+
 
 trio_async_functions = (
     "aclose_forcefully",
@@ -325,3 +335,4 @@ TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)
 TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
 TRIO102 = "TRIO102: it's unsafe to await inside `finally:` unless you use a shielded cancel scope with a timeout"
 TRIO105 = "TRIO105: Trio async function {} must be immediately awaited"
+TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to work"

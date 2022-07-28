@@ -16,6 +16,7 @@ from flake8_trio import (
     TRIO101,
     TRIO102,
     TRIO105,
+    TRIO106,
     Error,
     Plugin,
     Visitor,
@@ -111,6 +112,14 @@ class Flake8TrioTestCase(unittest.TestCase):
                 for o in inspect.getmembers(trio)  # type: ignore
                 if inspect.iscoroutinefunction(o[1])
             },
+        )
+
+    def test_trio106(self):
+        self.assert_expected_errors(
+            "trio106.py",
+            make_error(TRIO106, 3, 0),
+            make_error(TRIO106, 5, 0),
+            make_error(TRIO106, 7, 0),
         )
 
 
