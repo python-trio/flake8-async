@@ -97,7 +97,6 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO103, 37, 11),
             make_error(TRIO104, 46, 8),
             make_error(TRIO103, 45, 11),
-            make_error(TRIO104, 54, 8),
             make_error(TRIO104, 61, 16),
             make_error(TRIO103, 55, 11),
             make_error(TRIO104, 63, 8),

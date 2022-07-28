@@ -303,8 +303,8 @@ class Visitor103_104(ast.NodeVisitor):
         # if there's an exception that must be raised
         # and none of the valid ways of re-raising it is done
         if self.unraised and not (
-            # bare except and no named exception
-            (self.except_name is None and node.exc is None)
+            # bare except
+            node.exc is None
             # re-raised by name
             or (isinstance(node.exc, ast.Name) and node.exc.id == self.except_name)
             # new valid exception raised

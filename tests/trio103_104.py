@@ -51,7 +51,7 @@ def foo(var):
     try:
         pass
     except BaseException as e:
-        raise  # In theory safe - but bad to do bare raise after saving variable
+        raise  # acceptable - see https://peps.python.org/pep-0678/#example-usage
     except trio.Cancelled:  # error
         while var:
             raise
