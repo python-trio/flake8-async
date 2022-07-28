@@ -45,9 +45,7 @@ async def foo():
     async with trio.open_file() as f:
         pass
 
-    # currently errors out, but is unclear if user intended to save the
-    # awaitable or the result. Not too tricky to do a super basic parsing
-    # (save variable name, check if a variable with that name is ever awaited)
-    # but I suspect that isn't very useful regardless?
+    # safe in theory, but deemed sufficiently poor style that parsing
+    # it isn't supported
     k = trio.open_file()
     await k

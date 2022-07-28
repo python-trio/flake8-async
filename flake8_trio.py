@@ -14,7 +14,7 @@ import tokenize
 from typing import Any, Collection, Generator, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.7.5"
+__version__ = "22.7.3"
 
 
 Error = Tuple[int, int, str, Type[Any]]
@@ -324,4 +324,4 @@ class Plugin:
 TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
 TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
 TRIO102 = "TRIO102: it's unsafe to await inside `finally:` unless you use a shielded cancel scope with a timeout"
-TRIO105 = "TRIO105: Trio async function {} must be awaited"
+TRIO105 = "TRIO105: Trio async function {} must be immediately awaited"

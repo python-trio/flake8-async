@@ -1,8 +1,8 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## 22.7.5
-- Added TRIO105 check for not `await`ing async trio functions.
+## Future
+- Added TRIO105 check for not immediately `await`ing async trio functions.
 
 ## 22.7.3
 - Added TRIO102 check for unsafe checkpoints inside `finally:` blocks

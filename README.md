@@ -24,4 +24,4 @@ pip install flake8-trio
 - **TRIO101** `yield` inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
 - **TRIO102** it's unsafe to await inside `finally:` unless you use a shielded
   cancel scope with a timeout"
-- **TRIO105** Calling a trio async function without `await`ing it.
+- **TRIO105** Calling a trio async function without immediately `await`ing it.
