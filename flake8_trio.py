@@ -14,7 +14,7 @@ import tokenize
 from typing import Any, Collection, Generator, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.7.3"
+__version__ = "22.7.5"
 
 
 Error = Tuple[int, int, str, Type[Any]]
@@ -255,6 +255,52 @@ class Visitor(ast.NodeVisitor):
                 )
 
 
+trio_async_functions = (
+    "aclose_forcefully",
+    "open_file",
+    "open_ssl_over_tcp_listeners",
+    "open_ssl_over_tcp_stream",
+    "open_tcp_listeners",
+    "open_tcp_stream",
+    "open_unix_socket",
+    "run_process",
+    "server_listeners",
+    "serve_ssl_over_tcp",
+    "serve_tcp",
+    "sleep",
+    "sleep_forever",
+    "sleep_until",
+)
+
+
+class Visitor105(ast.NodeVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.problems: List[Error] = []
+        self.node_stack: List[ast.AST] = []
+
+    def visit(self, node: ast.AST):
+        self.node_stack.append(node)
+        super().visit(node)
+        self.node_stack.pop()
+
+    def visit_Call(self, node: ast.Call):
+        if (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "trio"
+            and node.func.attr in trio_async_functions
+            and (
+                len(self.node_stack) < 2
+                or not isinstance(self.node_stack[-2], ast.Await)
+            )
+        ):
+            self.problems.append(
+                make_error(TRIO105, node.lineno, node.col_offset, node.func.attr)
+            )
+        self.generic_visit(node)
+
+
 class Plugin:
     name = __name__
     version = __version__
@@ -269,7 +315,7 @@ class Plugin:
         return cls(ast.parse(source))
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
-        for v in (Visitor, Visitor102):
+        for v in (Visitor, Visitor102, Visitor105):
             visitor = v()
             visitor.visit(self._tree)
             yield from visitor.problems
@@ -278,3 +324,4 @@ class Plugin:
 TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
 TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
 TRIO102 = "TRIO102: it's unsafe to await inside `finally:` unless you use a shielded cancel scope with a timeout"
+TRIO105 = "TRIO105: Trio async function {} must be awaited"
