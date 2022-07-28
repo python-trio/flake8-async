@@ -68,13 +68,7 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO102, 92, 8),
             make_error(TRIO102, 94, 8),
             make_error(TRIO102, 101, 12),
-        )
-
-    @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
-    def test_trio102_py39(self):
-        self.assert_expected_errors(
-            "trio102_py39.py",
-            make_error(TRIO102, 15, 12),
+            make_error(TRIO102, 123, 12),
         )
 
 
