@@ -101,6 +101,7 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO105, 37, 4, "sleep_forever"),
             make_error(TRIO105, 38, 4, "sleep_until"),
             make_error(TRIO105, 45, 15, "open_file"),
+            make_error(TRIO105, 52, 8, "open_file"),
         )
 
         self.assertEqual(

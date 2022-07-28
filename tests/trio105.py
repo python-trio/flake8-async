@@ -44,3 +44,10 @@ async def foo():
     # error
     async with trio.open_file() as f:
         pass
+
+    # currently errors out, but is unclear if user intended to save the
+    # awaitable or the result. Not too tricky to do a super basic parsing
+    # (save variable name, check if a variable with that name is ever awaited)
+    # but I suspect that isn't very useful regardless?
+    k = trio.open_file()
+    await k
