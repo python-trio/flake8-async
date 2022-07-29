@@ -19,7 +19,6 @@ from flake8_trio import (
     TRIO106,
     Error,
     Plugin,
-    Visitor,
     make_error,
     trio_async_functions,
 )
@@ -131,7 +130,7 @@ class TestFuzz(unittest.TestCase):
         # Given any syntatically-valid source code, the checker should
         # not crash.  This tests doesn't check that we do the *right* thing,
         # just that we don't crash on valid-if-poorly-styled code!
-        Visitor().visit(syntax_tree)
+        Plugin(syntax_tree).run()
 
     @staticmethod
     def _iter_python_files():
