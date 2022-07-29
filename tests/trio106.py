@@ -1,9 +1,9 @@
 import importlib
 
 import trio
-import trio as foo
-from trio import *  # noqa
-from trio import blah, open_file as foo  # noqa
+import trio as foo  # error
+from trio import *  # noqa # error
+from trio import blah, open_file as foo  # noqa # error
 
 # Note that our tests exercise the Visitor classes, without going through the noqa filter later in flake8 - so these suppressions are picked up by our project-wide linter stack but not the tests.
 
