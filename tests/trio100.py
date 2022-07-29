@@ -1,10 +1,13 @@
 import trio
 
-with trio.move_on_after(10):
+with trio.move_on_after(10):  # error
     pass
 
 
 async def function_name():
+    async with trio.fail_after(10):  # error
+        pass
+
     with trio.move_on_after(10):
         await trio.sleep(1)
 
@@ -20,7 +23,7 @@ async def function_name():
     with open("filename") as _:
         pass
 
-    with trio.fail_after(10):
+    with trio.fail_after(10):  # error
         pass
 
     send_channel, receive_channel = trio.open_memory_channel(0)

@@ -29,18 +29,19 @@ class Flake8TrioTestCase(unittest.TestCase):
         filename = Path(__file__).absolute().parent / test_file
         plugin = Plugin.from_filename(str(filename))
         errors = tuple(plugin.run())
-        self.assertEqual(errors, expected)
+        self.assertTupleEqual(errors, expected)
 
     def test_tree(self):
         plugin = Plugin(ast.parse(""))
         errors = list(plugin.run())
-        self.assertEqual(errors, [])
+        self.assertSequenceEqual(errors, [])
 
     def test_trio100(self):
         self.assert_expected_errors(
             "trio100.py",
             make_error(TRIO100, 3, 5, "trio.move_on_after"),
-            make_error(TRIO100, 23, 9, "trio.fail_after"),
+            make_error(TRIO100, 8, 15, "trio.fail_after"),
+            make_error(TRIO100, 26, 9, "trio.fail_after"),
         )
 
     @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
@@ -100,11 +101,11 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO105, 36, 4, "sleep"),
             make_error(TRIO105, 37, 4, "sleep_forever"),
             make_error(TRIO105, 38, 4, "sleep_until"),
-            make_error(TRIO105, 45, 15, "open_file"),
-            make_error(TRIO105, 50, 8, "open_file"),
+            make_error(TRIO105, 44, 15, "open_file"),
+            make_error(TRIO105, 49, 8, "open_file"),
         )
 
-        self.assertEqual(
+        self.assertSetEqual(
             set(trio_async_functions),
             {
                 o[0]

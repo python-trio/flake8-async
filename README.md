@@ -21,7 +21,8 @@ pip install flake8-trio
 - **TRIO100**: a `with trio.fail_after(...):` or `with trio.move_on_after(...):`
   context does not contain any `await` statements.  This makes it pointless, as
   the timeout can only be triggered by a checkpoint.
-- **TRIO101** `yield` inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
-- **TRIO102** it's unsafe to await inside `finally:` unless you use a shielded
+- **TRIO101**: `yield` inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
+- **TRIO102**: it's unsafe to await inside `finally:` unless you use a shielded
   cancel scope with a timeout"
-- **TRIO105** Calling a trio async function without immediately `await`ing it.
+- **TRIO105**: Calling a trio async function without immediately `await`ing it.
+- **TRIO106**: trio must be imported with `import trio` for the linter to work
