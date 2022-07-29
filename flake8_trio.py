@@ -91,6 +91,82 @@ def has_decorator(decorator_list: List[ast.expr], names: Collection[str]):
     return False
 
 
+class VisitorMiscChecks(Flake8TrioVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self._yield_is_error = False
+        self._context_manager = False
+
+    def visit_With(self, node: Union[ast.With, ast.AsyncWith]) -> None:
+        self.check_for_trio100(node)
+
+        outer_yie = self._yield_is_error
+
+        # Check for a `with trio.<scope_creater>`
+        if not self._context_manager:
+            for item in (i.context_expr for i in node.items):
+                if (
+                    get_trio_scope(item, "open_nursery", *cancel_scope_names)
+                    is not None
+                ):
+                    self._yield_is_error = True
+                    break
+
+        self.generic_visit(node)
+
+        # reset yield_is_error
+        self._yield_is_error = outer_yie
+
+    def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
+        self.visit_With(node)
+
+    def visit_FunctionDef(
+        self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]
+    ) -> None:
+        outer_cm = self._context_manager
+        outer_yie = self._yield_is_error
+        self._yield_is_error = False
+
+        # check for @<context_manager_name> and @<library>.<context_manager_name>
+        if has_decorator(node.decorator_list, context_manager_names):
+            self._context_manager = True
+
+        self.generic_visit(node)
+
+        self._context_manager = outer_cm
+        self._yield_is_error = outer_yie
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.visit_FunctionDef(node)
+
+    def visit_Yield(self, node: ast.Yield) -> None:
+        if self._yield_is_error:
+            self.problems.append(make_error(TRIO101, node.lineno, node.col_offset))
+
+        self.generic_visit(node)
+
+    def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]) -> None:
+        # Context manager with no `await` call within
+        for item in (i.context_expr for i in node.items):
+            call = get_trio_scope(item, *cancel_scope_names)
+            if call and not any(
+                isinstance(x, checkpoint_node_types) for x in ast.walk(node)
+            ):
+                self.problems.append(
+                    make_error(TRIO100, item.lineno, item.col_offset, call)
+                )
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if node.module == "trio":
+            self.problems.append(make_error(TRIO106, node.lineno, node.col_offset))
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import):
+        for name in node.names:
+            if name.name == "trio" and name.asname is not None:
+                self.problems.append(make_error(TRIO106, node.lineno, node.col_offset))
+
+
 class Visitor102(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
@@ -191,82 +267,6 @@ class Visitor102(Flake8TrioVisitor):
             and not any(scope.has_timeout and scope.shielded for scope in self._scopes)
         ):
             self.problems.append(make_error(TRIO102, node.lineno, node.col_offset))
-
-
-class VisitorMiscChecks(Flake8TrioVisitor):
-    def __init__(self) -> None:
-        super().__init__()
-        self._yield_is_error = False
-        self._context_manager = False
-
-    def visit_With(self, node: Union[ast.With, ast.AsyncWith]) -> None:
-        self.check_for_trio100(node)
-
-        outer_yie = self._yield_is_error
-
-        # Check for a `with trio.<scope_creater>`
-        if not self._context_manager:
-            for item in (i.context_expr for i in node.items):
-                if (
-                    get_trio_scope(item, "open_nursery", *cancel_scope_names)
-                    is not None
-                ):
-                    self._yield_is_error = True
-                    break
-
-        self.generic_visit(node)
-
-        # reset yield_is_error
-        self._yield_is_error = outer_yie
-
-    def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
-        self.visit_With(node)
-
-    def visit_FunctionDef(
-        self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]
-    ) -> None:
-        outer_cm = self._context_manager
-        outer_yie = self._yield_is_error
-        self._yield_is_error = False
-
-        # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if has_decorator(node.decorator_list, context_manager_names):
-            self._context_manager = True
-
-        self.generic_visit(node)
-
-        self._context_manager = outer_cm
-        self._yield_is_error = outer_yie
-
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-        self.visit_FunctionDef(node)
-
-    def visit_Yield(self, node: ast.Yield) -> None:
-        if self._yield_is_error:
-            self.problems.append(make_error(TRIO101, node.lineno, node.col_offset))
-
-        self.generic_visit(node)
-
-    def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]) -> None:
-        # Context manager with no `await` call within
-        for item in (i.context_expr for i in node.items):
-            call = get_trio_scope(item, *cancel_scope_names)
-            if call and not any(
-                isinstance(x, checkpoint_node_types) for x in ast.walk(node)
-            ):
-                self.problems.append(
-                    make_error(TRIO100, item.lineno, item.col_offset, call)
-                )
-
-    def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node.module == "trio":
-            self.problems.append(make_error(TRIO106, node.lineno, node.col_offset))
-        self.generic_visit(node)
-
-    def visit_Import(self, node: ast.Import):
-        for name in node.names:
-            if name.name == "trio" and name.asname is not None:
-                self.problems.append(make_error(TRIO106, node.lineno, node.col_offset))
 
 
 trio_async_functions = (
