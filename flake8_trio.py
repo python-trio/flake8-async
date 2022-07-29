@@ -282,7 +282,7 @@ class Visitor102(Flake8TrioVisitor):
 class Visitor103_104(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self.except_name: str = ""
+        self.except_name: Optional[str] = ""
         self.unraised: bool = False
 
     # If an `except` is bare, catches `BaseException`, or `trio.Cancelled`
@@ -319,15 +319,18 @@ class Visitor103_104(Flake8TrioVisitor):
             self.unraised = True
             marker = node.type.lineno, node.type.col_offset
 
-        # check if the except has an `as <except_name>`
-        if node.name is not None:
-            self.except_name = node.name
+        if marker is None:
+            self.generic_visit(node)
+            (self.unraised, self.except_name) = outer
+            return
+
+        # save name `as <except_name>`
+        self.except_name = node.name
 
         # visit child nodes. Will unset self.unraised if all code paths `raise`
         self.generic_visit(node)
 
-        # if unraised is set, and this is a critical except: error
-        if self.unraised and marker is not None:
+        if self.unraised:
             self.problems.append(make_error(TRIO103, *marker))
 
         (self.unraised, self.except_name) = outer
