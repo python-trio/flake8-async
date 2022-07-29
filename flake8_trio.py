@@ -36,6 +36,12 @@ def make_error(error: str, lineno: int, col: int, *args: Any, **kwargs: Any) -> 
     return (lineno, col, error.format(*args, **kwargs), type(Plugin))
 
 
+class Flake8TrioVisitor(ast.NodeVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.problems: List[Error] = []
+
+
 class TrioScope:
     def __init__(self, node: ast.Call, funcname: str, packagename: str):
         self.node = node
@@ -85,10 +91,9 @@ def has_decorator(decorator_list: List[ast.expr], names: Collection[str]):
     return False
 
 
-class Visitor102(ast.NodeVisitor):
+class Visitor102(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self.problems: List[Error] = []
         self._inside_finally: bool = False
         self._scopes: List[TrioScope] = []
         self._context_manager = False
@@ -188,10 +193,9 @@ class Visitor102(ast.NodeVisitor):
             self.problems.append(make_error(TRIO102, node.lineno, node.col_offset))
 
 
-class Visitor(ast.NodeVisitor):
+class VisitorMiscChecks(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self.problems: List[Error] = []
         self._yield_is_error = False
         self._context_manager = False
 
@@ -283,10 +287,9 @@ trio_async_functions = (
 )
 
 
-class Visitor105(ast.NodeVisitor):
+class Visitor105(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self.problems: List[Error] = []
         self.node_stack: List[ast.AST] = []
 
     def visit(self, node: ast.AST):
@@ -325,8 +328,8 @@ class Plugin:
         return cls(ast.parse(source))
 
     def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
-        for v in (Visitor, Visitor102, Visitor105):
-            visitor = v()
+        for cls in Flake8TrioVisitor.__subclasses__():
+            visitor = cls()
             visitor.visit(self._tree)
             yield from visitor.problems
 
