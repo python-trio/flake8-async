@@ -284,6 +284,7 @@ class Visitor103_104(Flake8TrioVisitor):
         super().__init__()
         self.except_name: Optional[str] = ""
         self.unraised: bool = False
+        self.loop_depth = 0
 
     # If an `except` is bare, catches `BaseException`, or `trio.Cancelled`
     # set self.unraised, and if it's still set after visiting child nodes
@@ -297,7 +298,7 @@ class Visitor103_104(Flake8TrioVisitor):
                 and node.attr == "Cancelled"
             )
 
-        outer = (self.unraised, self.except_name)
+        outer = (self.unraised, self.except_name, self.loop_depth)
         marker = None
 
         # we need to not unset self.unraised if this is non-critical to still
@@ -319,21 +320,18 @@ class Visitor103_104(Flake8TrioVisitor):
             self.unraised = True
             marker = node.type.lineno, node.type.col_offset
 
-        if marker is None:
-            self.generic_visit(node)
-            (self.unraised, self.except_name) = outer
-            return
-
-        # save name `as <except_name>`
-        self.except_name = node.name
+        if marker is not None:
+            # save name `as <except_name>`
+            self.except_name = node.name
+            self.loop_depth = 0
 
         # visit child nodes. Will unset self.unraised if all code paths `raise`
         self.generic_visit(node)
 
-        if self.unraised:
+        if self.unraised and marker is not None:
             self.problems.append(make_error(TRIO103, *marker))
 
-        (self.unraised, self.except_name) = outer
+        (self.unraised, self.except_name, self.loop_depth) = outer
 
     def visit_Raise(self, node: ast.Raise):
         # if there's an unraised critical exception, the raise isn't bare,
@@ -401,10 +399,22 @@ class Visitor103_104(Flake8TrioVisitor):
     # effects of them afterwards
     def visit_For(self, node: Union[ast.For, ast.While]):
         outer_unraised = self.unraised
-        self.generic_visit(node)
+        self.loop_depth += 1
+        for n in node.body:
+            self.visit(n)
+        self.loop_depth -= 1
+        for n in node.orelse:
+            self.visit(n)
         self.unraised = outer_unraised
 
     visit_While = visit_For
+
+    def visit_Break(self, node: Union[ast.Break, ast.Continue]):
+        if self.unraised and self.loop_depth == 0:
+            self.problems.append(make_error(TRIO104, node.lineno, node.col_offset))
+        self.generic_visit(node)
+
+    visit_Continue = visit_Break
 
 
 trio_async_functions = (

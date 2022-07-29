@@ -68,7 +68,6 @@ class Flake8TrioTestCase(unittest.TestCase):
         )
 
     def test_trio101(self):
-        self.maxDiff = None
         self.assert_expected_errors(
             "trio101.py",
             make_error(TRIO101, 10, 8),
@@ -132,8 +131,8 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO104, 143, 12),
             make_error(TRIO104, 145, 12),
             make_error(TRIO103, 137, 11),
-            # make_error(TRIO104, 154, 7), # TODO: not implemented
-            # make_error(TRIO104, 162, 7), # TODO: not implemented
+            make_error(TRIO104, 154, 12),
+            make_error(TRIO104, 162, 12),
         )
 
     def test_trio105(self):
