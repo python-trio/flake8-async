@@ -45,7 +45,7 @@ def foo(var):
     except BaseException:  # error
         return  # error
 
-    if True: # for code coverage
+    if True:  # for code coverage
         return
 
     try:
