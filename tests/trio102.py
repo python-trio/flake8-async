@@ -67,7 +67,7 @@ async def foo():
         pass
     finally:
         with open("bar"):
-            await foo()  # safe
+            await foo()  # error
         with open("bar"):
             pass
         with trio.move_on_after():
@@ -81,11 +81,11 @@ async def foo():
         with trio.CancelScope(deadline=30):
             await foo()  # error
         with trio.CancelScope(deadline=30, shield=(1 == 1)):
-            await foo()  # safe in theory, but deemed error
+            await foo()  # error: though safe in theory
         myvar = True
         with trio.open_nursery(10) as s:
             s.shield = myvar
-            await foo()  # safe in theory, but deemed error
+            await foo()  # error: though safe in theory
         with trio.CancelScope(deadline=30, shield=True):
             with trio.move_on_after(30):
                 await foo()  # safe
@@ -120,4 +120,4 @@ async def foo3():
             await foo()  # safe
         with trio.fail_after(5), trio.move_on_after(30) as s:
             s.shield = True
-            await foo()  # safe in theory, but we don't bother parsing
+            await foo()  # error: safe in theory, but we don't bother parsing

@@ -1,7 +1,8 @@
 """Tests for flake8-trio package metadata."""
 import re
+import unittest
 from pathlib import Path
-from typing import Iterable, NamedTuple
+from typing import Dict, Iterable, NamedTuple, Set
 
 import flake8_trio
 
@@ -43,3 +44,25 @@ def test_version_increments_are_correct():
             assert prev[:2] < current[:2], msg
         else:
             assert current == prev._replace(patch=prev.patch + 1), msg
+
+
+class test_messages_documented(unittest.TestCase):
+    def runTest(self):
+        documented_errors: Dict[str, Set[str]] = {}
+        for filename in (
+            "CHANGELOG.md",
+            "README.md",
+            "flake8_trio.py",
+            "tests/test_flake8_trio.py",
+        ):
+            with open(Path(__file__).parent.parent / filename) as f:
+                lines = f.readlines()
+            documented_errors[filename] = set()
+            for line in lines:
+                for error_msg in re.findall(r"TRIO\d\d\d", line):
+                    documented_errors[filename].add(error_msg)
+
+        file_items = list(documented_errors.items())
+        first = file_items.pop()
+        for file, documented in file_items:
+            self.assertSetEqual(first[1], documented, msg=(first[0], file))

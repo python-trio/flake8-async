@@ -150,7 +150,8 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         for item in (i.context_expr for i in node.items):
             call = get_trio_scope(item, *cancel_scope_names)
             if call and not any(
-                isinstance(x, checkpoint_node_types) for x in ast.walk(node)
+                isinstance(x, checkpoint_node_types) and x != node
+                for x in ast.walk(node)
             ):
                 self.problems.append(
                     make_error(TRIO100, item.lineno, item.col_offset, call)
