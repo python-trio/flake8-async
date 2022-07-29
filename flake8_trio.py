@@ -14,7 +14,7 @@ import tokenize
 from typing import Any, Collection, Generator, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.7.3"
+__version__ = "22.7.4"
 
 
 Error = Tuple[int, int, str, Type[Any]]

@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 22.7.4
 - Added TRIO105 check for not immediately `await`ing async trio functions.
 - Added TRIO106 check that trio is imported in a form that the plugin can easily parse.
 
