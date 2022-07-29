@@ -470,6 +470,6 @@ TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)
 TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
 TRIO102 = "TRIO102: it's unsafe to await inside `finally:` unless you use a shielded cancel scope with a timeout"
 TRIO103 = "TRIO103: except Cancelled or except BaseException block with a code path that doesn't re-raise the error"
-TRIO104 = "TRIO104: Cancelled and BaseException must be re-raised"
+TRIO104 = "TRIO104: Cancelled (and therefore BaseException) must be re-raised"
 TRIO105 = "TRIO105: Trio async function {} must be immediately awaited"
 TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to work"
