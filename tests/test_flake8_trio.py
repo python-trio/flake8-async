@@ -117,22 +117,23 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO104, 67, 8),  # weird case, unsure if error
             make_error(TRIO103, 61, 7),
             make_error(TRIO104, 92, 8),
+            # make_error(TRIO104, 94, 8), # TODO: not implemented
             # bare except
-            make_error(TRIO103, 95, 0),
+            make_error(TRIO103, 97, 0),
             # multi-line
-            make_error(TRIO103, 109, 4),
+            make_error(TRIO103, 111, 4),
             # re-raise parent
-            make_error(TRIO104, 122, 8),
+            make_error(TRIO104, 124, 8),
             # return
-            make_error(TRIO104, 132, 8),
-            make_error(TRIO103, 131, 11),
-            make_error(TRIO104, 137, 12),
+            make_error(TRIO104, 134, 8),
+            make_error(TRIO103, 133, 11),
             make_error(TRIO104, 139, 12),
             make_error(TRIO104, 141, 12),
             make_error(TRIO104, 143, 12),
-            make_error(TRIO103, 135, 11),
-            # make_error(TRIO104, 152, 7), # TODO: not implemented
-            # make_error(TRIO104, 160, 7), # TODO: not implemented
+            make_error(TRIO104, 145, 12),
+            make_error(TRIO103, 137, 11),
+            # make_error(TRIO104, 154, 7), # TODO: not implemented
+            # make_error(TRIO104, 162, 7), # TODO: not implemented
         )
 
     def test_trio105(self):

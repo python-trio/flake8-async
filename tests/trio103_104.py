@@ -90,6 +90,8 @@ except trio.Cancelled as e:
         pass
     except ValueError as g:
         raise g  # error
+    except BaseException as h:
+        raise h  # error ?
     raise e
 # bare except, equivalent to `except baseException`
 except:  # error
