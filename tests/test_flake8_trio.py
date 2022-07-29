@@ -1,4 +1,5 @@
 import ast
+import inspect
 import os
 import site
 import sys
@@ -6,6 +7,7 @@ import unittest
 from pathlib import Path
 
 import pytest
+import trio  # type: ignore
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
@@ -15,10 +17,12 @@ from flake8_trio import (
     TRIO102,
     TRIO103,
     TRIO104,
+    TRIO105,
+    TRIO106,
     Error,
     Plugin,
-    Visitor,
     make_error,
+    trio_async_functions,
 )
 
 
@@ -78,19 +82,14 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO102, 92, 8),
             make_error(TRIO102, 94, 8),
             make_error(TRIO102, 101, 12),
-        )
-
-    @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
-    def test_trio102_py39(self):
-        self.assert_expected_errors(
-            "trio102_py39.py",
-            make_error(TRIO102, 15, 12),
+            make_error(TRIO102, 123, 12),
         )
 
     def test_trio103_104(self):
         self.assert_expected_errors(
             "trio103_104.py",
             make_error(TRIO103, 7, 33),
+            make_error(TRIO103, 13, 0),
             make_error(TRIO104, 19, 4),
             make_error(TRIO103, 25, 11),
             make_error(TRIO103, 27, 11),
@@ -100,13 +99,54 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO104, 61, 16),
             make_error(TRIO103, 55, 11),
             make_error(TRIO104, 63, 8),
-            make_error(TRIO103, 73, 11),
-            make_error(TRIO104, 84, 12),
-            make_error(TRIO104, 86, 12),
-            make_error(TRIO104, 88, 12),
-            make_error(TRIO104, 90, 12),
-            make_error(TRIO103, 82, 11),
-            make_error(TRIO103, 98, 8),
+            make_error(TRIO104, 66, 8),
+            make_error(TRIO103, 72, 11),
+            make_error(TRIO104, 83, 12),
+            make_error(TRIO104, 85, 12),
+            make_error(TRIO104, 87, 12),
+            make_error(TRIO104, 89, 12),
+            make_error(TRIO103, 81, 11),
+            make_error(TRIO103, 97, 8),
+            make_error(TRIO103, 106, 11),
+            make_error(TRIO103, 109, 11),
+        )
+
+    def test_trio105(self):
+        self.assert_expected_errors(
+            "trio105.py",
+            make_error(TRIO105, 25, 4, "aclose_forcefully"),
+            make_error(TRIO105, 26, 4, "open_file"),
+            make_error(TRIO105, 27, 4, "open_ssl_over_tcp_listeners"),
+            make_error(TRIO105, 28, 4, "open_ssl_over_tcp_stream"),
+            make_error(TRIO105, 29, 4, "open_tcp_listeners"),
+            make_error(TRIO105, 30, 4, "open_tcp_stream"),
+            make_error(TRIO105, 31, 4, "open_unix_socket"),
+            make_error(TRIO105, 32, 4, "run_process"),
+            make_error(TRIO105, 33, 4, "serve_listeners"),
+            make_error(TRIO105, 34, 4, "serve_ssl_over_tcp"),
+            make_error(TRIO105, 35, 4, "serve_tcp"),
+            make_error(TRIO105, 36, 4, "sleep"),
+            make_error(TRIO105, 37, 4, "sleep_forever"),
+            make_error(TRIO105, 38, 4, "sleep_until"),
+            make_error(TRIO105, 45, 15, "open_file"),
+            make_error(TRIO105, 50, 8, "open_file"),
+        )
+
+        self.assertEqual(
+            set(trio_async_functions),
+            {
+                o[0]
+                for o in inspect.getmembers(trio)  # type: ignore
+                if inspect.iscoroutinefunction(o[1])
+            },
+        )
+
+    def test_trio106(self):
+        self.assert_expected_errors(
+            "trio106.py",
+            make_error(TRIO106, 4, 0),
+            make_error(TRIO106, 5, 0),
+            make_error(TRIO106, 6, 0),
         )
 
 
@@ -118,7 +158,7 @@ class TestFuzz(unittest.TestCase):
         # Given any syntatically-valid source code, the checker should
         # not crash.  This tests doesn't check that we do the *right* thing,
         # just that we don't crash on valid-if-poorly-styled code!
-        Visitor().visit(syntax_tree)
+        Plugin(syntax_tree).run()
 
     @staticmethod
     def _iter_python_files():

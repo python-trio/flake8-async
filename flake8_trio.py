@@ -97,8 +97,8 @@ def has_decorator(decorator_list: List[ast.expr], names: Collection[str]):
     return False
 
 
-# handles 100 and 101
-class Visitor(Flake8TrioVisitor):
+# handles 100, 101 and 106
+class VisitorMiscChecks(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
         self._yield_is_error = False
@@ -162,6 +162,16 @@ class Visitor(Flake8TrioVisitor):
                 self.problems.append(
                     make_error(TRIO100, item.lineno, item.col_offset, call)
                 )
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if node.module == "trio":
+            self.problems.append(make_error(TRIO106, node.lineno, node.col_offset))
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import):
+        for name in node.names:
+            if name.name == "trio" and name.asname is not None:
+                self.problems.append(make_error(TRIO106, node.lineno, node.col_offset))
 
 
 class Visitor102(Flake8TrioVisitor):
@@ -271,9 +281,12 @@ class Visitor102(Flake8TrioVisitor):
 class Visitor103_104(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self.except_name: Optional[str] = None
+        self.except_name: str = ""
         self.unraised: bool = False
 
+    # If an `except` is bare, catches `BaseException`, or `trio.Cancelled`
+    # set self.unraised, and if it's still set after visiting child nodes
+    # then there might be a code path that doesn't re-raise.
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
         def has_exception(node: Optional[ast.expr]):
             return (isinstance(node, ast.Name) and node.id == "BaseException") or (
@@ -283,59 +296,54 @@ class Visitor103_104(Flake8TrioVisitor):
                 and node.attr == "Cancelled"
             )
 
-        outer_unraised = self.unraised
-        exc_node = None
+        outer = (self.unraised, self.except_name)
+        marker = None
 
-        if isinstance(node.type, ast.Tuple):
+        # we need to not unset self.unraised if this is non-critical to still
+        # warn about `return`s
+
+        # bare except
+        if node.type is None:
+            self.unraised = True
+            marker = (node.lineno, node.col_offset)
+        # several exceptions
+        elif isinstance(node.type, ast.Tuple):
             for element in node.type.elts:
                 if has_exception(element):
-                    exc_node = element
+                    self.unraised = True
+                    marker = element.lineno, element.col_offset
                     break
+        # single exception, either a Name or an Attribute
         elif has_exception(node.type):
-            exc_node = node.type
-
-        if exc_node is not None:
-            self.except_name = node.name
             self.unraised = True
+            marker = node.type.lineno, node.type.col_offset
 
+        # check if the except has an `as <except_name>`
+        if node.name is not None:
+            self.except_name = node.name
+
+        # visit child nodes. Will unset self.unraised if all code paths `raise`
         self.generic_visit(node)
 
-        if exc_node is not None:
-            if self.unraised:
-                self.problems.append(
-                    make_error(TRIO103, exc_node.lineno, exc_node.col_offset)
-                )
+        # if unraised is set, and this is a critical except: error
+        if self.unraised and marker is not None:
+            self.problems.append(make_error(TRIO103, *marker))
 
-        self.unraised = outer_unraised
+        (self.unraised, self.except_name) = outer
 
     def visit_Raise(self, node: ast.Raise):
-        # if there's an exception that must be raised
-        # and none of the valid ways of re-raising it is done
-        if self.unraised and not (
-            # bare except
-            node.exc is None
-            # re-raised by name
-            or (isinstance(node.exc, ast.Name) and node.exc.id == self.except_name)
-            # new valid exception raised
-            or (
-                isinstance(node.exc, ast.Call)
-                and (
-                    (
-                        isinstance(node.exc.func, ast.Name)
-                        and node.exc.func.id == "BaseException"
-                    )
-                    or (
-                        isinstance(node.exc.func, ast.Attribute)
-                        and isinstance(node.exc.func.value, ast.Name)
-                        and node.exc.func.value.id == "trio"
-                        and node.exc.func.attr == "Cancelled"
-                    )
-                )
-            )
+        # if there's an unraised critical exception, the raise isn't bare,
+        # and the name doesn't match, signal a problem.
+        if (
+            self.unraised
+            and node.exc is not None
+            and not (isinstance(node.exc, ast.Name) and node.exc.id == self.except_name)
         ):
-            # Error: something other than the exception was raised
             self.problems.append(make_error(TRIO104, node.lineno, node.col_offset))
+
+        # treat it as safe regardless, to avoid unnecessary error messages.
         self.unraised = False
+
         self.generic_visit(node)
 
     def visit_Return(self, node: ast.Return):
@@ -344,6 +352,7 @@ class Visitor103_104(Flake8TrioVisitor):
             self.problems.append(make_error(TRIO104, node.lineno, node.col_offset))
         self.generic_visit(node)
 
+    # Treat Try's as fully covering only if `finally` always raises.
     def visit_Try(self, node: ast.Try):
         if not self.unraised:
             self.generic_visit(node)
@@ -362,6 +371,8 @@ class Visitor103_104(Flake8TrioVisitor):
         for n in node.finalbody:
             self.visit(n)
 
+    # Treat if's as fully covering if both `if` and `else` raise.
+    # `elif` is parsed by the ast as a new if statement inside the else.
     def visit_If(self, node: ast.If):
         if not self.unraised:
             self.generic_visit(node)
@@ -381,16 +392,60 @@ class Visitor103_104(Flake8TrioVisitor):
         # if body didn't raise, or it's unraised after else, set unraise
         self.unraised = not body_raised or self.unraised
 
-    # disregard any raise's inside loops
-    def visit_For(self, node: ast.For):
+    # It's hard to check for full coverage of `raise`s inside loops, so
+    # we completely disregard them when checking coverage by resetting the
+    # effects of them afterwards
+    def visit_For(self, node: Union[ast.For, ast.While]):
         outer_unraised = self.unraised
         self.generic_visit(node)
         self.unraised = outer_unraised
 
-    def visit_While(self, node: ast.While):
-        outer_unraised = self.unraised
+    visit_While = visit_For
+
+
+trio_async_functions = (
+    "aclose_forcefully",
+    "open_file",
+    "open_ssl_over_tcp_listeners",
+    "open_ssl_over_tcp_stream",
+    "open_tcp_listeners",
+    "open_tcp_stream",
+    "open_unix_socket",
+    "run_process",
+    "serve_listeners",
+    "serve_ssl_over_tcp",
+    "serve_tcp",
+    "sleep",
+    "sleep_forever",
+    "sleep_until",
+)
+
+
+class Visitor105(Flake8TrioVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.node_stack: List[ast.AST] = []
+
+    def visit(self, node: ast.AST):
+        self.node_stack.append(node)
+        super().visit(node)
+        self.node_stack.pop()
+
+    def visit_Call(self, node: ast.Call):
+        if (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "trio"
+            and node.func.attr in trio_async_functions
+            and (
+                len(self.node_stack) < 2
+                or not isinstance(self.node_stack[-2], ast.Await)
+            )
+        ):
+            self.problems.append(
+                make_error(TRIO105, node.lineno, node.col_offset, node.func.attr)
+            )
         self.generic_visit(node)
-        self.unraised = outer_unraised
 
 
 class Plugin:
@@ -416,3 +471,5 @@ TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when imp
 TRIO102 = "TRIO102: it's unsafe to await inside `finally:` unless you use a shielded cancel scope with a timeout"
 TRIO103 = "TRIO103: except Cancelled or except BaseException block with a code path that doesn't re-raise the error"
 TRIO104 = "TRIO104: Cancelled and BaseException must be re-raised"
+TRIO105 = "TRIO105: Trio async function {} must be immediately awaited"
+TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to work"
