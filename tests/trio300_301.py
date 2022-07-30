@@ -80,21 +80,55 @@ async def foo_try_1():  # error
     try:
         await foo()
     except ValueError:
-        await foo()
+        ...
     except:
+        await foo()
+    else:
         await foo()
 
 
 async def foo_try_2():  # safe
+    try:
+        ...
+    except ValueError:
+        ...
+    except:
+        ...
+    finally:
+        with trio.CancelScope(deadline=30, shield=True):  # avoid TRIO102
+            await foo()
+
+
+async def foo_try_3():  # safe
     try:
         await foo()
     except ValueError:
         await foo()
     except:
         await foo()
-    finally:
-        with trio.CancelScope(deadline=30, shield=True):  # avoid TRIO102
-            await foo()
+
+
+# raise
+async def foo_raise_1():  # safe
+    raise ValueError()
+
+
+async def foo_raise_2():  # safe
+    if _:
+        await foo()
+    else:
+        raise ValueError()
+
+
+async def foo_try_4():  # safe
+    try:
+        ...
+    except ValueError:
+        raise
+    except:
+        raise
+    else:
+        await foo()
 
 
 # early return
@@ -112,18 +146,6 @@ async def foo_return_3():  # error
     if _:
         await foo()
         return  # safe
-
-
-# raise
-async def foo_raise_1():  # safe
-    raise ValueError()
-
-
-async def foo_raise_2():  # safe
-    if _:
-        await foo()
-    else:
-        raise ValueError()
 
 
 # nested function definition

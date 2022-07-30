@@ -49,4 +49,6 @@ class TestTrioTests(unittest.TestCase):
                 self.assertNotIn(lineno, func_error_lines, msg=test)
                 func_error_lines.add(lineno)
 
-            self.assertSetEqual(file_error_lines, func_error_lines, msg=test)
+            self.assertSequenceEqual(
+                sorted(file_error_lines), sorted(func_error_lines), msg=test
+            )

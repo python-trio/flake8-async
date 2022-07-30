@@ -57,8 +57,8 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         visitor.visit(tree)
         yield from visitor.problems
 
-    def visit_nodes(self, nodes: Union[ast.expr, Iterable[ast.AST]]) -> None:
-        if isinstance(nodes, ast.expr):
+    def visit_nodes(self, nodes: Union[ast.AST, Iterable[ast.AST]]) -> None:
+        if isinstance(nodes, ast.AST):
             self.visit(nodes)
         else:
             for node in nodes:
@@ -524,16 +524,33 @@ class Visitor300_301(Flake8TrioVisitor):
     # raising exception means we don't need to checkpoint so we can treat it as one
     visit_Raise = visit_Await
 
-    # ignore checkpoints in try, excepts and orelse
+    # valid checkpoint if there's valid checkpoints (or raise) in at least one of:
+    # (try or else) and all excepts
+    # finally
     def visit_Try(self, node: ast.Try):
-        outer = self.all_await
+        if self.all_await:
+            self.generic_visit(node)
+            return
 
+        # check try body
         self.visit_nodes(node.body)
-        self.visit_nodes(node.handlers)
+        body_await = self.all_await
+        self.all_await = False
+
+        # check that all except handlers checkpoint (await or most likely raise)
+        all_except_await = True
+        for handler in node.handlers:
+            self.visit_nodes(handler)
+            all_except_await &= self.all_await
+            self.all_await = False
+
+        # check else
         self.visit_nodes(node.orelse)
 
-        self.all_await = outer
+        # (try or else) and all excepts
+        self.all_await = (body_await or self.all_await) and all_except_await
 
+        # finally can check on it's own
         self.visit_nodes(node.finalbody)
 
     # valid checkpoint if both body and orelse have checkpoints
@@ -546,11 +563,14 @@ class Visitor300_301(Flake8TrioVisitor):
         self.visit_nodes(node.test)
         self.all_await = False
 
+        # check body
         self.visit_nodes(node.body)
         body_await = self.all_await
         self.all_await = False
 
         self.visit_nodes(node.orelse)
+
+        # checkpoint if both body and else
         self.all_await = body_await and self.all_await
 
     # inline if
