@@ -57,9 +57,12 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         visitor.visit(tree)
         yield from visitor.problems
 
-    def visit_nodes(self, nodes: Iterable[ast.AST]) -> None:
-        for node in nodes:
-            self.visit(node)
+    def visit_nodes(self, nodes: Union[ast.expr, Iterable[ast.AST]]) -> None:
+        if isinstance(nodes, ast.expr):
+            self.visit(nodes)
+        else:
+            for node in nodes:
+                self.visit(node)
 
     def error(self, error: str, lineno: int, col: int, *args: Any, **kwargs: Any):
         self.problems.append(make_error(error, lineno, col, *args, **kwargs))
@@ -482,7 +485,7 @@ class Visitor105(Flake8TrioVisitor):
 class Visitor300(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self.all_await = False
+        self.all_await = True
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         outer = self.all_await
@@ -495,6 +498,20 @@ class Visitor300(Flake8TrioVisitor):
 
         self.all_await = outer
 
+    def visit_Return(self, node: ast.Return):
+        self.generic_visit(node)
+        if not self.all_await:
+            self.error(TRIO301, node.lineno, node.col_offset)
+        # avoid duplicate error messages
+        self.all_await = True
+
+    # disregard raise's in nested functions
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        outer = self.all_await
+        self.generic_visit(node)
+        self.all_await = outer
+
+    # checkpoint functions
     def visit_Await(
         self, node: Union[ast.Await, ast.AsyncFor, ast.AsyncWith, ast.Raise]
     ):
@@ -503,22 +520,32 @@ class Visitor300(Flake8TrioVisitor):
 
     visit_AsyncFor = visit_Await
     visit_AsyncWith = visit_Await
+
+    # raising exception means we don't need to checkpoint so we can treat it as one
     visit_Raise = visit_Await
 
+    # ignore checkpoints in try, excepts and orelse
     def visit_Try(self, node: ast.Try):
-        self.visit_nodes(node.body)
-
-        # disregard await's in excepts
         outer = self.all_await
+
+        self.visit_nodes(node.body)
         self.visit_nodes(node.handlers)
+        self.visit_nodes(node.orelse)
+
         self.all_await = outer
 
         self.visit_nodes(node.finalbody)
 
-    def visit_If(self, node: ast.If):
+    # valid checkpoint if both body and orelse have checkpoints
+    def visit_If(self, node: Union[ast.If, ast.IfExp]):
         if self.all_await:
             self.generic_visit(node)
             return
+
+        # ignore checkpoints in condition
+        self.visit_nodes(node.test)
+        self.all_await = False
+
         self.visit_nodes(node.body)
         body_await = self.all_await
         self.all_await = False
@@ -526,6 +553,10 @@ class Visitor300(Flake8TrioVisitor):
         self.visit_nodes(node.orelse)
         self.all_await = body_await and self.all_await
 
+    # inline if
+    visit_IfExp = visit_If
+
+    # ignore checkpoints in loops due to continue/break shenanigans
     def visit_While(self, node: Union[ast.While, ast.For]):
         outer = self.all_await
         self.generic_visit(node)
@@ -560,3 +591,4 @@ TRIO104 = "TRIO104: Cancelled (and therefore BaseException) must be re-raised"
 TRIO105 = "TRIO105: Trio async function {} must be immediately awaited"
 TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to work"
 TRIO300 = "TRIO300: Async functions must have at least one checkpoint on every code path, unless an exception is raised"
+TRIO301 = "TRIO301: Early return from async function must have at least one checkpoint on every code path before it."
