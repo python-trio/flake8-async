@@ -1,11 +1,11 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
-- Added TRIO107: Async functions must have at least one checkpoint on every code path, unless an exception is raised
-- Added TRIO108: Early return from async function must have at least one checkpoint on every code path before it.
+## 22.7.5
 - Add TRIO103: `except BaseException` or `except trio.Cancelled` with a code path that doesn't re-raise
 - Add TRIO104: "Cancelled and BaseException must be re-raised" if user tries to return or raise a different exception.
+- Added TRIO107: Async functions must have at least one checkpoint on every code path, unless an exception is raised
+- Added TRIO108: Early return from async function must have at least one checkpoint on every code path before it.
 
 ## 22.7.4
 - Added TRIO105 check for not immediately `await`ing async trio functions.
