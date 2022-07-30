@@ -28,3 +28,4 @@ pip install flake8-trio
 - **TRIO104**: `Cancelled` and `BaseException` must be re-raised - when a user tries to `return` or `raise` a different exception.
 - **TRIO105**: Calling a trio async function without immediately `await`ing it.
 - **TRIO106**: trio must be imported with `import trio` for the linter to work
+- **TRIO300**: Async functions must have at least one checkpoint on every code path, unless an exception is raised

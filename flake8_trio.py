@@ -11,7 +11,17 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Collection, Generator, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Collection,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.4"
@@ -46,6 +56,13 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         visitor = cls()
         visitor.visit(tree)
         yield from visitor.problems
+
+    def visit_nodes(self, nodes: Iterable[ast.AST]) -> None:
+        for node in nodes:
+            self.visit(node)
+
+    def error(self, error: str, lineno: int, col: int, *args: Any, **kwargs: Any):
+        self.problems.append(make_error(error, lineno, col, *args, **kwargs))
 
 
 class TrioScope:
@@ -462,6 +479,61 @@ class Visitor105(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
+class Visitor300(Flake8TrioVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.all_await = False
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        outer = self.all_await
+
+        self.all_await = False
+        self.generic_visit(node)
+
+        if not self.all_await:
+            self.error(TRIO300, node.lineno, node.col_offset)
+
+        self.all_await = outer
+
+    def visit_Await(
+        self, node: Union[ast.Await, ast.AsyncFor, ast.AsyncWith, ast.Raise]
+    ):
+        self.generic_visit(node)
+        self.all_await = True
+
+    visit_AsyncFor = visit_Await
+    visit_AsyncWith = visit_Await
+    visit_Raise = visit_Await
+
+    def visit_Try(self, node: ast.Try):
+        self.visit_nodes(node.body)
+
+        # disregard await's in excepts
+        outer = self.all_await
+        self.visit_nodes(node.handlers)
+        self.all_await = outer
+
+        self.visit_nodes(node.finalbody)
+
+    def visit_If(self, node: ast.If):
+        if self.all_await:
+            self.generic_visit(node)
+            return
+        self.visit_nodes(node.body)
+        body_await = self.all_await
+        self.all_await = False
+
+        self.visit_nodes(node.orelse)
+        self.all_await = body_await and self.all_await
+
+    def visit_While(self, node: Union[ast.While, ast.For]):
+        outer = self.all_await
+        self.generic_visit(node)
+        self.all_await = outer
+
+    visit_For = visit_While
+
+
 class Plugin:
     name = __name__
     version = __version__
@@ -487,3 +559,4 @@ TRIO103 = "TRIO103: except Cancelled or except BaseException block with a code p
 TRIO104 = "TRIO104: Cancelled (and therefore BaseException) must be re-raised"
 TRIO105 = "TRIO105: Trio async function {} must be immediately awaited"
 TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to work"
+TRIO300 = "TRIO300: Async functions must have at least one checkpoint on every code path, unless an exception is raised"

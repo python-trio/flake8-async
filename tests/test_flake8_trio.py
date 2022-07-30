@@ -20,6 +20,7 @@ from flake8_trio import (
     TRIO104,
     TRIO105,
     TRIO106,
+    TRIO300,
     Error,
     Plugin,
     make_error,
@@ -94,7 +95,7 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO102, 92, 8),
             make_error(TRIO102, 94, 8),
             make_error(TRIO102, 101, 12),
-            make_error(TRIO102, 123, 12),
+            make_error(TRIO102, 124, 12),
         )
 
     def test_trio103_104(self):
@@ -171,6 +172,20 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO106, 4, 0),
             make_error(TRIO106, 5, 0),
             make_error(TRIO106, 6, 0),
+        )
+
+    def test_trio300(self):
+        self.assert_expected_errors(
+            "trio300.py",
+            make_error(TRIO300, 10, 0),
+            make_error(TRIO300, 15, 0),
+            make_error(TRIO300, 28, 0),
+            make_error(TRIO300, 33, 0),
+            make_error(TRIO300, 46, 0),
+            make_error(TRIO300, 51, 0),
+            make_error(TRIO300, 59, 0),
+            make_error(TRIO300, 90, 0),
+            make_error(TRIO300, 99, 0),
         )
 
 

@@ -5,7 +5,7 @@ import trio
 
 async def foo():
     try:
-        pass
+        await foo()  # avoid TRIO300
     finally:
         with trio.move_on_after(deadline=30) as s:
             s.shield = True
@@ -107,11 +107,12 @@ async def foo2():
         yield 1
     finally:
         await foo()  # safe
+    await foo()  # avoid TRIO300
 
 
 async def foo3():
     try:
-        pass
+        await foo()  # avoid TRIO300
     finally:
         with trio.move_on_after(30) as s, trio.fail_after(5):
             s.shield = True
