@@ -5,6 +5,7 @@ import site
 import sys
 import unittest
 from pathlib import Path
+from typing import Iterable
 
 import pytest
 import trio  # type: ignore
@@ -15,6 +16,8 @@ from flake8_trio import (
     TRIO100,
     TRIO101,
     TRIO102,
+    TRIO103,
+    TRIO104,
     TRIO105,
     TRIO106,
     Error,
@@ -26,9 +29,20 @@ from flake8_trio import (
 
 class Flake8TrioTestCase(unittest.TestCase):
     def assert_expected_errors(self, test_file: str, *expected: Error) -> None:
+        def trim_messages(messages: Iterable[Error]):
+            return tuple(((line, col, msg[:7]) for line, col, msg, _ in messages))
+
         filename = Path(__file__).absolute().parent / test_file
         plugin = Plugin.from_filename(str(filename))
+
         errors = tuple(plugin.run())
+
+        # start with a check with trimmed errors that will make for smaller diff messages
+        trim_errors = trim_messages(plugin.run())
+        trim_expected = trim_messages(expected)
+        self.assertTupleEqual(trim_errors, trim_expected)
+
+        # full check
         self.assertTupleEqual(errors, expected)
 
     def test_tree(self):
@@ -54,7 +68,6 @@ class Flake8TrioTestCase(unittest.TestCase):
         )
 
     def test_trio101(self):
-        self.maxDiff = None
         self.assert_expected_errors(
             "trio101.py",
             make_error(TRIO101, 10, 8),
@@ -82,6 +95,44 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO102, 94, 8),
             make_error(TRIO102, 101, 12),
             make_error(TRIO102, 123, 12),
+        )
+
+    def test_trio103_104(self):
+        self.assert_expected_errors(
+            "trio103_104.py",
+            make_error(TRIO103, 7, 33),
+            make_error(TRIO103, 15, 7),
+            # raise different exception
+            make_error(TRIO104, 20, 4),
+            make_error(TRIO104, 22, 4),
+            make_error(TRIO104, 25, 4),
+            # if
+            make_error(TRIO103, 28, 7),
+            make_error(TRIO103, 35, 7),
+            # loops
+            make_error(TRIO103, 47, 7),
+            make_error(TRIO103, 52, 7),
+            # nested exceptions
+            make_error(TRIO104, 67, 8),  # weird edge-case
+            make_error(TRIO103, 61, 7),
+            make_error(TRIO104, 92, 8),
+            # make_error(TRIO104, 94, 8), # weird edge-case
+            # bare except
+            make_error(TRIO103, 97, 0),
+            # multi-line
+            make_error(TRIO103, 111, 4),
+            # re-raise parent
+            make_error(TRIO104, 124, 8),
+            # return
+            make_error(TRIO104, 134, 8),
+            make_error(TRIO103, 133, 11),
+            make_error(TRIO104, 139, 12),
+            make_error(TRIO104, 141, 12),
+            make_error(TRIO104, 143, 12),
+            make_error(TRIO104, 145, 12),
+            make_error(TRIO103, 137, 11),
+            make_error(TRIO104, 154, 12),
+            make_error(TRIO104, 162, 12),
         )
 
     def test_trio105(self):

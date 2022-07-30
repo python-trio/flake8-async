@@ -6,8 +6,6 @@ import unittest
 from types import FunctionType
 from typing import Dict, Optional, Set, Tuple
 
-from test_flake8_trio import Flake8TrioTestCase
-
 
 class TestTrioTests(unittest.TestCase):
     def runTest(self):
@@ -17,6 +15,9 @@ class TestTrioTests(unittest.TestCase):
             for f in os.listdir("tests")
             if re.match(r"^trio.*.py", f)
         }
+
+        # must import outside top-level to avoid running test twice
+        from test_flake8_trio import Flake8TrioTestCase
 
         # get functions
         for o in inspect.getmembers(Flake8TrioTestCase):
