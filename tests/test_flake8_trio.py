@@ -175,9 +175,9 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO106, 6, 0),
         )
 
-    def test_trio300(self):
+    def test_trio300_301(self):
         self.assert_expected_errors(
-            "trio300.py",
+            "trio300_301.py",
             make_error(TRIO300, 10, 0),
             make_error(TRIO300, 15, 0),
             make_error(TRIO300, 33, 0),

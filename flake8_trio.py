@@ -482,7 +482,7 @@ class Visitor105(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
-class Visitor300(Flake8TrioVisitor):
+class Visitor300_301(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
         self.all_await = True
