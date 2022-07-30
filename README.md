@@ -29,6 +29,6 @@ pip install flake8-trio
 - **TRIO105**: Calling a trio async function without immediately `await`ing it.
 - **TRIO106**: trio must be imported with `import trio` for the linter to work
 -
-- **TRIO300**: Async functions must have at least one checkpoint on every code path, unless an exception is raised
-- **TRIO301**: Early return from async function must have at least one checkpoint on every code path before it, unless an exception is raised.
+- **TRIO107**: Async functions must have at least one checkpoint on every code path, unless an exception is raised
+- **TRIO108**: Early return from async function must have at least one checkpoint on every code path before it, unless an exception is raised.
 Checkpoints are `await`, `async with` `async for`.

@@ -472,7 +472,7 @@ class Visitor105(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
-class Visitor300_301(Flake8TrioVisitor):
+class Visitor107_108(Flake8TrioVisitor):
     def __init__(self) -> None:
         super().__init__()
         self.all_await = True
@@ -485,14 +485,14 @@ class Visitor300_301(Flake8TrioVisitor):
         self.generic_visit(node)
 
         if not self.all_await:
-            self.error(TRIO300, node.lineno, node.col_offset)
+            self.error(TRIO107, node.lineno, node.col_offset)
 
         self.all_await = outer
 
     def visit_Return(self, node: ast.Return):
         self.generic_visit(node)
         if not self.all_await:
-            self.error(TRIO301, node.lineno, node.col_offset)
+            self.error(TRIO108, node.lineno, node.col_offset)
         # avoid duplicate error messages
         self.all_await = True
 
@@ -601,5 +601,5 @@ TRIO103 = "TRIO103: except Cancelled or except BaseException block with a code p
 TRIO104 = "TRIO104: Cancelled (and therefore BaseException) must be re-raised"
 TRIO105 = "TRIO105: Trio async function {} must be immediately awaited"
 TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to work"
-TRIO300 = "TRIO300: Async functions must have at least one checkpoint on every code path, unless an exception is raised"
-TRIO301 = "TRIO301: Early return from async function must have at least one checkpoint on every code path before it."
+TRIO107 = "TRIO107: Async functions must have at least one checkpoint on every code path, unless an exception is raised"
+TRIO108 = "TRIO108: Early return from async function must have at least one checkpoint on every code path before it."
