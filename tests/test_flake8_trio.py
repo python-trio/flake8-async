@@ -178,29 +178,29 @@ class Flake8TrioTestCase(unittest.TestCase):
     def test_trio300_301(self):
         self.assert_expected_errors(
             "trio300_301.py",
-            make_error(TRIO300, 10, 0),
+            make_error(TRIO300, 13, 0),
             # if
-            make_error(TRIO300, 15, 0),
-            make_error(TRIO300, 33, 0),
+            make_error(TRIO300, 18, 0),
+            make_error(TRIO300, 36, 0),
             # ifexp
-            make_error(TRIO300, 43, 0),
+            make_error(TRIO300, 46, 0),
             # loops
-            make_error(TRIO300, 48, 0),
-            make_error(TRIO300, 53, 0),
-            make_error(TRIO300, 66, 0),
-            make_error(TRIO300, 71, 0),
+            make_error(TRIO300, 51, 0),
+            make_error(TRIO300, 56, 0),
+            make_error(TRIO300, 69, 0),
+            make_error(TRIO300, 74, 0),
             # try
-            make_error(TRIO300, 79, 0),
+            make_error(TRIO300, 83, 0),
             # early return
-            make_error(TRIO301, 136, 4),
-            make_error(TRIO301, 141, 8),
+            make_error(TRIO301, 140, 4),
+            make_error(TRIO301, 145, 8),
             # nested function definition
-            make_error(TRIO300, 145, 0),
-            make_error(TRIO300, 155, 4),
-            make_error(TRIO300, 159, 0),
-            make_error(TRIO300, 166, 8),
-            make_error(TRIO300, 164, 0),
-            make_error(TRIO300, 170, 0),
+            make_error(TRIO300, 149, 0),
+            make_error(TRIO300, 159, 4),
+            make_error(TRIO300, 163, 0),
+            make_error(TRIO300, 170, 8),
+            make_error(TRIO300, 168, 0),
+            make_error(TRIO300, 174, 0),
         )
 
 

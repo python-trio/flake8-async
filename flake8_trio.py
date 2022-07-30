@@ -11,17 +11,7 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import (
-    Any,
-    Collection,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Generator, Iterable, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.4"
@@ -108,7 +98,7 @@ def get_trio_scope(node: ast.AST, *names: str) -> Optional[TrioScope]:
     return None
 
 
-def has_decorator(decorator_list: List[ast.expr], names: Collection[str]):
+def has_decorator(decorator_list: List[ast.expr], *names: str):
     for dec in decorator_list:
         if (isinstance(dec, ast.Name) and dec.id in names) or (
             isinstance(dec, ast.Attribute) and dec.attr in names
@@ -155,7 +145,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         self._yield_is_error = False
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if has_decorator(node.decorator_list, context_manager_names):
+        if has_decorator(node.decorator_list, *context_manager_names):
             self._context_manager = True
 
         self.generic_visit(node)
@@ -258,7 +248,7 @@ class Visitor102(Flake8TrioVisitor):
         outer_cm = self._context_manager
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if has_decorator(node.decorator_list, context_manager_names):
+        if has_decorator(node.decorator_list, *context_manager_names):
             self._context_manager = True
 
         self.generic_visit(node)
@@ -490,7 +480,8 @@ class Visitor300_301(Flake8TrioVisitor):
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         outer = self.all_await
 
-        self.all_await = False
+        # do not require checkpointing if overloading
+        self.all_await = has_decorator(node.decorator_list, "overload")
         self.generic_visit(node)
 
         if not self.all_await:

@@ -1,3 +1,6 @@
+import typing
+from typing import Union, overload
+
 import trio
 
 _ = ""
@@ -76,7 +79,8 @@ async def foo_for_2():  # error: due to not wanting to handle continue/break sem
 
 
 # try
-async def foo_try_1():  # error
+# safe only if (try or else) and all except bodies either await or raise
+async def foo_try_1():  # error: if foo() raises a ValueError it's not checkpointed
     try:
         await foo()
     except ValueError:
@@ -179,3 +183,18 @@ def foo_normal_func_1():
 
 def foo_normal_func_2():
     ...
+
+
+# overload decorator
+@overload
+async def foo_overload_1(_: bytes):
+    ...
+
+
+@typing.overload
+async def foo_overload_1(_: str):
+    ...
+
+
+async def foo_overload_1(_: Union[bytes, str]):
+    await foo()
