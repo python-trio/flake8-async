@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os
 from pathlib import Path
 
 import setuptools
@@ -18,13 +17,6 @@ with local_file("flake8_trio.py").open("r") as o:
     else:
         raise AssertionError("__version__ must be set")
 
-
-if "FLAKE8_TRIO_NO_REGISTER" in os.environ and os.environ["FLAKE8_TRIO_NO_REGISTER"]:
-    entry_points = {}
-else:
-    entry_points = {
-        "flake8.extension": ["TRIO = flake8_trio:Plugin"],
-    }
 
 setuptools.setup(
     name="flake8-trio",
@@ -55,6 +47,7 @@ setuptools.setup(
         + local_file("CHANGELOG.md").open().read()
     ),
     long_description_content_type="text/markdown",
-    entry_points=entry_points,
-    extras_require={"dev": ["hypothesis", "hypothesmith>=0.2"]},
+    entry_points={
+        "flake8.extension": ["TRIO = flake8_trio:Plugin"],
+    },
 )
