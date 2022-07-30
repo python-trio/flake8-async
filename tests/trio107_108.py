@@ -86,7 +86,7 @@ async def foo_try_1():  # error: if foo() raises a ValueError it's not checkpoin
     except ValueError:
         ...
     except:
-        await foo()
+        raise
     else:
         await foo()
 
@@ -97,7 +97,7 @@ async def foo_try_2():  # safe
     except ValueError:
         ...
     except:
-        ...
+        raise
     finally:
         with trio.CancelScope(deadline=30, shield=True):  # avoid TRIO102
             await foo()
@@ -109,7 +109,7 @@ async def foo_try_3():  # safe
     except ValueError:
         await foo()
     except:
-        await foo()
+        raise
 
 
 # raise
