@@ -113,10 +113,10 @@ class Flake8TrioTestCase(unittest.TestCase):
             make_error(TRIO103, 47, 7),
             make_error(TRIO103, 52, 7),
             # nested exceptions
-            make_error(TRIO104, 67, 8),  # weird case, unsure if error
+            make_error(TRIO104, 67, 8),  # weird edge-case
             make_error(TRIO103, 61, 7),
             make_error(TRIO104, 92, 8),
-            # make_error(TRIO104, 94, 8), # TODO: not implemented
+            # make_error(TRIO104, 94, 8), # weird edge-case
             # bare except
             make_error(TRIO103, 97, 0),
             # multi-line

@@ -64,7 +64,7 @@ except BaseException as e:  # error
     except ValueError:
         raise e
     except:
-        raise e  # error?
+        raise e  # error: though sometimes okay
 except BaseException:  # safe
     try:
         pass
@@ -91,7 +91,7 @@ except trio.Cancelled as e:
     except ValueError as g:
         raise g  # error
     except BaseException as h:
-        raise h  # error ?
+        raise h  # error? currently treated as safe
     raise e
 # bare except, equivalent to `except baseException`
 except:  # error
@@ -145,7 +145,7 @@ def foo():
             return  # error
 
 
-# TODO: don't avoid re-raise with continue/break
+# don't avoid re-raise with continue/break
 while True:
     try:
         pass
