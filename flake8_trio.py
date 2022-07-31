@@ -11,10 +11,10 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Collection, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Generator, Iterable, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.7.4"
+__version__ = "22.7.5"
 
 
 Error = Tuple[int, int, str, Type[Any]]
@@ -46,6 +46,16 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         visitor = cls()
         visitor.visit(tree)
         yield from visitor.problems
+
+    def visit_nodes(self, nodes: Union[ast.AST, Iterable[ast.AST]]) -> None:
+        if isinstance(nodes, ast.AST):
+            self.visit(nodes)
+        else:
+            for node in nodes:
+                self.visit(node)
+
+    def error(self, error: str, lineno: int, col: int, *args: Any, **kwargs: Any):
+        self.problems.append(make_error(error, lineno, col, *args, **kwargs))
 
 
 class TrioScope:
@@ -88,7 +98,7 @@ def get_trio_scope(node: ast.AST, *names: str) -> Optional[TrioScope]:
     return None
 
 
-def has_decorator(decorator_list: List[ast.expr], names: Collection[str]):
+def has_decorator(decorator_list: List[ast.expr], *names: str):
     for dec in decorator_list:
         if (isinstance(dec, ast.Name) and dec.id in names) or (
             isinstance(dec, ast.Attribute) and dec.attr in names
@@ -135,7 +145,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         self._yield_is_error = False
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if has_decorator(node.decorator_list, context_manager_names):
+        if has_decorator(node.decorator_list, *context_manager_names):
             self._context_manager = True
 
         self.generic_visit(node)
@@ -238,7 +248,7 @@ class Visitor102(Flake8TrioVisitor):
         outer_cm = self._context_manager
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if has_decorator(node.decorator_list, context_manager_names):
+        if has_decorator(node.decorator_list, *context_manager_names):
             self._context_manager = True
 
         self.generic_visit(node)
@@ -462,6 +472,110 @@ class Visitor105(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
+class Visitor107_108(Flake8TrioVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.all_await = True
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        outer = self.all_await
+
+        # do not require checkpointing if overloading
+        self.all_await = has_decorator(node.decorator_list, "overload")
+        self.generic_visit(node)
+
+        if not self.all_await:
+            self.error(TRIO107, node.lineno, node.col_offset)
+
+        self.all_await = outer
+
+    def visit_Return(self, node: ast.Return):
+        self.generic_visit(node)
+        if not self.all_await:
+            self.error(TRIO108, node.lineno, node.col_offset)
+        # avoid duplicate error messages
+        self.all_await = True
+
+    # disregard raise's in nested functions
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        outer = self.all_await
+        self.generic_visit(node)
+        self.all_await = outer
+
+    # checkpoint functions
+    def visit_Await(
+        self, node: Union[ast.Await, ast.AsyncFor, ast.AsyncWith, ast.Raise]
+    ):
+        self.generic_visit(node)
+        self.all_await = True
+
+    visit_AsyncFor = visit_Await
+    visit_AsyncWith = visit_Await
+
+    # raising exception means we don't need to checkpoint so we can treat it as one
+    visit_Raise = visit_Await
+
+    # valid checkpoint if there's valid checkpoints (or raise) in at least one of:
+    # (try or else) and all excepts
+    # finally
+    def visit_Try(self, node: ast.Try):
+        if self.all_await:
+            self.generic_visit(node)
+            return
+
+        # check try body
+        self.visit_nodes(node.body)
+        body_await = self.all_await
+        self.all_await = False
+
+        # check that all except handlers checkpoint (await or most likely raise)
+        all_except_await = True
+        for handler in node.handlers:
+            self.visit_nodes(handler)
+            all_except_await &= self.all_await
+            self.all_await = False
+
+        # check else
+        self.visit_nodes(node.orelse)
+
+        # (try or else) and all excepts
+        self.all_await = (body_await or self.all_await) and all_except_await
+
+        # finally can check on it's own
+        self.visit_nodes(node.finalbody)
+
+    # valid checkpoint if both body and orelse have checkpoints
+    def visit_If(self, node: Union[ast.If, ast.IfExp]):
+        if self.all_await:
+            self.generic_visit(node)
+            return
+
+        # ignore checkpoints in condition
+        self.visit_nodes(node.test)
+        self.all_await = False
+
+        # check body
+        self.visit_nodes(node.body)
+        body_await = self.all_await
+        self.all_await = False
+
+        self.visit_nodes(node.orelse)
+
+        # checkpoint if both body and else
+        self.all_await = body_await and self.all_await
+
+    # inline if
+    visit_IfExp = visit_If
+
+    # ignore checkpoints in loops due to continue/break shenanigans
+    def visit_While(self, node: Union[ast.While, ast.For]):
+        outer = self.all_await
+        self.generic_visit(node)
+        self.all_await = outer
+
+    visit_For = visit_While
+
+
 class Plugin:
     name = __name__
     version = __version__
@@ -487,3 +601,5 @@ TRIO103 = "TRIO103: except Cancelled or except BaseException block with a code p
 TRIO104 = "TRIO104: Cancelled (and therefore BaseException) must be re-raised"
 TRIO105 = "TRIO105: Trio async function {} must be immediately awaited"
 TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to work"
+TRIO107 = "TRIO107: Async functions must have at least one checkpoint on every code path, unless an exception is raised"
+TRIO108 = "TRIO108: Early return from async function must have at least one checkpoint on every code path before it."
