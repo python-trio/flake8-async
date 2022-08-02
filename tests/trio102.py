@@ -147,12 +147,12 @@ async def foo5():
     except trio.Cancelled:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
-            raise  # avoid TRIO103
+        raise  # avoid TRIO103
     except BaseException:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
-            raise  # avoid TRIO103
+        raise  # avoid TRIO103
     except:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
-            raise  # avoid TRIO103
+        raise  # avoid TRIO103
