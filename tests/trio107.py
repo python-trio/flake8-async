@@ -10,12 +10,12 @@ async def foo():
     await foo()
 
 
-async def foo2():  # error
+async def foo2():  # error: 0
     ...
 
 
 # If
-async def foo_if_1():  # error
+async def foo_if_1():  # error: 0
     if _:
         await foo()
 
@@ -33,7 +33,7 @@ async def foo_if_3():
         ...
 
 
-async def foo_if_4():  # error
+async def foo_if_4():  # error: 0
     if await foo():
         ...
 
@@ -43,17 +43,18 @@ async def foo_ifexp_1():  # safe
     print(await foo() if _ else await foo())
 
 
-async def foo_ifexp_2():  # error
+async def foo_ifexp_2():  # error: 0
     print(_ if await foo() else await foo())
 
 
 # loops
-async def foo_while_1():  # error
+async def foo_while_1():  # error: 0
     while _:
         await foo()
 
 
-async def foo_while_2():  # error: due to not wanting to handle continue/break semantics
+# due to not wanting to handle continue/break semantics
+async def foo_while_2():  # error: 0
     while _:
         await foo()
     else:
@@ -66,12 +67,13 @@ async def foo_while_3():  # safe
         ...
 
 
-async def foo_for_1():  # error
+async def foo_for_1():  # error: 0
     for __ in _:
         await foo()
 
 
-async def foo_for_2():  # error: due to not wanting to handle continue/break semantics
+# due to not wanting to handle continue/break semantics
+async def foo_for_2():  # error: 0
     for __ in _:
         await foo()
     else:
@@ -80,7 +82,8 @@ async def foo_for_2():  # error: due to not wanting to handle continue/break sem
 
 # try
 # safe only if (try or else) and all except bodies either await or raise
-async def foo_try_1():  # error: if foo() raises a ValueError it's not checkpointed
+# if foo() raises a ValueError it's not checkpointed
+async def foo_try_1():  # error: 0
     try:
         await foo()
     except ValueError:
@@ -138,16 +141,16 @@ async def foo_try_4():  # safe
 
 # early return
 async def foo_return_1():  # silent to avoid duplicate errors
-    return  # error
+    return  # TRIO108
 
 
 async def foo_return_2():  # safe
     if _:
-        return  # error
+        return  # TRIO108
     await foo()
 
 
-async def foo_return_3():  # error
+async def foo_return_3():  # error: 0
     if _:
         await foo()
         return  # safe
@@ -157,22 +160,22 @@ async def foo_return_3():  # error
 async def foo_func_1():
     await foo()
 
-    async def foo_func_2():  # error
+    async def foo_func_2():  # error: 4
         ...
 
 
-async def foo_func_3():  # error
+async def foo_func_3():  # error: 0
     async def foo_func_4():
         await foo()
 
 
-async def foo_func_5():  # error
+async def foo_func_5():  # error: 0
     def foo_func_6():  # safe
-        async def foo_func_7():  # error
+        async def foo_func_7():  # error: 8
             ...
 
 
-async def foo_func_8():  # error
+async def foo_func_8():  # error: 0
     def foo_func_9():
         raise
 

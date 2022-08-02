@@ -53,7 +53,6 @@ class test_messages_documented(unittest.TestCase):
             "CHANGELOG.md",
             "README.md",
             "flake8_trio.py",
-            "tests/test_flake8_trio.py",
         ):
             with open(Path(__file__).parent.parent / filename) as f:
                 lines = f.readlines()

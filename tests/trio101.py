@@ -7,12 +7,12 @@ import trio
 
 def foo0():
     with trio.open_nursery() as _:
-        yield 1  # error
+        yield 1  # error: 8
 
 
 async def foo1():
     async with trio.open_nursery() as _:
-        yield 1  # error
+        yield 1  # error: 8
 
 
 @contextmanager
@@ -24,7 +24,7 @@ def foo2():
 async def foo3():
     async with trio.CancelScope() as _:
         await trio.sleep(1)  # so trio100 doesn't complain
-        yield 1  # error
+        yield 1  # error: 8
 
 
 @asynccontextmanager
@@ -35,7 +35,7 @@ async def foo4():
 
 async def foo5():
     async with trio.open_nursery():
-        yield 1  # error
+        yield 1  # error: 8
 
         def foo6():
             yield 1  # safe
@@ -56,4 +56,4 @@ def foo8():
 @blahabla
 def foo9():
     with trio.open_nursery() as _:
-        yield 1  # error
+        yield 1  # error: 8

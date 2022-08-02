@@ -1,227 +1,92 @@
 import ast
-import inspect
 import os
+import re
 import site
 import sys
 import unittest
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List, Tuple
 
 import pytest
-import trio  # type: ignore
+
+# import trio  # type: ignore
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import (
-    TRIO100,
-    TRIO101,
-    TRIO102,
-    TRIO103,
-    TRIO104,
-    TRIO105,
-    TRIO106,
-    TRIO107,
-    TRIO108,
-    Error,
-    Plugin,
-    make_error,
-    trio_async_functions,
+import flake8_trio
+from flake8_trio import Error, Plugin, make_error
+
+test_files: List[Tuple[str, str]] = sorted(
+    (os.path.splitext(f)[0].upper(), f)
+    for f in os.listdir("tests")
+    if re.match(r"^trio.*.py", f)
 )
 
+# These functions are messily cobbled together and their formatting requirements
+# should be documented in the readme
 
-class Flake8TrioTestCase(unittest.TestCase):
-    def assert_expected_errors(self, test_file: str, *expected: Error) -> None:
-        def trim_messages(messages: Iterable[Error]):
-            return tuple(((line, col, msg[:7]) for line, col, msg, _ in messages))
+# filename: trioXXX.py
+# or: trioXXX_pyXY*.py, where X is major and Y is minor version
+# triggers on lines with error: <col>[, <param>]...
+# only checks the error message matching the file name
+@pytest.mark.parametrize("test, path", test_files)
+def test_eval(test: str, path: str):
 
-        filename = Path(__file__).absolute().parent / test_file
-        plugin = Plugin.from_filename(str(filename))
+    # version check
+    python_version = re.search(r"(?<=_PY)\d*", test)
+    if python_version:
+        version_str = python_version.group()
+        major, minor = version_str[0], version_str[1:]
+        v_i = sys.version_info
+        if (v_i.major, v_i.minor) < (int(major), int(minor)):
+            return
+        test = test.split("_")[0]
 
-        errors = tuple(plugin.run())
+    error_msg = getattr(flake8_trio, test)
+    expected: List[Error] = []
+    with open(os.path.join("tests", path)) as file:
+        for lineno, line in enumerate(file):
+            # get text between `error: ` and newline
+            k = re.search(r"(?<=error: ).*(?=\n)", line)
+            if not k:
+                continue
+            # Append a bunch of 0's so string formatting gives garbage instead
+            # of throwing an exception
+            args = [m.strip() for m in k.group().split(",")] + ["0"] * 5
+            col, *args = args
+            expected.append(make_error(error_msg, lineno + 1, int(col), *args))
 
-        # start with a check with trimmed errors that will make for smaller diff messages
-        trim_errors = trim_messages(errors)
-        trim_expected = trim_messages(expected)
+    assert_expected_errors(path, test, *expected)
 
-        #
-        unexpected = sorted(set(trim_errors) - set(trim_expected))
-        missing = sorted(set(trim_expected) - set(trim_errors))
-        self.assertEqual((unexpected, missing), ([], []), msg="(unexpected, missing)")
+# This function is also a mess now, but I keep slowly iterating on getting it to
+# print actually helpful error messages in all cases - which is a struggle.
+# It'll likely continue to be a mess for the foreseeable future
+def assert_expected_errors(test_file: str, include: str, *expected: Error) -> None:
+    def trim_messages(messages: Iterable[Error]):
+        return tuple(((line, col, int(msg[4:7])) for line, col, msg, _ in messages))
 
-        unexpected = sorted(set(errors) - set(expected))
-        missing = sorted(set(expected) - set(errors))
-        if unexpected and missing:
-            self.assertEqual(unexpected[0], missing[0])
-        self.assertEqual((unexpected, missing), ([], []), msg="(unexpected, missing)")
+    filename = Path(__file__).absolute().parent / test_file
+    plugin = Plugin.from_filename(str(filename))
 
-        # full check
-        self.assertTupleEqual(errors, expected)
+    errors = tuple(e for e in plugin.run() if include in e[2])
 
-    def test_tree(self):
-        plugin = Plugin(ast.parse(""))
-        errors = list(plugin.run())
-        self.assertSequenceEqual(errors, [])
+    # start with a check with trimmed errors that will make for smaller diff messages
+    trim_errors = trim_messages(errors)
+    trim_expected = trim_messages(expected)
 
-    def test_trio100(self):
-        self.assert_expected_errors(
-            "trio100.py",
-            make_error(TRIO100, 3, 5, "trio.move_on_after"),
-            make_error(TRIO100, 8, 15, "trio.fail_after"),
-            make_error(TRIO100, 26, 9, "trio.fail_after"),
-        )
+    cls = unittest.TestCase()
+    unexpected = sorted(set(trim_errors) - set(trim_expected))
+    missing = sorted(set(trim_expected) - set(trim_errors))
+    cls.assertEqual((unexpected, missing), ([], []), msg="(unexpected, missing)")
 
-    @unittest.skipIf(sys.version_info < (3, 9), "requires 3.9+")
-    def test_trio100_py39(self):
-        self.assert_expected_errors(
-            "trio100_py39.py",
-            make_error(TRIO100, 7, 8, "trio.fail_after"),
-            make_error(TRIO100, 12, 8, "trio.fail_after"),
-            make_error(TRIO100, 14, 8, "trio.move_on_after"),
-        )
+    unexpected = sorted(set(errors) - set(expected))
+    missing = sorted(set(expected) - set(errors))
+    if unexpected and missing:
+        cls.assertEqual(unexpected[0], missing[0])
+    cls.assertEqual((unexpected, missing), ([], []), msg="(unexpected, missing)")
 
-    def test_trio101(self):
-        self.assert_expected_errors(
-            "trio101.py",
-            make_error(TRIO101, 10, 8),
-            make_error(TRIO101, 15, 8),
-            make_error(TRIO101, 27, 8),
-            make_error(TRIO101, 38, 8),
-            make_error(TRIO101, 59, 8),
-        )
-
-    def test_trio102(self):
-        self.assert_expected_errors(
-            "trio102.py",
-            make_error(TRIO102, 24, 8, 21, 4, "try/finally"),
-            make_error(TRIO102, 30, 12, 26, 4, "try/finally"),
-            make_error(TRIO102, 36, 12, 32, 4, "try/finally"),
-            make_error(TRIO102, 62, 12, 55, 4, "try/finally"),
-            make_error(TRIO102, 70, 12, 66, 4, "try/finally"),
-            make_error(TRIO102, 74, 12, 66, 4, "try/finally"),
-            make_error(TRIO102, 76, 12, 66, 4, "try/finally"),
-            make_error(TRIO102, 80, 12, 66, 4, "try/finally"),
-            make_error(TRIO102, 82, 12, 66, 4, "try/finally"),
-            make_error(TRIO102, 84, 12, 66, 4, "try/finally"),
-            make_error(TRIO102, 88, 12, 66, 4, "try/finally"),
-            make_error(TRIO102, 92, 8, 66, 4, "try/finally"),
-            make_error(TRIO102, 94, 8, 66, 4, "try/finally"),
-            make_error(TRIO102, 101, 12, 98, 8, "try/finally"),
-            make_error(TRIO102, 124, 12, 114, 4, "try/finally"),
-            make_error(TRIO102, 135, 8, 134, 11, "trio.Cancelled"),
-            make_error(TRIO102, 138, 8, 137, 11, "BaseException"),
-            make_error(TRIO102, 141, 8, 140, 4, "bare except"),
-        )
-
-    def test_trio103_104(self):
-        self.assert_expected_errors(
-            "trio103_104.py",
-            make_error(TRIO103, 7, 33, "trio.Cancelled"),
-            make_error(TRIO103, 15, 7, "trio.Cancelled"),
-            # raise different exception
-            make_error(TRIO104, 20, 4),
-            make_error(TRIO104, 22, 4),
-            make_error(TRIO104, 25, 4),
-            # if
-            make_error(TRIO103, 28, 7, "BaseException"),
-            make_error(TRIO103, 35, 7, "BaseException"),
-            # loops
-            make_error(TRIO103, 47, 7, "trio.Cancelled"),
-            make_error(TRIO103, 52, 7, "trio.Cancelled"),
-            # nested exceptions
-            make_error(TRIO104, 67, 8),  # weird edge-case
-            make_error(TRIO103, 61, 7, "BaseException"),
-            make_error(TRIO104, 92, 8),
-            # make_error(TRIO104, 94, 8), # weird edge-case
-            # bare except
-            make_error(TRIO103, 97, 0, "bare except"),
-            # multi-line
-            make_error(TRIO103, 111, 4, "BaseException"),
-            # re-raise parent
-            make_error(TRIO104, 124, 8),
-            # return
-            make_error(TRIO104, 134, 8),
-            make_error(TRIO103, 133, 11, "BaseException"),
-            make_error(TRIO104, 139, 12),
-            make_error(TRIO104, 141, 12),
-            make_error(TRIO104, 143, 12),
-            make_error(TRIO104, 145, 12),
-            make_error(TRIO103, 137, 11, "BaseException"),
-            # continue/break
-            make_error(TRIO104, 154, 12),
-            make_error(TRIO104, 162, 12),
-            # yield
-            make_error(TRIO104, 184, 8),
-            make_error(TRIO104, 190, 12),
-            make_error(TRIO104, 192, 12),
-            make_error(TRIO104, 194, 12),
-            make_error(TRIO104, 196, 12),
-        )
-
-    def test_trio105(self):
-        self.assert_expected_errors(
-            "trio105.py",
-            make_error(TRIO105, 25, 4, "aclose_forcefully"),
-            make_error(TRIO105, 26, 4, "open_file"),
-            make_error(TRIO105, 27, 4, "open_ssl_over_tcp_listeners"),
-            make_error(TRIO105, 28, 4, "open_ssl_over_tcp_stream"),
-            make_error(TRIO105, 29, 4, "open_tcp_listeners"),
-            make_error(TRIO105, 30, 4, "open_tcp_stream"),
-            make_error(TRIO105, 31, 4, "open_unix_socket"),
-            make_error(TRIO105, 32, 4, "run_process"),
-            make_error(TRIO105, 33, 4, "serve_listeners"),
-            make_error(TRIO105, 34, 4, "serve_ssl_over_tcp"),
-            make_error(TRIO105, 35, 4, "serve_tcp"),
-            make_error(TRIO105, 36, 4, "sleep"),
-            make_error(TRIO105, 37, 4, "sleep_forever"),
-            make_error(TRIO105, 38, 4, "sleep_until"),
-            make_error(TRIO105, 44, 15, "open_file"),
-            make_error(TRIO105, 49, 8, "open_file"),
-        )
-
-        self.assertSetEqual(
-            set(trio_async_functions),
-            {
-                o[0]
-                for o in inspect.getmembers(trio)  # type: ignore
-                if inspect.iscoroutinefunction(o[1])
-            },
-        )
-
-    def test_trio106(self):
-        self.assert_expected_errors(
-            "trio106.py",
-            make_error(TRIO106, 4, 0),
-            make_error(TRIO106, 5, 0),
-            make_error(TRIO106, 6, 0),
-        )
-
-    def test_trio107_108(self):
-        self.assert_expected_errors(
-            "trio107_108.py",
-            make_error(TRIO107, 13, 0),
-            # if
-            make_error(TRIO107, 18, 0),
-            make_error(TRIO107, 36, 0),
-            # ifexp
-            make_error(TRIO107, 46, 0),
-            # loops
-            make_error(TRIO107, 51, 0),
-            make_error(TRIO107, 56, 0),
-            make_error(TRIO107, 69, 0),
-            make_error(TRIO107, 74, 0),
-            # try
-            make_error(TRIO107, 83, 0),
-            # early return
-            make_error(TRIO108, 141, 4),
-            make_error(TRIO108, 146, 8),
-            # nested function definition
-            make_error(TRIO107, 150, 0),
-            make_error(TRIO107, 160, 4),
-            make_error(TRIO107, 164, 0),
-            make_error(TRIO107, 171, 8),
-            make_error(TRIO107, 169, 0),
-            make_error(TRIO107, 175, 0),
-        )
+    # full check
+    cls.assertSequenceEqual(sorted(errors), sorted(expected))
 
 
 @pytest.mark.fuzz
