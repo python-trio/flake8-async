@@ -122,7 +122,7 @@ async def foo3():
             await foo()  # safe
         with trio.fail_after(5), trio.move_on_after(30) as s:
             s.shield = True
-            await foo()  # safe in theory, error: 12, 116, 4, try/finally
+            await foo()  # safe in theory, error: 12, 115, 4, try/finally
 
 
 # New: except cancelled/baseexception are also critical
@@ -132,11 +132,11 @@ async def foo4():
     except ValueError:
         await foo()  # safe
     except trio.Cancelled:
-        await foo()  # error: 8, 135, 11, trio.Cancelled
+        await foo()  # error: 8, 134, 11, trio.Cancelled
     except BaseException:
-        await foo()  # error: 8, 137, 11, BaseException
+        await foo()  # error: 8, 136, 11, BaseException
     except:
-        await foo()  # error: 8, 139, 4, bare except
+        await foo()  # error: 8, 138, 4, bare except
 
 
 async def foo5():

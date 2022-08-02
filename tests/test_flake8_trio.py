@@ -22,16 +22,16 @@ test_files: List[Tuple[str, str]] = sorted(
     if re.match(r"^trio.*.py", f)
 )
 
+
 # These functions are messily cobbled together and their formatting requirements
 # should be documented in the readme
-
+#
 # filename: trioXXX.py
 # or: trioXXX_pyXY*.py, where X is major and Y is minor version
 # triggers on lines with error: <col>[, <param>]...
 # only checks the error message matching the file name
 @pytest.mark.parametrize("test, path", test_files)
 def test_eval(test: str, path: str):
-
     # version check
     python_version = re.search(r"(?<=_PY)\d*", test)
     if python_version:
@@ -57,6 +57,7 @@ def test_eval(test: str, path: str):
             expected.append(make_error(error_msg, lineno + 1, int(col), *args))
 
     assert_expected_errors(path, test, *expected)
+
 
 # This function is also a mess now, but I keep slowly iterating on getting it to
 # print actually helpful error messages in all cases - which is a struggle.

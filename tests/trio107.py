@@ -1,8 +1,6 @@
 import typing
 from typing import Union, overload
 
-import trio
-
 _ = ""
 
 
