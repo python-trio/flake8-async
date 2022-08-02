@@ -1,6 +1,11 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.7.6
+- Extend TRIO102 to also check inside `except BaseException` and `except trio.Cancelled`
+- Extend TRIO104 to also check for `yield`
+- Update error messages on TRIO102 and TRIO103
+
 ## 22.7.5
 - Add TRIO103: `except BaseException` or `except trio.Cancelled` with a code path that doesn't re-raise
 - Add TRIO104: "Cancelled and BaseException must be re-raised" if user tries to return or raise a different exception.

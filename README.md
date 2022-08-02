@@ -22,7 +22,7 @@ pip install flake8-trio
   context does not contain any `await` statements.  This makes it pointless, as
   the timeout can only be triggered by a checkpoint.
 - **TRIO101**: `yield` inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
-- **TRIO102**: it's unsafe to await inside `finally:` unless you use a shielded
+- **TRIO102**: it's unsafe to await inside `finally:` or `except BaseException/trio.Cancelled` unless you use a shielded
   cancel scope with a timeout.
 - **TRIO103**: `except BaseException` and `except trio.Cancelled` with a code path that doesn't re-raise. Note that any `raise` statements in loops are ignored since it's tricky to parse loop flow with `break`, `continue` and/or the zero-iteration case.
 - **TRIO104**: `Cancelled` and `BaseException` must be re-raised - when a user tries to `return` or `raise` a different exception.
