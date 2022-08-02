@@ -122,3 +122,39 @@ async def foo3():
         with trio.fail_after(5), trio.move_on_after(30) as s:
             s.shield = True
             await foo()  # error: safe in theory, but we don't bother parsing
+
+
+# New: except cancelled/baseexception are also critical
+async def foo4():
+    await foo()  # avoid TRIO107
+    try:
+        ...
+    except ValueError:
+        await foo()  # safe
+    except trio.Cancelled:
+        await foo()  # error
+        raise  # avoid TRIO103
+    except BaseException:
+        await foo()  # error
+        raise  # avoid TRIO103
+    except:
+        await foo()  # error
+        raise  # avoid TRIO103
+
+
+async def foo5():
+    await foo()  # avoid TRIO107
+    try:
+        ...
+    except trio.Cancelled:
+        with trio.CancelScope(deadline=30, shield=True):
+            await foo()  # safe
+            raise  # avoid TRIO103
+    except BaseException:
+        with trio.CancelScope(deadline=30, shield=True):
+            await foo()  # safe
+            raise  # avoid TRIO103
+    except:
+        with trio.CancelScope(deadline=30, shield=True):
+            await foo()  # safe
+            raise  # avoid TRIO103

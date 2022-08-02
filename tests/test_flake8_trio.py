@@ -40,9 +40,19 @@ class Flake8TrioTestCase(unittest.TestCase):
         errors = tuple(plugin.run())
 
         # start with a check with trimmed errors that will make for smaller diff messages
-        trim_errors = trim_messages(plugin.run())
+        trim_errors = trim_messages(errors)
         trim_expected = trim_messages(expected)
-        self.assertTupleEqual(trim_errors, trim_expected)
+
+        #
+        unexpected = sorted(set(trim_errors) - set(trim_expected))
+        missing = sorted(set(trim_expected) - set(trim_errors))
+        self.assertEqual((unexpected, missing), ([], []), msg="(unexpected, missing)")
+
+        unexpected = sorted(set(errors) - set(expected))
+        missing = sorted(set(expected) - set(errors))
+        if unexpected and missing:
+            self.assertEqual(unexpected[0], missing[0])
+        self.assertEqual((unexpected, missing), ([], []), msg="(unexpected, missing)")
 
         # full check
         self.assertTupleEqual(errors, expected)
@@ -82,59 +92,69 @@ class Flake8TrioTestCase(unittest.TestCase):
     def test_trio102(self):
         self.assert_expected_errors(
             "trio102.py",
-            make_error(TRIO102, 24, 8),
-            make_error(TRIO102, 30, 12),
-            make_error(TRIO102, 36, 12),
-            make_error(TRIO102, 62, 12),
-            make_error(TRIO102, 70, 12),
-            make_error(TRIO102, 74, 12),
-            make_error(TRIO102, 76, 12),
-            make_error(TRIO102, 80, 12),
-            make_error(TRIO102, 82, 12),
-            make_error(TRIO102, 84, 12),
-            make_error(TRIO102, 88, 12),
-            make_error(TRIO102, 92, 8),
-            make_error(TRIO102, 94, 8),
-            make_error(TRIO102, 101, 12),
-            make_error(TRIO102, 124, 12),
+            make_error(TRIO102, 24, 8, 21, 4, "try/finally"),
+            make_error(TRIO102, 30, 12, 26, 4, "try/finally"),
+            make_error(TRIO102, 36, 12, 32, 4, "try/finally"),
+            make_error(TRIO102, 62, 12, 55, 4, "try/finally"),
+            make_error(TRIO102, 70, 12, 66, 4, "try/finally"),
+            make_error(TRIO102, 74, 12, 66, 4, "try/finally"),
+            make_error(TRIO102, 76, 12, 66, 4, "try/finally"),
+            make_error(TRIO102, 80, 12, 66, 4, "try/finally"),
+            make_error(TRIO102, 82, 12, 66, 4, "try/finally"),
+            make_error(TRIO102, 84, 12, 66, 4, "try/finally"),
+            make_error(TRIO102, 88, 12, 66, 4, "try/finally"),
+            make_error(TRIO102, 92, 8, 66, 4, "try/finally"),
+            make_error(TRIO102, 94, 8, 66, 4, "try/finally"),
+            make_error(TRIO102, 101, 12, 98, 8, "try/finally"),
+            make_error(TRIO102, 124, 12, 114, 4, "try/finally"),
+            make_error(TRIO102, 135, 8, 134, 11, "trio.Cancelled"),
+            make_error(TRIO102, 138, 8, 137, 11, "BaseException"),
+            make_error(TRIO102, 141, 8, 140, 4, "bare except"),
         )
 
     def test_trio103_104(self):
         self.assert_expected_errors(
             "trio103_104.py",
-            make_error(TRIO103, 7, 33),
-            make_error(TRIO103, 15, 7),
+            make_error(TRIO103, 7, 33, "trio.Cancelled"),
+            make_error(TRIO103, 15, 7, "trio.Cancelled"),
             # raise different exception
             make_error(TRIO104, 20, 4),
             make_error(TRIO104, 22, 4),
             make_error(TRIO104, 25, 4),
             # if
-            make_error(TRIO103, 28, 7),
-            make_error(TRIO103, 35, 7),
+            make_error(TRIO103, 28, 7, "BaseException"),
+            make_error(TRIO103, 35, 7, "BaseException"),
             # loops
-            make_error(TRIO103, 47, 7),
-            make_error(TRIO103, 52, 7),
+            make_error(TRIO103, 47, 7, "trio.Cancelled"),
+            make_error(TRIO103, 52, 7, "trio.Cancelled"),
             # nested exceptions
             make_error(TRIO104, 67, 8),  # weird edge-case
-            make_error(TRIO103, 61, 7),
+            make_error(TRIO103, 61, 7, "BaseException"),
             make_error(TRIO104, 92, 8),
             # make_error(TRIO104, 94, 8), # weird edge-case
             # bare except
-            make_error(TRIO103, 97, 0),
+            make_error(TRIO103, 97, 0, "bare except"),
             # multi-line
-            make_error(TRIO103, 111, 4),
+            make_error(TRIO103, 111, 4, "BaseException"),
             # re-raise parent
             make_error(TRIO104, 124, 8),
             # return
             make_error(TRIO104, 134, 8),
-            make_error(TRIO103, 133, 11),
+            make_error(TRIO103, 133, 11, "BaseException"),
             make_error(TRIO104, 139, 12),
             make_error(TRIO104, 141, 12),
             make_error(TRIO104, 143, 12),
             make_error(TRIO104, 145, 12),
-            make_error(TRIO103, 137, 11),
+            make_error(TRIO103, 137, 11, "BaseException"),
+            # continue/break
             make_error(TRIO104, 154, 12),
             make_error(TRIO104, 162, 12),
+            # yield
+            make_error(TRIO104, 184, 8),
+            make_error(TRIO104, 190, 12),
+            make_error(TRIO104, 192, 12),
+            make_error(TRIO104, 194, 12),
+            make_error(TRIO104, 196, 12),
         )
 
     def test_trio105(self):
@@ -192,15 +212,15 @@ class Flake8TrioTestCase(unittest.TestCase):
             # try
             make_error(TRIO107, 83, 0),
             # early return
-            make_error(TRIO108, 140, 4),
-            make_error(TRIO108, 145, 8),
+            make_error(TRIO108, 141, 4),
+            make_error(TRIO108, 146, 8),
             # nested function definition
-            make_error(TRIO107, 149, 0),
-            make_error(TRIO107, 159, 4),
-            make_error(TRIO107, 163, 0),
-            make_error(TRIO107, 170, 8),
-            make_error(TRIO107, 168, 0),
-            make_error(TRIO107, 174, 0),
+            make_error(TRIO107, 150, 0),
+            make_error(TRIO107, 160, 4),
+            make_error(TRIO107, 164, 0),
+            make_error(TRIO107, 171, 8),
+            make_error(TRIO107, 169, 0),
+            make_error(TRIO107, 175, 0),
         )
 
 

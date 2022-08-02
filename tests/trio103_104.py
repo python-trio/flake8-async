@@ -172,3 +172,26 @@ except BaseException:  # safe
     while True:
         continue
     raise
+
+# check for avoiding re-raise by yielding from function
+def foo_yield():
+    if True:  # for code coverage
+        yield 1
+
+    try:
+        pass
+    except BaseException:
+        yield 1  # error
+        raise
+
+    # check that we properly iterate over all nodes in try
+    except BaseException:
+        try:
+            yield 1  # error
+        except ValueError:
+            yield 1  # error
+        else:
+            yield 1  # error
+        finally:
+            yield 1  # error
+        raise
