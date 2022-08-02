@@ -3,6 +3,7 @@
 
 ## 22.7.6
 - Extend TRIO102 to also check inside `except BaseException` and `except trio.Cancelled`
+- Extend TRIO104 to also check for `yield`
 - Update error messages on TRIO102 and TRIO103
 
 ## 22.7.5
