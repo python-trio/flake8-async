@@ -1,70 +1,27 @@
 import trio
 
 try:
-    pass
-except (SyntaxError, ValueError, BaseException):
-    raise
-except (SyntaxError, ValueError, trio.Cancelled) as p:  # error
-    pass
-except (SyntaxError, ValueError):
-    raise
-except trio.Cancelled as e:
-    raise e
-except trio.Cancelled as e:
-    raise  # acceptable - see https://peps.python.org/pep-0678/#example-usage
-except trio.Cancelled:  # error
-    pass
-
+    ...
 # raise different exception
 except BaseException:
-    raise ValueError()  # error TRIO104
+    raise ValueError()  # error: 4
 except trio.Cancelled as e:
-    raise ValueError() from e  # error TRIO104
+    raise ValueError() from e  # error: 4
 except trio.Cancelled as e:
     # see https://github.com/Zac-HD/flake8-trio/pull/8#discussion_r932737341
-    raise BaseException() from e  # error TRIO104
+    raise BaseException() from e  # error: 4
 
-# if
-except BaseException as e:  # error
-    if True:
-        raise e
-    elif True:
-        pass
-    else:
-        raise e
-except BaseException:  # error
-    if True:
-        raise
-except BaseException:  # safe
-    if True:
-        raise
-    elif True:
-        raise
-    else:
-        raise
-
-# loops
-except trio.Cancelled:  # error
-    while True:
-        raise
-    else:
-        raise
-except trio.Cancelled:  # error
-    for _ in "":
-        raise
-    else:
-        raise
 
 # nested try
 # in theory safe if the try, and all excepts raises - and there's a bare except.
 # But is a very weird pattern that we don't handle.
-except BaseException as e:  # error
+except BaseException as e:  # TRIO103
     try:
         raise e
     except ValueError:
         raise e
     except:
-        raise e  # error: though sometimes okay
+        raise e  # though sometimes okay, error: 8
 except BaseException:  # safe
     try:
         pass
@@ -89,30 +46,10 @@ except trio.Cancelled as e:
     try:
         pass
     except ValueError as g:
-        raise g  # error
+        raise g  # error: 8
     except BaseException as h:
         raise h  # error? currently treated as safe
     raise e
-# bare except, equivalent to `except baseException`
-except:  # error
-    pass
-try:
-    pass
-except:
-    raise
-
-# point to correct exception in multi-line handlers
-my_super_mega_long_exception_so_it_gets_split = SyntaxError
-try:
-    pass
-except (
-    my_super_mega_long_exception_so_it_gets_split,
-    SyntaxError,
-    BaseException,  # error
-    ValueError,
-    trio.Cancelled,  # no complaint on this line
-):
-    pass
 
 # avoid re-raise by raising parent exception
 try:
@@ -121,7 +58,7 @@ except ValueError as e:
     try:
         pass
     except BaseException:
-        raise e  # error TRIO104
+        raise e  # error: 8
 
 # check for avoiding re-raise by returning from function
 def foo():
@@ -130,19 +67,19 @@ def foo():
 
     try:
         pass
-    except BaseException:  # error
-        return  # error
+    except BaseException:  # TRIO103
+        return  # error: 8
 
     # check that we properly iterate over all nodes in try
-    except BaseException:  # error
+    except BaseException:  # TRIO103
         try:
-            return  # error
+            return  # error: 12
         except ValueError:
-            return  # error
+            return  # error: 12
         else:
-            return  # error
+            return  # error: 12
         finally:
-            return  # error
+            return  # error: 12
 
 
 # don't avoid re-raise with continue/break
@@ -151,7 +88,7 @@ while True:
         pass
     except BaseException:
         if True:
-            continue  # error
+            continue  # error: 12
         raise
 
 while True:
@@ -159,7 +96,7 @@ while True:
         pass
     except BaseException:
         if True:
-            break  # error
+            break  # error: 12
         raise
 
 try:
@@ -181,17 +118,17 @@ def foo_yield():
     try:
         pass
     except BaseException:
-        yield 1  # error
+        yield 1  # error: 8
         raise
 
     # check that we properly iterate over all nodes in try
     except BaseException:
         try:
-            yield 1  # error
+            yield 1  # error: 12
         except ValueError:
-            yield 1  # error
+            yield 1  # error: 12
         else:
-            yield 1  # error
+            yield 1  # error: 12
         finally:
-            yield 1  # error
+            yield 1  # error: 12
         raise
