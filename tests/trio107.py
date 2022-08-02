@@ -102,16 +102,14 @@ async def foo_try_2():  # safe
     except:
         raise
     finally:
-        with trio.CancelScope(deadline=30, shield=True):  # avoid TRIO102
-            await foo()
+        await foo()
 
 
 async def foo_try_3():  # safe
     try:
         await foo()
     except ValueError:
-        with trio.CancelScope(deadline=30, shield=True):  # avoid TRIO102
-            await foo()
+        await foo()
     except:
         raise
 

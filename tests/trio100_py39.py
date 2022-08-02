@@ -14,4 +14,3 @@ async def function_name():
         trio.move_on_after(5),  # error: 8, trio.move_on_after
     ):
         pass
-    await function_name()  # avoid TRIO107

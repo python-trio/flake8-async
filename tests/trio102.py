@@ -5,7 +5,7 @@ import trio
 
 async def foo():
     try:
-        await foo()  # avoid TRIO107
+        ...
     finally:
         with trio.move_on_after(deadline=30) as s:
             s.shield = True
@@ -109,12 +109,11 @@ async def foo2():
         yield 1
     finally:
         await foo()  # safe
-    await foo()  # avoid TRIO107
 
 
 async def foo3():
     try:
-        await foo()  # avoid TRIO107
+        ...
     finally:
         with trio.move_on_after(30) as s, trio.fail_after(5):
             s.shield = True
@@ -141,18 +140,14 @@ async def foo4():
 
 
 async def foo5():
-    await foo()  # avoid TRIO107
     try:
         ...
     except trio.Cancelled:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
-        raise  # avoid TRIO103
     except BaseException:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
-        raise  # avoid TRIO103
     except:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
-        raise  # avoid TRIO103
