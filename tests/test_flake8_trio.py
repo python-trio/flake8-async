@@ -39,55 +39,96 @@ def test_eval(test: str, path: str):
         major, minor = version_str[0], version_str[1:]
         v_i = sys.version_info
         if (v_i.major, v_i.minor) < (int(major), int(minor)):
-            return
+            raise unittest.SkipTest("v_i, major, minor")
         test = test.split("_")[0]
 
     error_msg = getattr(flake8_trio, test)
     expected: List[Error] = []
     with open(os.path.join("tests", path)) as file:
-        for lineno, line in enumerate(file):
+        for lineno, line in enumerate(file, start=1):
             # get text between `error: ` and newline
             k = re.search(r"(?<=error: ).*(?=\n)", line)
-            if not k:
+            if not k or line.strip()[0] == "#":
                 continue
-            # Append a bunch of 0's so string formatting gives garbage instead
+            # Append a bunch of empty strings so string formatting gives garbage instead
             # of throwing an exception
-            args = [m.strip() for m in k.group().split(",")] + ["0"] * 5
+            args = [m.strip() for m in k.group().split(",")] + [""] * 5
             col, *args = args
-            expected.append(make_error(error_msg, lineno + 1, int(col), *args))
+            for i, arg in enumerate(args):
+                if "$lineno" in arg:
+                    args[i] = eval(arg.replace("$", ""), {"lineno": lineno})
+            assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
+            expected.append(make_error(error_msg, lineno, int(col), *args))
 
     assert_expected_errors(path, test, *expected)
 
 
-# This function is also a mess now, but I keep slowly iterating on getting it to
-# print actually helpful error messages in all cases - which is a struggle.
-# It'll likely continue to be a mess for the foreseeable future
-def assert_expected_errors(test_file: str, include: str, *expected: Error) -> None:
-    def trim_messages(messages: Iterable[Error]):
-        return tuple(((line, col, int(msg[4:7])) for line, col, msg, _ in messages))
-
+def assert_expected_errors(test_file: str, include: str, *expected: Error):
     filename = Path(__file__).absolute().parent / test_file
     plugin = Plugin.from_filename(str(filename))
 
-    errors = tuple(e for e in plugin.run() if include in e[2])
+    errors = tuple(sorted(e for e in plugin.run() if include in e[2]))
+    expected = tuple(sorted(expected))
 
-    # start with a check with trimmed errors that will make for smaller diff messages
-    trim_errors = trim_messages(errors)
-    trim_expected = trim_messages(expected)
-
-    cls = unittest.TestCase()
-    unexpected = sorted(set(trim_errors) - set(trim_expected))
-    missing = sorted(set(trim_expected) - set(trim_errors))
-    cls.assertEqual((unexpected, missing), ([], []), msg="(unexpected, missing)")
-
-    unexpected = sorted(set(errors) - set(expected))
-    missing = sorted(set(expected) - set(errors))
-    if unexpected and missing:
-        cls.assertEqual(unexpected[0], missing[0])
-    cls.assertEqual((unexpected, missing), ([], []), msg="(unexpected, missing)")
+    assert_correct_lines(errors, expected)
+    assert_correct_columns(errors, expected)
+    assert_correct_messages(errors, expected)
 
     # full check
-    cls.assertSequenceEqual(sorted(errors), sorted(expected))
+    unittest.TestCase().assertSequenceEqual(sorted(errors), sorted(expected))
+
+
+def assert_correct_lines(errors: Iterable[Error], expected: Iterable[Error]):
+    # Check that errors are on correct lines
+    error_lines = {line for line, *_ in errors}
+    expected_lines = {line for line, *_ in expected}
+    unexpected_lines = sorted(error_lines - expected_lines)
+    missing_lines = sorted(expected_lines - error_lines)
+    unittest.TestCase().assertEqual(
+        unexpected_lines,
+        missing_lines,
+        msg="Lines with unexpected errors; missing errors",
+    )
+
+
+def assert_correct_columns(errors: Iterable[Error], expected: Iterable[Error]):
+    # check errors have correct columns
+    col_error = False
+    for (line, error_col, *_), (_, expected_col, *_) in zip(errors, expected):
+        if error_col != expected_col:
+            if not col_error:
+                print("Errors with same line but different columns:", file=sys.stderr)
+                print("| line | actual | expected |", file=sys.stderr)
+                col_error = True
+            print(
+                f"| {line:4} | {error_col:6} | {expected_col:8} |",
+                file=sys.stderr,
+            )
+    assert not col_error
+
+
+def assert_correct_messages(errors: Iterable[Error], expected: Iterable[Error]):
+    # check errors have correct messages
+    msg_error = False
+    for (line, _, error_msg, *_), (_, _, expected_msg, *_) in zip(errors, expected):
+        if error_msg != expected_msg:
+            if not msg_error:
+                print(
+                    "Errors with different messages:",
+                    "-" * 20,
+                    sep="\n",
+                    file=sys.stderr,
+                )
+                msg_error = True
+            print(
+                f"*   line: {line:3}",
+                f"  actual: {error_msg}",
+                f"expected: {expected_msg}",
+                "-" * 20,
+                sep="\n",
+                file=sys.stderr,
+            )
+    assert not msg_error
 
 
 @pytest.mark.fuzz

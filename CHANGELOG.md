@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- Extend TRIO107 and 108 to also handle yields
+
 ## 22.7.6
 - Extend TRIO102 to also check inside `except BaseException` and `except trio.Cancelled`
 - Extend TRIO104 to also check for `yield`
