@@ -328,14 +328,22 @@ async def foo_try_6():
 
 
 async def foo_try_7():
+    await foo()
     try:
-        await foo()
         yield
+        await foo()
     except ValueError:
         await foo()
         yield
         await foo()
-    yield  # error: 4, yield, yield, $lineno-5
+    except SyntaxError:
+        yield  # error: 8, yield, yield, $lineno-7
+        await foo()
+    finally:
+        pass
+    # If the try raises an exception without checkpointing, and it's not caught
+    # by any of the excepts, jumping straight to the finally.
+    yield  # error: 4, yield, yield, $lineno-13
 
 
 # if

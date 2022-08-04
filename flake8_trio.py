@@ -11,13 +11,14 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.7.6"
 
-
 Error = Tuple[int, int, str, Type[Any]]
+
+
 checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
 cancel_scope_names = (
     "fail_after",
@@ -43,7 +44,7 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         self.suppress_errors = False
 
     @classmethod
-    def run(cls, tree: ast.AST) -> Generator[Error, None, None]:
+    def run(cls, tree: ast.AST) -> Iterable[Error]:
         visitor = cls()
         visitor.visit(tree)
         yield from visitor.problems
@@ -74,6 +75,10 @@ class Flake8TrioVisitor(ast.NodeVisitor):
     def set_state(self, attrs: Dict[str, Any]):
         for attr, value in attrs.items():
             setattr(self, attr, value)
+
+    def walk(self, *body: ast.AST) -> Iterable[ast.AST]:
+        for b in body:
+            yield from ast.walk(b)
 
 
 class TrioScope:
@@ -609,9 +614,9 @@ class Visitor107_108(Flake8TrioVisitor):
     def visit_Try(self, node: ast.Try):
         # check worst case try exception
         body_always_checkpoint = self.always_checkpoint
-        for n in (b for body in node.body for b in ast.walk(body)):
-            if isinstance(n, ast.Yield):
-                body_always_checkpoint = ("yield", n.lineno)
+        for inner_node in self.walk(*node.body):
+            if isinstance(inner_node, ast.Yield):
+                body_always_checkpoint = ("yield", inner_node.lineno)
                 break
 
         # check try body
@@ -758,7 +763,7 @@ class Plugin:
             source = f.read()
         return cls(ast.parse(source))
 
-    def run(self) -> Generator[Tuple[int, int, str, Type[Any]], None, None]:
+    def run(self) -> Iterable[Error]:
         for v in Flake8TrioVisitor.__subclasses__():
             yield from v.run(self._tree)
 
