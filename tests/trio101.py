@@ -23,7 +23,6 @@ def foo2():
 
 async def foo3():
     async with trio.CancelScope() as _:
-        await trio.sleep(1)  # so trio100 doesn't complain
         yield 1  # error: 8
 
 
