@@ -31,3 +31,4 @@ pip install flake8-trio
 - **TRIO107**: Async functions must have at least one checkpoint on every code path, unless an exception is raised.
 - **TRIO108**: Early return from async function must have at least one checkpoint on every code path before it, unless an exception is raised.
   Checkpoints are `await`, `async with` `async for`.
+- **TRIO300**: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead
