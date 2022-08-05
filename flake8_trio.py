@@ -127,7 +127,6 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         super().__init__()
         self._yield_is_error = False
         self._safe_decorator = False
-        self._inside_loop: bool = False
 
     def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
         self.check_for_trio100(node)
@@ -200,24 +199,16 @@ class VisitorMiscChecks(Flake8TrioVisitor):
             if arg.arg == "timeout":
                 self.error(TRIO109, arg.lineno, arg.col_offset)
 
-    # 301
-    def visit_While(self, node: Union[ast.While, ast.For, ast.AsyncFor]):
-        outer = self._inside_loop
-        self._inside_loop = True
+    def visit_While(self, node: ast.While):
+        self.check_for_301(node)
         self.generic_visit(node)
-        self._inside_loop = outer
 
-    visit_For = visit_While
-    visit_AsyncFor = visit_While
-
-    def visit_Await(self, node: ast.Await):
+    def check_for_301(self, node: ast.While):
         if (
-            self._inside_loop
-            and isinstance(node.value, ast.Call)
-            and isinstance(node.value.func, ast.Attribute)
-            and node.value.func.attr == "sleep"
-            and isinstance(node.value.func.value, ast.Name)
-            and node.value.func.value.id == "trio"
+            len(node.body) == 1
+            and isinstance(node.body[0], ast.Expr)
+            and isinstance(node.body[0].value, ast.Await)
+            and get_trio_scope(node.body[0].value.value, "sleep", "sleep_until")
         ):
             self.error(TRIO301, node.lineno, node.col_offset)
 

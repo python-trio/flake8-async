@@ -2,51 +2,69 @@ import trio
 import trio as noerror
 
 
-async def sleep():
-    return
-
-
 async def foo():
-    await trio.sleep()  # ok
-    await sleep()
-    await noerror.sleep()
-    await trio.Event()
+    # only trigger on while loop with body being exactly one sleep[_until] statement
+    while ...:  # error: 4
+        await trio.sleep()
+
+    while ...:  # error: 4
+        await trio.sleep_until()
+
+    # nested
+
+    while ...:  # safe
+        while ...:  # error: 8
+            await trio.sleep()
+        await trio.sleep()
+
+    while ...:  # safe
+        while ...:  # error: 8
+            await trio.sleep()
+
+    ### the rest are all safe
+
+    # don't trigger on bodies with more than one statement
+    while ...:
+        await trio.sleep()
+        await trio.sleep()
+
+    while ...:  # safe
+        ...
+        await trio.sleep()
 
     while ...:
-        await trio.sleep()  # error: 8
-        await trio.sleep()  # error: 8
-        await sleep()
-        await noerror.sleep()
-        await trio.Event()
+        await trio.sleep()
+        await trio.sleep_until()
 
-    for _ in "":
-        await trio.sleep()  # error: 8
-        await sleep()
+    # check library name
+    while ...:
         await noerror.sleep()
-        await trio.Event()
+
+    async def sleep():
+        ...
+
+    while ...:
+        await sleep()
+
+    # check function name
+    while ...:
+        await trio.sleepies()
+
+    # don't trigger on [async] for
+    for _ in "":
+        await trio.sleep()
 
     async for _ in trio.blah:
-        await trio.sleep()  # error: 8
-        await sleep()
-        await noerror.sleep()
-        await trio.Event()
+        await trio.sleep()
 
     while ...:
-        await trio.sleep()  # error: 8
 
         async def blah():
             await trio.sleep()
 
-        await trio.sleep()  # error: 8
-
-    while ...:
-        while ...:
-            await trio.sleep()  # error: 12
-        await trio.sleep()  # error: 8
-
     while ...:
         if ...:
-            await trio.sleep()  # error: 12
+            await trio.sleep()
 
-    while await trio.sleep():  # error: 10
+    while await trio.sleep():
         ...
