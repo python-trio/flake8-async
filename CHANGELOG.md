@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- Added TRIO302: async context manager inside nursery. Nurseries should be outermost.
+
 ## 22.8.4
 - Fix TRIO108 raising errors on yields in some sync code.
 - TRIO109 now skips all decorated functions to avoid false alarms

@@ -29,6 +29,7 @@ Error_codes = {
     "TRIO108": "{0} from async iterable with no guaranteed checkpoint since {1.name} on line {1.lineno}",
     "TRIO109": "Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead",
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
+    "TRIO302": "async context manager inside nursery opened on line {}. Nurseries should be outermost.",
 }
 
 
@@ -161,7 +162,7 @@ def get_trio_scope(node: ast.AST, *names: str) -> Optional[TrioScope]:
         and isinstance(node.func, ast.Attribute)
         and isinstance(node.func.value, ast.Name)
         and node.func.value.id == "trio"
-        and node.func.attr in names
+        and (node.func.attr in names or not names)
     ):
         return TrioScope(node, node.func.attr)
     return None
@@ -184,6 +185,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         # variables only used for 101
         self._yield_is_error = False
         self._safe_decorator = False
+        self._inside_nursery: Optional[int] = None
 
     # ---- 100, 101 ----
     def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
@@ -208,7 +210,11 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         # reset yield_is_error
         self.set_state(outer)
 
-    visit_AsyncWith = visit_With
+    def visit_AsyncWith(self, node: ast.AsyncWith):
+        outer = self._inside_nursery
+        self.check_for_trio302(node.items)
+        self.visit_With(node)
+        self._inside_nursery = outer
 
     # ---- 100 ----
     def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]):
@@ -225,6 +231,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
         outer = self.get_state()
         self._yield_is_error = False
+        self._inside_nursery = None
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
         if has_decorator(node.decorator_list, *context_manager_names):
@@ -279,6 +286,17 @@ class VisitorMiscChecks(Flake8TrioVisitor):
             and get_trio_scope(node.body[0].value.value, "sleep", "sleep_until")
         ):
             self.error("TRIO110", node)
+
+    def check_for_trio302(self, withitems: List[ast.withitem]):
+        calls = [w.context_expr for w in withitems]
+        for call in calls:
+            ss = get_trio_scope(call)
+            if not ss:
+                continue
+            if ss.funcname == "open_nursery":
+                self._inside_nursery = ss.node.lineno
+            elif self._inside_nursery is not None:
+                self.error("TRIO302", ss.node, self._inside_nursery)
 
 
 def critical_except(node: ast.ExceptHandler) -> Optional[Statement]:
