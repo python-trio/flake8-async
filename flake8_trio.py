@@ -200,17 +200,17 @@ class VisitorMiscChecks(Flake8TrioVisitor):
                 self.error(TRIO109, arg.lineno, arg.col_offset)
 
     def visit_While(self, node: ast.While):
-        self.check_for_301(node)
+        self.check_for_110(node)
         self.generic_visit(node)
 
-    def check_for_301(self, node: ast.While):
+    def check_for_110(self, node: ast.While):
         if (
             len(node.body) == 1
             and isinstance(node.body[0], ast.Expr)
             and isinstance(node.body[0].value, ast.Await)
             and get_trio_scope(node.body[0].value.value, "sleep", "sleep_until")
         ):
-            self.error(TRIO301, node.lineno, node.col_offset)
+            self.error(TRIO110, node.lineno, node.col_offset)
 
 
 def critical_except(node: ast.ExceptHandler) -> Optional[Tuple[int, int, str]]:
@@ -653,4 +653,4 @@ TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to w
 TRIO107 = "TRIO107: Async functions must have at least one checkpoint on every code path, unless an exception is raised"
 TRIO108 = "TRIO108: Early return from async function must have at least one checkpoint on every code path before it."
 TRIO109 = "TRIO109: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead"
-TRIO301 = "TRIO301: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`."
+TRIO110 = "TRIO110: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`."
