@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 22.8.1
 - Added TRIO109: Async definitions should not have a `timeout` parameter. Use `trio.[fail/move_on]_[at/after]`
 - Added TRIO110: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.
 
