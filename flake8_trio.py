@@ -127,6 +127,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         super().__init__()
         self._yield_is_error = False
         self._safe_decorator = False
+        self._inside_loop: bool = False
 
     def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
         self.check_for_trio100(node)
@@ -154,6 +155,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
         outer = self.get_state()
         self._yield_is_error = False
+        self._inside_loop = False
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
         if has_decorator(node.decorator_list, *context_manager_names):
@@ -197,6 +199,27 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
             if arg.arg == "timeout":
                 self.error(TRIO109, arg.lineno, arg.col_offset)
+
+    # 301
+    def visit_While(self, node: Union[ast.While, ast.For, ast.AsyncFor]):
+        outer = self._inside_loop
+        self._inside_loop = True
+        self.generic_visit(node)
+        self._inside_loop = outer
+
+    visit_For = visit_While
+    visit_AsyncFor = visit_While
+
+    def visit_Await(self, node: ast.Await):
+        if (
+            self._inside_loop
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr == "sleep"
+            and isinstance(node.value.func.value, ast.Name)
+            and node.value.func.value.id == "trio"
+        ):
+            self.error(TRIO301, node.lineno, node.col_offset)
 
 
 def critical_except(node: ast.ExceptHandler) -> Optional[Tuple[int, int, str]]:
@@ -639,3 +662,4 @@ TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to w
 TRIO107 = "TRIO107: Async functions must have at least one checkpoint on every code path, unless an exception is raised"
 TRIO108 = "TRIO108: Early return from async function must have at least one checkpoint on every code path before it."
 TRIO109 = "TRIO109: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead"
+TRIO301 = "TRIO301: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`."
