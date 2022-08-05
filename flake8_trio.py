@@ -154,6 +154,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
         outer = self.get_state()
         self._yield_is_error = False
+        self._inside_loop = False
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
         if has_decorator(node.decorator_list, *context_manager_names):
@@ -197,6 +198,19 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
             if arg.arg == "timeout":
                 self.error(TRIO109, arg.lineno, arg.col_offset)
+
+    def visit_While(self, node: ast.While):
+        self.check_for_110(node)
+        self.generic_visit(node)
+
+    def check_for_110(self, node: ast.While):
+        if (
+            len(node.body) == 1
+            and isinstance(node.body[0], ast.Expr)
+            and isinstance(node.body[0].value, ast.Await)
+            and get_trio_scope(node.body[0].value.value, "sleep", "sleep_until")
+        ):
+            self.error(TRIO110, node.lineno, node.col_offset)
 
 
 def critical_except(node: ast.ExceptHandler) -> Optional[Tuple[int, int, str]]:
@@ -639,3 +653,4 @@ TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to w
 TRIO107 = "TRIO107: Async functions must have at least one checkpoint on every code path, unless an exception is raised"
 TRIO108 = "TRIO108: Early return from async function must have at least one checkpoint on every code path before it."
 TRIO109 = "TRIO109: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead"
+TRIO110 = "TRIO110: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`."
