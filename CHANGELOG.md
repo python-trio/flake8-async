@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- Added TRIO300: Async definitions should not have a `timeout` parameter. Use `trio.[fail/move_on]_[at/after]`
+
 ## 22.7.6
 - Extend TRIO102 to also check inside `except BaseException` and `except trio.Cancelled`
 - Extend TRIO104 to also check for `yield`
