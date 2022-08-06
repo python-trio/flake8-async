@@ -4,6 +4,10 @@
 ## Future
 - Extend TRIO107 and 108 to also handle yields
 
+## 22.8.1
+- Added TRIO109: Async definitions should not have a `timeout` parameter. Use `trio.[fail/move_on]_[at/after]`
+- Added TRIO110: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.
+
 ## 22.7.6
 - Extend TRIO102 to also check inside `except BaseException` and `except trio.Cancelled`
 - Extend TRIO104 to also check for `yield`

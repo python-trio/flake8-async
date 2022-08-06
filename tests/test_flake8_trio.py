@@ -46,8 +46,8 @@ def test_eval(test: str, path: str):
     expected: List[Error] = []
     with open(os.path.join("tests", path)) as file:
         for lineno, line in enumerate(file, start=1):
-            # get text between `error: ` and newline
-            k = re.search(r"(?<=error: ).*(?=\n)", line)
+            # get text between `error:` and end of line
+            k = re.search(r"(?<=error:).*$", line)
             if not k or line.strip()[0] == "#":
                 continue
             # Append a bunch of empty strings so string formatting gives garbage instead
@@ -60,6 +60,7 @@ def test_eval(test: str, path: str):
             assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
             expected.append(make_error(error_msg, lineno, int(col), *args))
 
+    assert expected, "failed to parse any errors in file"
     assert_expected_errors(path, test, *expected)
 
 
