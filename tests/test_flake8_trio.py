@@ -13,13 +13,12 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-import flake8_trio
-from flake8_trio import Error, Plugin, make_error
+from flake8_trio import Error, Error_codes, Plugin, Statement, make_error
 
 test_files: List[Tuple[str, str]] = sorted(
     (os.path.splitext(f)[0].upper(), f)
     for f in os.listdir("tests")
-    if re.match(r"^trio.*.py", f)
+    if re.match(r"trio.*.py", f)
 )
 
 
@@ -42,7 +41,8 @@ def test_eval(test: str, path: str):
             raise unittest.SkipTest("v_i, major, minor")
         test = test.split("_")[0]
 
-    error_msg = getattr(flake8_trio, test)
+    assert test in Error_codes.keys(), "error code not defined in flake8_trio.py"
+
     expected: List[Error] = []
     with open(os.path.join("tests", path)) as file:
         for lineno, line in enumerate(file, start=1):
@@ -52,15 +52,27 @@ def test_eval(test: str, path: str):
                 continue
             # Append a bunch of empty strings so string formatting gives garbage instead
             # of throwing an exception
-            args = [m.strip() for m in k.group().split(",")] + [""] * 5
+            reg_match = k.group()
+            try:
+                args = (
+                    eval(
+                        f"[{reg_match}]",
+                        {"lineno": lineno, "Statement": Statement},
+                    )
+                    + [""] * 5
+                )
+            except Exception as e:
+                print(f"lineno: {lineno}, line: {line}", file=sys.stderr)
+                raise e
             col, *args = args
-            for i, arg in enumerate(args):
-                if "$lineno" in arg:
-                    args[i] = eval(arg.replace("$", ""), {"lineno": lineno})
-            assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
-            expected.append(make_error(error_msg, lineno, int(col), *args))
+            assert isinstance(
+                col, int
+            ), f'invalid column "{col}" @L{lineno}, in "{line}"'
 
-    assert expected, "failed to parse any errors in file"
+            # assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
+            expected.append(make_error(test, lineno, int(col), *args))
+
+    assert expected, f"failed to parse any errors in file {path}"
     assert_expected_errors(path, test, *expected)
 
 
