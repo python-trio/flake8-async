@@ -191,4 +191,4 @@ async def foo6():
     try:
         ...
     except trio.Cancelled:
-        print( await foo(), await foo())  # error: 15, Statement("trio.Cancelled", lineno-1) # error: 28, Statement("trio.Cancelled", lineno-1)
+        await foo(), await foo()  # error: 8, Statement("trio.Cancelled", lineno-1) # error: 21, Statement("trio.Cancelled", lineno-1)
