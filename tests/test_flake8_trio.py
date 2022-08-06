@@ -45,15 +45,21 @@ def test_eval(test: str, path: str):
 
     expected: List[Error] = []
     with open(os.path.join("tests", path)) as file:
-        for lineno, line in enumerate(file, start=1):
-            # get text between `error:` and end of line
-            k = re.search(r"(?<=error:).*$", line)
-            if not k or line.strip()[0] == "#":
-                continue
-            # Append a bunch of empty strings so string formatting gives garbage instead
-            # of throwing an exception
-            reg_match = k.group()
+        lines = file.readlines()
+
+    for lineno, line in enumerate(lines, start=1):
+        line = line.strip()
+        # skip commented out lines
+        if not line or line[0] == "#":
+            continue
+
+        # get text between `error:` and (end of line or another comment)
+        k = re.findall(r"(?<=error:)[^#]*(?=#|$)", line)
+
+        for reg_match in k:
             try:
+                # Append a bunch of empty strings so string formatting gives garbage
+                # instead of throwing an exception
                 args = (
                     eval(
                         f"[{reg_match}]",
@@ -61,6 +67,7 @@ def test_eval(test: str, path: str):
                     )
                     + [""] * 5
                 )
+
             except Exception as e:
                 print(f"lineno: {lineno}, line: {line}", file=sys.stderr)
                 raise e
@@ -81,7 +88,6 @@ def assert_expected_errors(test_file: str, include: str, *expected: Error):
     plugin = Plugin.from_filename(str(filename))
 
     errors = tuple(sorted(e for e in plugin.run() if include in e[2]))
-    expected = tuple(sorted(expected))
 
     assert_correct_lines(errors, expected)
     assert_correct_columns(errors, expected)
@@ -93,15 +99,22 @@ def assert_expected_errors(test_file: str, include: str, *expected: Error):
 
 def assert_correct_lines(errors: Iterable[Error], expected: Iterable[Error]):
     # Check that errors are on correct lines
-    error_lines = {line for line, *_ in errors}
-    expected_lines = {line for line, *_ in expected}
-    unexpected_lines = sorted(error_lines - expected_lines)
-    missing_lines = sorted(expected_lines - error_lines)
+    error_lines = sorted(line for line, *_ in errors)
+    expected_lines = sorted(line for line, *_ in expected)
+    unexpected_lines = sorted(set(error_lines) - set(expected_lines))
+    missing_lines = sorted(set(expected_lines) - set(error_lines))
     unittest.TestCase().assertEqual(
         unexpected_lines,
         missing_lines,
         msg="Lines with unexpected errors; missing errors",
     )
+    diff_counts = {}
+    for line in expected_lines:
+        err_count = error_lines.count(line)
+        exp_count = expected_lines.count(line)
+        if err_count != exp_count:
+            diff_counts[line] = (err_count, exp_count)
+    assert not diff_counts, "Lines with (actual, expected) number of errors"
 
 
 def assert_correct_columns(errors: Iterable[Error], expected: Iterable[Error]):

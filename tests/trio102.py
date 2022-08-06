@@ -184,3 +184,11 @@ async def foo5():
     except:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
+
+
+# multiple errors on same line
+async def foo6():
+    try:
+        ...
+    except trio.Cancelled:
+        print( await foo(), await foo())  # error: 15, Statement("trio.Cancelled", lineno-1) # error: 28, Statement("trio.Cancelled", lineno-1)

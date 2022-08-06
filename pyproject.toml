@@ -1,2 +1,6 @@
 [tool.pyright]
 strict = ["*.py", "tests/test_flake8_trio.py", "tests/conftest.py"]
+
+# ignored by shed
+[tool.black]
+force-exclude = "trio102.py"
