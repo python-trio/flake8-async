@@ -1,4 +1,5 @@
 """Tests for flake8-trio package metadata."""
+import os
 import re
 import unittest
 from pathlib import Path
@@ -52,7 +53,6 @@ class test_messages_documented(unittest.TestCase):
         for filename in (
             "CHANGELOG.md",
             "README.md",
-            "flake8_trio.py",
         ):
             with open(Path(__file__).parent.parent / filename) as f:
                 lines = f.readlines()
@@ -61,7 +61,24 @@ class test_messages_documented(unittest.TestCase):
                 for error_msg in re.findall(r"TRIO\d\d\d", line):
                     documented_errors[filename].add(error_msg)
 
-        file_items = list(documented_errors.items())
-        first = file_items.pop()
-        for file, documented in file_items:
-            self.assertSetEqual(first[1], documented, msg=(first[0], file))
+        documented_errors["flake8_trio.py"] = set(flake8_trio.Error_codes.keys())
+
+        documented_errors["tests/trio*.py"] = {
+            os.path.splitext(f)[0].upper().split("_")[0]
+            for f in os.listdir("tests")
+            if re.match(r"^trio.*.py", f)
+        }
+
+        unique_errors: Dict[str, Set[str]] = {}
+        missing_errors: Dict[str, Set[str]] = {}
+        for key, codes in documented_errors.items():
+            unique_errors[key] = codes.copy()
+            missing_errors[key] = set()
+
+            for other_key, other_codes in documented_errors.items():
+                if key == other_key:
+                    continue
+                unique_errors[key].difference_update(other_codes)
+                missing_errors[key].update(other_codes - codes)
+
+        assert unique_errors == missing_errors

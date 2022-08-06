@@ -21,19 +21,19 @@ async def foo():
     try:
         pass
     finally:
-        await foo()  # error: 8, 21, 4, try/finally
+        await foo()  # error: 8, Statement("try/finally", lineno-3)
 
     try:
         pass
     finally:
         with trio.move_on_after(30) as s:
-            await foo()  # error: 12, 26, 4, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-4)
 
     try:
         pass
     finally:
         with trio.move_on_after(30):
-            await foo()  # error: 12, 32, 4, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-4)
 
     bar = 10
 
@@ -59,7 +59,7 @@ async def foo():
             s.shield = True
             await foo()
             s.shield = False
-            await foo()  # error: 12, 55, 4, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-7)
             s.shield = True
             await foo()
 
@@ -67,31 +67,64 @@ async def foo():
         pass
     finally:
         with open("bar"):
-            await foo()  # error: 12, 66, 4, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-4)
+    try:
+        pass
+    finally:
         with open("bar"):
             pass
+    try:
+        pass
+    finally:
         with trio.move_on_after():
-            await foo()  # error: 12, 66, 4, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-4)
+    try:
+        pass
+    finally:
         with trio.move_on_after(foo=bar):
-            await foo()  # error: 12, 66, 4, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-4)
+    try:
+        pass
+    finally:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
+    try:
+        pass
+    finally:
         with trio.CancelScope(shield=True):
-            await foo()  # error: 12, 66, 4, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-4)
+    try:
+        pass
+    finally:
         with trio.CancelScope(deadline=30):
-            await foo()  # error: 12, 66, 4, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-4)
+    try:
+        pass
+    finally:
         with trio.CancelScope(deadline=30, shield=(1 == 1)):
-            await foo()  # safe in theory, error: 12, 66, 4, try/finally
+            await foo()  # safe in theory, error: 12, Statement("try/finally", lineno-4)
+    try:
+        pass
+    finally:
         myvar = True
         with trio.open_nursery(10) as s:
             s.shield = myvar
-            await foo()  # safe in theory, error: 12, 66, 4, try/finally
+            await foo()  # safe in theory, error: 12, Statement("try/finally", lineno-6)
+    try:
+        pass
+    finally:
         with trio.CancelScope(deadline=30, shield=True):
             with trio.move_on_after(30):
                 await foo()  # safe
-        async for i in trio.bypasslinters:  # error: 8, 66, 4, try/finally
+    try:
+        pass
+    finally:
+        async for i in trio.bypasslinters:  # error: 8, Statement("try/finally", lineno-3)
             pass
-        async with trio.CancelScope(  # error: 8, 66, 4, try/finally
+    try:
+        pass
+    finally:
+        async with trio.CancelScope(  # error: 8, Statement("try/finally", lineno-3)
             deadline=30, shield=True
         ):
             await foo()  # safe
@@ -100,7 +133,7 @@ async def foo():
         try:
             pass
         finally:
-            await foo()  # error: 12, 100, 8, try/finally
+            await foo()  # error: 12, Statement("try/finally", lineno-3)
 
 
 @asynccontextmanager
@@ -122,7 +155,7 @@ async def foo3():
             await foo()  # safe
         with trio.fail_after(5), trio.move_on_after(30) as s:
             s.shield = True
-            await foo()  # safe in theory, error: 12, $lineno-10, 4, try/finally
+            await foo()  # safe in theory, error: 12, Statement("try/finally", lineno-10)
 
 
 # New: except cancelled/baseexception are also critical
@@ -132,11 +165,11 @@ async def foo4():
     except ValueError:
         await foo()  # safe
     except trio.Cancelled:
-        await foo()  # error: 8, $lineno-1, 11, trio.Cancelled
+        await foo()  # error: 8, Statement("trio.Cancelled", lineno-1)
     except BaseException:
-        await foo()  # error: 8, $lineno-1, 11, BaseException
+        await foo()  # error: 8, Statement("BaseException", lineno-1)
     except:
-        await foo()  # error: 8, $lineno-1, 4, bare except
+        await foo()  # error: 8, Statement("bare except", lineno-1)
 
 
 async def foo5():
@@ -151,3 +184,11 @@ async def foo5():
     except:
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
+
+
+# multiple errors on same line
+async def foo6():
+    try:
+        ...
+    except trio.Cancelled:
+        await foo(), await foo()  # error: 8, Statement("trio.Cancelled", lineno-1) # error: 21, Statement("trio.Cancelled", lineno-1)
