@@ -10,7 +10,7 @@ async def foo() -> Any:
     await foo()
 
 
-async def foo2():  # error: 0, function
+async def foo2():  # error: 0, "function"
     ...
 
 
@@ -26,7 +26,7 @@ async def foo_yield_2():  # safe
     await foo()
 
 
-async def foo_yield_3():  # error: 0, iterable
+async def foo_yield_3():  # error: 0, "iterable"
     await foo()
     yield
 
@@ -37,7 +37,7 @@ async def foo_yield_4():  # safe
 
 
 # If
-async def foo_if_1():  # error: 0, function
+async def foo_if_1():  # error: 0, "function"
     if _:
         await foo()
 
@@ -60,12 +60,12 @@ async def foo_if_4():  # now safe
         ...
 
 
-async def foo_if_5():  # error: 0, iterable
+async def foo_if_5():  # error: 0, "iterable"
     if ...:
         yield
 
 
-async def foo_if_6():  # error: 0, iterable
+async def foo_if_6():  # error: 0, "iterable"
     if ...:
         ...
     else:
@@ -82,13 +82,13 @@ async def foo_if_7():
         await foo()
 
 
-async def foo_if_8():  # error: 0, iterable
+async def foo_if_8():  # error: 0, "iterable"
     yield
     if ...:
         await foo()
 
 
-async def foo_if_9():  # error: 0, iterable
+async def foo_if_9():  # error: 0, "iterable"
     yield
     if ...:
         ...
@@ -117,12 +117,12 @@ async def foo_ifexp_1():  # safe
     print(await foo() if _ else await foo())
 
 
-async def foo_ifexp_2():  # error: 0, function
+async def foo_ifexp_2():  # error: 0, "function"
     print(_ if False and await foo() else await foo())
 
 
 # loops
-async def foo_while_1():  # error: 0, function
+async def foo_while_1():  # error: 0, "function"
     while _:
         await foo()
 
@@ -140,7 +140,7 @@ async def foo_while_3():  # safe
         ...
 
 
-async def foo_while_4():  # error: 0, iterable
+async def foo_while_4():  # error: 0, "iterable"
     yield  # TRIO108: 4
     while ...:
         if ...:
@@ -149,20 +149,20 @@ async def foo_while_4():  # error: 0, iterable
         await foo()  # might not run
 
 
-async def foo_while_5():  # error: 0, iterable
+async def foo_while_5():  # error: 0, "iterable"
     yield  # TRIO108: 4
     while ...:
         await foo()  # might not run
 
 
-async def foo_while_6():  # error: 0, iterable
+async def foo_while_6():  # error: 0, "iterable"
     await foo()
     while ...:
         yield  # TRIO108: 8
 
 
 # no checkpoint after yield if else is entered
-async def foo_while_7():  # error: 0, iterable
+async def foo_while_7():  # error: 0, "iterable"
     while ...:
         await foo()
         yield
@@ -171,7 +171,7 @@ async def foo_while_7():  # error: 0, iterable
 
 
 # no checkpoint after yield if else is entered
-async def foo_while_8():  # error: 0, iterable
+async def foo_while_8():  # error: 0, "iterable"
     while ...:
         yield  # TRIO108: 8
         await foo()
@@ -181,14 +181,14 @@ async def foo_while_8():  # error: 0, iterable
 
 
 # might not enter the loop body, and therefore not checkpoint
-async def foo_while_9():  # error: 0, iterable
+async def foo_while_9():  # error: 0, "iterable"
     while ...:
         yield  # TRIO108: 8
         await foo()
 
 
 # Might not checkpoint after yield
-async def foo_while_10():  # error: 0, iterable
+async def foo_while_10():  # error: 0, "iterable"
     await foo()
     while ...:
         yield  # TRIO108: 8
@@ -197,7 +197,7 @@ async def foo_while_10():  # error: 0, iterable
         await foo()
 
 
-async def foo_while_11():  # error: 0, iterable
+async def foo_while_11():  # error: 0, "iterable"
     await foo()
     while ...:
         yield  # safe
@@ -211,7 +211,7 @@ async def foo_while_12():
     while ...:
         yield  # TRIO108: 8
 
-        async def foo_nested_error():  # error: 8, iterable
+        async def foo_nested_error():  # error: 8, "iterable"
             yield
 
     await foo()
@@ -219,7 +219,7 @@ async def foo_while_12():
 
 # might execute loop body once, and continue the first time
 # and therefore not checkpoint after yield
-async def foo_while_13():  # error: 0, iterable
+async def foo_while_13():  # error: 0, "iterable"
     await foo()
     while ...:
         yield  # TRIO108: 8
@@ -231,7 +231,7 @@ async def foo_while_13():  # error: 0, iterable
             await foo()
 
 
-async def foo_while_14():  # error: 0, iterable
+async def foo_while_14():  # error: 0, "iterable"
     await foo()
     while ...:
         yield
@@ -246,13 +246,13 @@ async def foo_while_14():  # error: 0, iterable
 
 
 # for
-async def foo_for():  # error: 0, iterable
+async def foo_for():  # error: 0, "iterable"
     await foo()
     for i in "":
         yield  # TRIO108: 8
 
 
-async def foo_for_1():  # error: 0, function
+async def foo_for_1():  # error: 0, "function"
     for _ in "":
         await foo()
 
@@ -264,31 +264,31 @@ async def foo_for_2():  # now safe
         await foo()
 
 
-# nested function definition
+# nested "function" definition
 async def foo_func_1():
     await foo()
 
-    async def foo_func_2():  # error: 4, function
+    async def foo_func_2():  # error: 4, "function"
         ...
 
 
-async def foo_func_3():  # error: 0, function
+async def foo_func_3():  # error: 0, "function"
     async def foo_func_4():
         await foo()
 
 
-async def foo_func_5():  # error: 0, function
+async def foo_func_5():  # error: 0, "function"
     def foo_func_6():  # safe
-        async def foo_func_7():  # error: 8, function
+        async def foo_func_7():  # error: 8, "function"
             ...
 
 
-async def foo_func_8():  # error: 0, function
+async def foo_func_8():  # error: 0, "function"
     def foo_func_9():
         raise
 
 
-# normal function
+# normal "function"
 def foo_normal_func_1():
     return
 
@@ -322,12 +322,12 @@ async def foo_condition_1():  # safe
         ...
 
 
-async def foo_condition_2():  # error: 0, function
+async def foo_condition_2():  # error: 0, "function"
     if False and await foo():
         ...
 
 
-async def foo_condition_3():  # error: 0, function
+async def foo_condition_3():  # error: 0, "function"
     if ... and await foo():
         ...
 
@@ -355,14 +355,14 @@ async def foo_while_break_1():  # safe
         await foo()
 
 
-async def foo_while_break_2():  # error: 0, function
+async def foo_while_break_2():  # error: 0, "function"
     while ...:
         break
     else:
         await foo()
 
 
-async def foo_while_break_3():  # error: 0, function
+async def foo_while_break_3():  # error: 0, "function"
     while ...:
         await foo()
         break
@@ -370,14 +370,14 @@ async def foo_while_break_3():  # error: 0, function
         ...
 
 
-async def foo_while_break_4():  # error: 0, function
+async def foo_while_break_4():  # error: 0, "function"
     while ...:
         break
     else:
         ...
 
 
-async def foo_while_break_5():  # error: 0, iterable
+async def foo_while_break_5():  # error: 0, "iterable"
     while ...:
         await foo()
         if ...:
@@ -401,7 +401,7 @@ async def foo_while_continue_2():  # safe
         await foo()
 
 
-async def foo_while_continue_3():  # error: 0, function
+async def foo_while_continue_3():  # error: 0, "function"
     while ...:
         await foo()
         continue
@@ -409,7 +409,7 @@ async def foo_while_continue_3():  # error: 0, function
         ...
 
 
-async def foo_while_continue_4():  # error: 0, function
+async def foo_while_continue_4():  # error: 0, "function"
     while ...:
         continue
     else:
@@ -423,22 +423,22 @@ async def foo_async_for_1():
 
 # async with
 # async with guarantees checkpoint on at least one of entry or exit
-async def foo_async_with():  # error: 0, iterable
+async def foo_async_with():  # error: 0, "iterable"
     yield  # TRIO108: 4
     async with trio.fail_after(5):
         yield  # TRIO108: 8
 
 
-async def foo_async_with_2():  # error: 0, iterable
+async def foo_async_with_2():  # error: 0, "iterable"
     async with (
         yield
-    ):  # error, with'd expression evaluated before checkpoint, iterable
+    ):  # error, with'd expression evaluated before checkpoint, "iterable"
         # not guaranteed that async with checkpoints on entry (or is that only for trio?)
         yield  # TRIO108: 8
 
 
 # if fail_after checkpoints on entry, will not checkpoint after yield
-async def foo_async_with_3():  # error: 0, iterable
+async def foo_async_with_3():  # error: 0, "iterable"
     async with trio.fail_after(5):
         yield  # TRIO108: 8
 
@@ -449,7 +449,7 @@ async def foo_async_with_4():  # safe
 
 
 # async for
-async def foo_async_for():  # error: 0, iterable
+async def foo_async_for():  # error: 0, "iterable"
     yield  # TRIO108: 4
     async for i in (yield):  # TRIO108: 20
         yield  # safe
@@ -458,7 +458,7 @@ async def foo_async_for():  # error: 0, iterable
 
 
 # await anext(iter) is not called on break
-async def foo_async_for_2():  # error: 0, iterable
+async def foo_async_for_2():  # error: 0, "iterable"
     async for i in trio.trick_pyright:
         yield
         break
@@ -478,7 +478,7 @@ async def foo_async_for_4():  # safe
 # try
 # safe only if (try or else) and all except bodies either await or raise
 # if foo() raises a ValueError it's not checkpointed
-async def foo_try_1():  # error: 0, function
+async def foo_try_1():  # error: 0, "function"
     try:
         await foo()
     except ValueError:
@@ -532,7 +532,7 @@ async def foo_try_4():  # safe
         await foo()
 
 
-async def foo_try_5():  # error: 0, iterable
+async def foo_try_5():  # error: 0, "iterable"
     try:
         await foo()
         yield
@@ -548,7 +548,7 @@ async def foo_try_6():  # safe
 
 
 # no checkpoint after yield in else
-async def foo_try_7():  # error: 0, iterable
+async def foo_try_7():  # error: 0, "iterable"
     try:
         await foo()
     except:
@@ -567,7 +567,7 @@ async def foo_try_8():  # safe
         pass
 
 
-async def foo_try_9():  # error: 0, function
+async def foo_try_9():  # error: 0, "function"
     try:
         pass
     except:
@@ -586,7 +586,7 @@ async def foo_try_10():  # safe
 
 
 # no checkpoint after yield in ValueError
-async def foo_try_11():  # error: 0, iterable
+async def foo_try_11():  # error: 0, "iterable"
     yield
     try:
         await foo()
@@ -599,14 +599,14 @@ async def foo_try_11():  # error: 0, iterable
         pass
 
 
-async def foo_try_12():  # error: 0, iterable
+async def foo_try_12():  # error: 0, "iterable"
     try:
         yield
     except:
         await foo()
 
 
-async def foo_try_13():  # error: 0, iterable
+async def foo_try_13():  # error: 0, "iterable"
     try:
         ...
     except:
@@ -615,7 +615,7 @@ async def foo_try_13():  # error: 0, iterable
         yield
 
 
-async def foo_try_14():  # error: 0, iterable
+async def foo_try_14():  # error: 0, "iterable"
     try:
         yield
     except:
@@ -633,7 +633,7 @@ async def foo_try_15():  # safe
         await foo()
 
 
-async def foo_try_16():  # error: 0, iterable
+async def foo_try_16():  # error: 0, "iterable"
     yield
     try:
         ...

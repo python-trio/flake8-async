@@ -4,7 +4,7 @@ try:
     pass
 except (SyntaxError, ValueError, BaseException):
     raise
-except (SyntaxError, ValueError, trio.Cancelled) as p:  # error: 33, trio.Cancelled
+except (SyntaxError, ValueError, trio.Cancelled) as p:  # error: 33, "trio.Cancelled"
     pass
 except (SyntaxError, ValueError):
     raise
@@ -12,7 +12,7 @@ except trio.Cancelled as e:
     raise e
 except trio.Cancelled as e:
     raise  # acceptable - see https://peps.python.org/pep-0678/#example-usage
-except trio.Cancelled:  # error: 7, trio.Cancelled
+except trio.Cancelled:  # error: 7, "trio.Cancelled"
     pass
 
 # raise different exception
@@ -25,14 +25,14 @@ except trio.Cancelled as e:
     raise BaseException() from e  # TRIO104
 
 # if
-except BaseException as e:  # error: 7, BaseException
+except BaseException as e:  # error: 7, "BaseException"
     if True:
         raise e
     elif True:
         pass
     else:
         raise e
-except BaseException:  # error: 7, BaseException
+except BaseException:  # error: 7, "BaseException"
     if True:
         raise
 except BaseException:  # safe
@@ -44,12 +44,12 @@ except BaseException:  # safe
         raise
 
 # loops
-except trio.Cancelled:  # error: 7, trio.Cancelled
+except trio.Cancelled:  # error: 7, "trio.Cancelled"
     while True:
         raise
     else:
         raise
-except trio.Cancelled:  # error: 7, trio.Cancelled
+except trio.Cancelled:  # error: 7, "trio.Cancelled"
     for _ in "":
         raise
     else:
@@ -58,7 +58,7 @@ except trio.Cancelled:  # error: 7, trio.Cancelled
 # nested try
 # in theory safe if the try, and all excepts raises - and there's a bare except.
 # But is a very weird pattern that we don't handle.
-except BaseException as e:  # error: 7, BaseException
+except BaseException as e:  # error: 7, "BaseException"
     try:
         raise e
     except ValueError:
@@ -94,7 +94,7 @@ except trio.Cancelled as e:
         raise h  # error? currently treated as safe
     raise e
 # bare except, equivalent to `except baseException`
-except:  # error: 0, bare except
+except:  # error: 0, "bare except"
     pass
 try:
     pass
@@ -108,7 +108,7 @@ try:
 except (
     my_super_mega_long_exception_so_it_gets_split,
     SyntaxError,
-    BaseException,  # error: 4, BaseException
+    BaseException,  # error: 4, "BaseException"
     ValueError,
     trio.Cancelled,  # no complaint on this line
 ):

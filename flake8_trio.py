@@ -11,13 +11,35 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.8.1"
 
+
+class Statement(NamedTuple):
+    name: str
+    lineno: int
+    col_offset: int = 0
+
+
+HasLineInfo = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
 Error = Tuple[int, int, str, Type[Any]]
 
+
+Error_codes = {
+    "TRIO100": "{} context contains no checkpoints, add `await trio.sleep(0)`",
+    "TRIO101": "yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling",
+    "TRIO102": "await inside {0.name} on line {0.lineno} must have shielded cancel scope with a timeout",
+    "TRIO103": "{} block with a code path that doesn't re-raise the error",
+    "TRIO104": "Cancelled (and therefore BaseException) must be re-raised",
+    "TRIO105": "trio async function {} must be immediately awaited",
+    "TRIO106": "trio must be imported with `import trio` for the linter to work",
+    "TRIO107": "async {} must have at least one checkpoint on every code path, unless an exception is raised",
+    "TRIO108": "{} from async function with no guaranteed checkpoint since {} on line {}",
+    "TRIO109": "Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead",
+    "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
+}
 
 checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
 cancel_scope_names = (
@@ -34,7 +56,12 @@ context_manager_names = (
 
 
 def make_error(error: str, lineno: int, col: int, *args: Any, **kwargs: Any) -> Error:
-    return (lineno, col, error.format(*args, **kwargs), type(Plugin))
+    return (
+        lineno,
+        col,
+        f"{error}: " + Error_codes[error].format(*args, **kwargs),
+        type(Plugin),
+    )
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
@@ -63,9 +90,11 @@ class Flake8TrioVisitor(ast.NodeVisitor):
                 for node in arg:
                     visit(node)
 
-    def error(self, error: str, lineno: int, col: int, *args: Any, **kwargs: Any):
+    def error(self, error: str, node: HasLineInfo, *args: Any, **kwargs: Any):
         if not self.suppress_errors:
-            self._problems.append(make_error(error, lineno, col, *args, **kwargs))
+            self._problems.append(
+                make_error(error, node.lineno, node.col_offset, *args, **kwargs)
+            )
 
     def get_state(self, *attrs: str) -> Dict[str, Any]:
         if not attrs:
@@ -127,16 +156,21 @@ def has_decorator(decorator_list: List[ast.expr], *names: str):
     return False
 
 
-# handles 100, 101 and 106
+# handles 100, 101, 106, 109, 110
 class VisitorMiscChecks(Flake8TrioVisitor):
     def __init__(self):
         super().__init__()
+
+        # variables only used for 101
         self._yield_is_error = False
         self._safe_decorator = False
 
+    # ---- 100, 101 ----
     def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
+        # 100
         self.check_for_trio100(node)
 
+        # 101 for rest of function
         outer = self.get_state("_yield_is_error")
 
         # Check for a `with trio.<scope_creater>`
@@ -154,13 +188,23 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         # reset yield_is_error
         self.set_state(outer)
 
-    def visit_AsyncWith(self, node: ast.AsyncWith):
-        self.visit_With(node)
+    visit_AsyncWith = visit_With
 
+    # ---- 100 ----
+    def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]):
+        # Context manager with no `await` call within
+        for item in (i.context_expr for i in node.items):
+            call = get_trio_scope(item, *cancel_scope_names)
+            if call and not any(
+                isinstance(x, checkpoint_node_types) and x != node
+                for x in ast.walk(node)
+            ):
+                self.error("TRIO100", item, call)
+
+    # ---- 101 ----
     def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
         outer = self.get_state()
         self._yield_is_error = False
-        self._inside_loop = False
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
         if has_decorator(node.decorator_list, *context_manager_names):
@@ -170,41 +214,36 @@ class VisitorMiscChecks(Flake8TrioVisitor):
 
         self.set_state(outer)
 
+    # ---- 101, 109 ----
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         self.check_109(node.args)
         self.visit_FunctionDef(node)
 
+    # ---- 101 ----
     def visit_Yield(self, node: ast.Yield):
         if self._yield_is_error:
-            self.error(TRIO101, node.lineno, node.col_offset)
+            self.error("TRIO101", node)
 
         self.generic_visit(node)
 
-    def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]):
-        # Context manager with no `await` call within
-        for item in (i.context_expr for i in node.items):
-            call = get_trio_scope(item, *cancel_scope_names)
-            if call and not any(
-                isinstance(x, checkpoint_node_types) and x != node
-                for x in ast.walk(node)
-            ):
-                self.error(TRIO100, item.lineno, item.col_offset, call)
+    # ---- 109 ----
+    def check_109(self, args: ast.arguments):
+        for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
+            if arg.arg == "timeout":
+                self.error("TRIO109", arg)
 
+    # ---- 106 ----
     def visit_ImportFrom(self, node: ast.ImportFrom):
         if node.module == "trio":
-            self.error(TRIO106, node.lineno, node.col_offset)
+            self.error("TRIO106", node)
         self.generic_visit(node)
 
     def visit_Import(self, node: ast.Import):
         for name in node.names:
             if name.name == "trio" and name.asname is not None:
-                self.error(TRIO106, node.lineno, node.col_offset)
+                self.error("TRIO106", node)
 
-    def check_109(self, args: ast.arguments):
-        for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
-            if arg.arg == "timeout":
-                self.error(TRIO109, arg.lineno, arg.col_offset)
-
+    # ---- 110 ----
     def visit_While(self, node: ast.While):
         self.check_for_110(node)
         self.generic_visit(node)
@@ -216,10 +255,10 @@ class VisitorMiscChecks(Flake8TrioVisitor):
             and isinstance(node.body[0].value, ast.Await)
             and get_trio_scope(node.body[0].value.value, "sleep", "sleep_until")
         ):
-            self.error(TRIO110, node.lineno, node.col_offset)
+            self.error("TRIO110", node)
 
 
-def critical_except(node: ast.ExceptHandler) -> Optional[Tuple[int, int, str]]:
+def critical_except(node: ast.ExceptHandler) -> Optional[Statement]:
     def has_exception(node: Optional[ast.expr]) -> str:
         if isinstance(node, ast.Name) and node.id == "BaseException":
             return "BaseException"
@@ -234,25 +273,25 @@ def critical_except(node: ast.ExceptHandler) -> Optional[Tuple[int, int, str]]:
 
     # bare except
     if node.type is None:
-        return node.lineno, node.col_offset, "bare except"
+        return Statement("bare except", node.lineno, node.col_offset)
     # several exceptions
     elif isinstance(node.type, ast.Tuple):
         for element in node.type.elts:
             name = has_exception(element)
             if name:
-                return element.lineno, element.col_offset, name
+                return Statement(name, element.lineno, element.col_offset)
     # single exception, either a Name or an Attribute
     else:
         name = has_exception(node.type)
         if name:
-            return node.type.lineno, node.type.col_offset, name
+            return Statement(name, node.type.lineno, node.type.col_offset)
     return None
 
 
 class Visitor102(Flake8TrioVisitor):
     def __init__(self):
         super().__init__()
-        self._critical_scope: Optional[Tuple[int, int, str]] = None
+        self._critical_scope: Optional[Statement] = None
         self._trio_context_managers: List[TrioScope] = []
         self._safe_decorator = False
 
@@ -270,7 +309,7 @@ class Visitor102(Flake8TrioVisitor):
                 cm.has_timeout and cm.shielded for cm in self._trio_context_managers
             )
         ):
-            self.error(TRIO102, node.lineno, node.col_offset, *self._critical_scope)
+            self.error("TRIO102", node, self._critical_scope)
         if visit_children:
             self.generic_visit(node)
 
@@ -319,7 +358,7 @@ class Visitor102(Flake8TrioVisitor):
     def critical_visit(
         self,
         node: Union[ast.ExceptHandler, Iterable[ast.AST]],
-        block: Tuple[int, int, str],
+        block: Statement,
         generic: bool = False,
     ):
         outer = self.get_state("_critical_scope", "_trio_context_managers")
@@ -333,9 +372,7 @@ class Visitor102(Flake8TrioVisitor):
     def visit_Try(self, node: ast.Try):
         # There's no visit_Finally, so we need to manually visit the Try fields.
         self.visit_nodes(node.body, node.handlers, node.orelse)
-        self.critical_visit(
-            node.finalbody, (node.lineno, node.col_offset, "try/finally")
-        )
+        self.critical_visit(node.finalbody, Statement("try/finally", node.lineno))
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
         res = critical_except(node)
@@ -392,7 +429,7 @@ class Visitor103_104(Flake8TrioVisitor):
         self.generic_visit(node)
 
         if self.unraised and marker is not None:
-            self.error(TRIO103, *marker)
+            self.error("TRIO103", marker, marker.name)
 
         self.set_state(outer)
 
@@ -404,7 +441,7 @@ class Visitor103_104(Flake8TrioVisitor):
             and node.exc is not None
             and not (isinstance(node.exc, ast.Name) and node.exc.id == self.except_name)
         ):
-            self.error(TRIO104, node.lineno, node.col_offset)
+            self.error("TRIO104", node)
 
         # treat it as safe regardless, to avoid unnecessary error messages.
         self.unraised = False
@@ -414,7 +451,7 @@ class Visitor103_104(Flake8TrioVisitor):
     def visit_Return(self, node: Union[ast.Return, ast.Yield]):
         if self.unraised:
             # Error: must re-raise
-            self.error(TRIO104, node.lineno, node.col_offset)
+            self.error("TRIO104", node)
         self.generic_visit(node)
 
     visit_Yield = visit_Return
@@ -478,7 +515,7 @@ class Visitor103_104(Flake8TrioVisitor):
 
     def visit_Break(self, node: Union[ast.Break, ast.Continue]):
         if self.unraised and self.loop_depth == 0:
-            self.error(TRIO104, node.lineno, node.col_offset)
+            self.error("TRIO104", node)
         self.generic_visit(node)
 
     visit_Continue = visit_Break
@@ -523,7 +560,7 @@ class Visitor105(Flake8TrioVisitor):
                 or not isinstance(self.node_stack[-2], ast.Await)
             )
         ):
-            self.error(TRIO105, node.lineno, node.col_offset, node.func.attr)
+            self.error("TRIO105", node, node.func.attr)
         self.generic_visit(node)
 
 
@@ -557,17 +594,15 @@ class Visitor107_108(Flake8TrioVisitor):
         # checkpoint before yield, it will error)
         if self.always_checkpoint is not None and self.yield_count:
             self.error(
-                TRIO107,
-                node.lineno,
-                node.col_offset,
+                "TRIO107",
+                node,
                 "iterable",
                 *self.always_checkpoint,
             )
         elif self.always_checkpoint is not None and not self.safe_decorator:
             self.error(
-                TRIO107,
-                node.lineno,
-                node.col_offset,
+                "TRIO107",
+                node,
                 "function",
                 *self.always_checkpoint,
             )
@@ -579,9 +614,9 @@ class Visitor107_108(Flake8TrioVisitor):
         if self.always_checkpoint is not None and (
             not self.safe_decorator or self.yield_count
         ):
-            self.error(
-                TRIO108, node.lineno, node.col_offset, "return", *self.always_checkpoint
-            )
+            self.error("TRIO108", node, "return", *self.always_checkpoint)
+        # avoid duplicate error messages
+        self.all_await = True
 
         # avoid duplicate error messages
         self.always_checkpoint = None
@@ -616,9 +651,7 @@ class Visitor107_108(Flake8TrioVisitor):
         self.generic_visit(node)
         self.yield_count += 1
         if self.always_checkpoint is not None:
-            self.error(
-                TRIO108, node.lineno, node.col_offset, "yield", *self.always_checkpoint
-            )
+            self.error("TRIO108", node, "yield", *self.always_checkpoint)
         self.always_checkpoint = ("yield", node.lineno)
 
     # valid checkpoint if there's valid checkpoints (or raise) in:
@@ -781,18 +814,3 @@ class Plugin:
     def run(self) -> Iterable[Error]:
         for v in Flake8TrioVisitor.__subclasses__():
             yield from v.run(self._tree)
-
-
-TRIO100 = "TRIO100: {} context contains no checkpoints, add `await trio.sleep(0)`"
-TRIO101 = "TRIO101: yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling"
-TRIO102 = "TRIO102: await inside {2} on line {0} must have shielded cancel scope with a timeout"
-TRIO103 = "TRIO103: {} block with a code path that doesn't re-raise the error"
-TRIO104 = "TRIO104: Cancelled (and therefore BaseException) must be re-raised"
-TRIO105 = "TRIO105: trio async function {} must be immediately awaited"
-TRIO106 = "TRIO106: trio must be imported with `import trio` for the linter to work"
-TRIO107 = "TRIO107: async {} must have at least one checkpoint on every code path, unless an exception is raised"
-TRIO108 = (
-    "TRIO108: {} from async function with no guaranteed checkpoint since {} on line {}"
-)
-TRIO109 = "TRIO109: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead"
-TRIO110 = "TRIO110: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`."

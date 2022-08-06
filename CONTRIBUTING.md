@@ -25,6 +25,14 @@ tox -e ALL
 tox -e ALL -p --develop
 ```
 
+## Meta-tests
+To check that all codes are tested and documented there's a test that error codes mentioned in `README.md`, `CHANGELOG.md` (matching `TRIO\d\d\d`), the keys in `flake8_trio.Error_codes` and codes parsed from filenames matching `tests/trio*.py`, are all equal.
+
+## Test generator
+Tests are automatically generated for files named `trio*.py` in the `tests/` directory, with the code that it's testing interpreted from the file name. The file extension is split off, if there's a match for for `_py\d*` it strips that off and uses it to determine if there's a minimum python version for which the test should only run.
+
+Lines containing `error:` are parsed as expecting an error of the code matching the file name, with everything on the line after the colon `eval`'d and passed as arguments to `flake8_trio.Error_codes[<error_code>].str_format`. The `globals` argument to `eval` contains a `lineno` variable assigned the current line number, and the `flake8_trio.Statement` namedtuple. The first element after `error:` *must* be an integer containing the column where the error on that line originates.
+
 
 ## Style Guide
 
