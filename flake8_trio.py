@@ -35,8 +35,8 @@ Error_codes = {
     "TRIO104": "Cancelled (and therefore BaseException) must be re-raised",
     "TRIO105": "trio async function {} must be immediately awaited",
     "TRIO106": "trio must be imported with `import trio` for the linter to work",
-    "TRIO107": "async {} must have at least one checkpoint on every code path, unless an exception is raised",
-    "TRIO108": "{} from async function with no guaranteed checkpoint since {} on line {}",
+    "TRIO107": "{0} from async function with no guaranteed checkpoint or exception since function definition on line {1.lineno}",
+    "TRIO108": "{0} from async iterable with no guaranteed checkpoint since {1.name} on line {1.lineno}",
     "TRIO109": "Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead",
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
 }
@@ -564,59 +564,50 @@ class Visitor105(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
-Checkpoint_Type = Optional[Tuple[str, int]]
-
-
 class Visitor107_108(Flake8TrioVisitor):
     def __init__(self):
         super().__init__()
         self.yield_count = 0
 
-        self.always_checkpoint: Checkpoint_Type = None
-        self.checkpoint_continue: Checkpoint_Type = None
-        self.checkpoint_break: Checkpoint_Type = None
+        self.always_checkpoint: Optional[Statement] = None
+        self.checkpoint_continue: Optional[Statement] = None
+        self.checkpoint_break: Optional[Statement] = None
+
+        self.default = self.get_state()
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         if has_decorator(node.decorator_list, "overload"):
             return
 
         outer = self.get_state()
+        self.set_state(self.default)
 
-        self.always_checkpoint = ("function definition", node.lineno)
-        self.safe_decorator = has_decorator(node.decorator_list, *context_manager_names)
+        self.always_checkpoint = Statement("function definition", node.lineno)
 
         self.generic_visit(node)
+        self.check_function_exit(node)
 
+        self.set_state(outer)
+
+    def check_function_exit(self, node: Union[ast.Return, ast.AsyncFunctionDef]):
         # error if function exits w/o checkpoint
         # and there was either no decorator, or there was a yield in it
         # we ignore contextmanager decorators with yields since the decorator may
         # checkpoint on entry, which the yield then unsets. (and if there's no explicit
         # checkpoint before yield, it will error)
-        if self.always_checkpoint is not None and self.yield_count:
-            self.error(
-                "TRIO107",
-                node,
-                "iterable",
-                *self.always_checkpoint,
-            )
-        elif self.always_checkpoint is not None and not self.safe_decorator:
-            self.error(
-                "TRIO107",
-                node,
-                "function",
-                *self.always_checkpoint,
-            )
-
-        self.set_state(outer)
+        if isinstance(node, ast.Return):
+            method = "return"
+        else:
+            method = "exit"
+        if self.always_checkpoint is not None:
+            if self.yield_count:
+                self.error("TRIO108", node, method, self.always_checkpoint)
+            else:
+                self.error("TRIO107", node, method, self.always_checkpoint)
 
     def visit_Return(self, node: ast.Return):
         self.generic_visit(node)
-        if self.always_checkpoint is not None and (
-            not self.safe_decorator or self.yield_count
-        ):
-            self.error("TRIO108", node, "return", *self.always_checkpoint)
-        # avoid duplicate error messages
-        self.all_await = True
+        self.check_function_exit(node)
 
         # avoid duplicate error messages
         self.always_checkpoint = None
@@ -624,6 +615,7 @@ class Visitor107_108(Flake8TrioVisitor):
     # disregard checkpoints in nested function definitions
     def visit_FunctionDef(self, node: ast.FunctionDef):
         outer = self.get_state()
+        self.set_state(self.default)
         self.generic_visit(node)
         self.set_state(outer)
 
@@ -651,8 +643,8 @@ class Visitor107_108(Flake8TrioVisitor):
         self.generic_visit(node)
         self.yield_count += 1
         if self.always_checkpoint is not None:
-            self.error("TRIO108", node, "yield", *self.always_checkpoint)
-        self.always_checkpoint = ("yield", node.lineno)
+            self.error("TRIO108", node, "yield", self.always_checkpoint)
+        self.always_checkpoint = Statement("yield", node.lineno)
 
     # valid checkpoint if there's valid checkpoints (or raise) in:
     # (try or else) and all excepts, or in finally
@@ -664,7 +656,7 @@ class Visitor107_108(Flake8TrioVisitor):
         body_always_checkpoint = self.always_checkpoint
         for inner_node in self.walk(*node.body):
             if isinstance(inner_node, ast.Yield):
-                body_always_checkpoint = ("yield", inner_node.lineno)
+                body_always_checkpoint = Statement("yield", inner_node.lineno)
                 break
 
         # check try body
@@ -672,7 +664,7 @@ class Visitor107_108(Flake8TrioVisitor):
         try_checkpoint = self.always_checkpoint
 
         # check that all except handlers checkpoint (await or most likely raise)
-        all_except_checkpoint: Checkpoint_Type = None
+        all_except_checkpoint: Optional[Statement] = None
         for handler in node.handlers:
             # if there's any `yield`s in try body, exception might be thrown there
             self.always_checkpoint = body_always_checkpoint
