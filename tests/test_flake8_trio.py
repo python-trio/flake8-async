@@ -22,6 +22,10 @@ test_files: List[Tuple[str, str]] = sorted(
 )
 
 
+class ParseError(Exception):
+    ...
+
+
 # These functions are messily cobbled together and their formatting requirements
 # should be documented in the readme
 #
@@ -43,12 +47,19 @@ def test_eval(test: str, path: str):
 
     assert test in Error_codes.keys(), "error code not defined in flake8_trio.py"
 
+    include = [test]
     expected: List[Error] = []
     with open(os.path.join("tests", path)) as file:
         lines = file.readlines()
 
     for lineno, line in enumerate(lines, start=1):
         line = line.strip()
+
+        if reg_match := re.search(r"(?<=INCLUDE).*", line):
+            for other_code in reg_match.group().split(" "):
+                if other_code.strip():
+                    include.append(other_code.strip())
+
         # skip commented out lines
         if not line or line[0] == "#":
             continue
@@ -77,17 +88,21 @@ def test_eval(test: str, path: str):
             ), f'invalid column "{col}" @L{lineno}, in "{line}"'
 
             # assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
-            expected.append(make_error(test, lineno, int(col), *args))
+            try:
+                expected.append(make_error(test, lineno, int(col), *args))
+            except AttributeError as e:
+                msg = f'Line {lineno}: Failed to format\n "{Error_codes[test]}"\nwith\n{args}'
+                raise ParseError(msg) from e
 
     assert expected, f"failed to parse any errors in file {path}"
-    assert_expected_errors(path, test, *expected)
+    assert_expected_errors(path, include, *expected)
 
 
-def assert_expected_errors(test_file: str, include: str, *expected: Error):
+def assert_expected_errors(test_file: str, include: Iterable[str], *expected: Error):
     filename = Path(__file__).absolute().parent / test_file
     plugin = Plugin.from_filename(str(filename))
 
-    errors = tuple(sorted(e for e in plugin.run() if include in e[2]))
+    errors = tuple(sorted(e for e in plugin.run() if any(i in e[2] for i in include)))
 
     assert_correct_lines(errors, expected)
     assert_correct_columns(errors, expected)
@@ -146,12 +161,20 @@ def assert_correct_messages(errors: Iterable[Error], expected: Iterable[Error]):
                     file=sys.stderr,
                 )
                 msg_error = True
+            i = 0
+            while error_msg[i] == expected_msg[i]:
+                i += 1
+            j = -1
+            while error_msg[j] == expected_msg[j]:
+                j -= 1
+            end = None if j == -1 else j + 1
             print(
-                f"*   line: {line:3}",
-                f"  actual: {error_msg}",
-                f"expected: {expected_msg}",
+                f"*    line: {line:3} differs\n",
+                f"    same: {error_msg[:i]}\n",
+                f"  actual: {error_msg[i:end]}\n",
+                f"expected: {expected_msg[i:end]}\n",
+                f"     end: {error_msg[end:]}\n" if end is not None else "",
                 "-" * 20,
-                sep="\n",
                 file=sys.stderr,
             )
     assert not msg_error
