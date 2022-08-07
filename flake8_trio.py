@@ -14,7 +14,7 @@ import tokenize
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.8.1"
+__version__ = "22.8.2"
 
 
 class Statement(NamedTuple):

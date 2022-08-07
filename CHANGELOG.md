@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 22.8.2
 - Merged TRIO108 into TRIO107
 - TRIO108 now handles checkpointing in async iterators
 
