@@ -52,39 +52,7 @@ async def foo_ifexp_2():  # error: 0, "exit", Statement("function", lineno)
     print(_ if False and await foo() else await foo())
 
 
-# loops
-async def foo_while_1():  # error: 0, "exit", Statement("function", lineno)
-    while _:
-        await foo()
-
-
-async def foo_while_2():  # now safe
-    while _:
-        await foo()
-    else:
-        await foo()
-
-
-async def foo_while_3():  # safe
-    await foo()
-    while _:
-        ...
-
-
-# for
-async def foo_for_1():  # error: 0, "exit", Statement("function", lineno)
-    for _ in "":
-        await foo()
-
-
-async def foo_for_2():  # now safe
-    for _ in "":
-        await foo()
-    else:
-        await foo()
-
-
-# nested "function" definition
+# nested function definition
 async def foo_func_1():
     await foo()
 
@@ -108,7 +76,7 @@ async def foo_func_8():  # error: 0, "exit", Statement("function", lineno)
         raise
 
 
-# normal "function"
+# normal function
 def foo_normal_func_1():
     return
 
@@ -161,6 +129,38 @@ async def foo_condition_5():  # safe
 async def foo_condition_6():  # in theory error, but not worth parsing
     for i in (None, await foo()):
         break
+
+
+# loops
+async def foo_while_1():  # error: 0, "exit", Statement("function", lineno)
+    while _:
+        await foo()
+
+
+async def foo_while_2():  # now safe
+    while _:
+        await foo()
+    else:
+        await foo()
+
+
+async def foo_while_3():  # safe
+    await foo()
+    while _:
+        ...
+
+
+# for
+async def foo_for_1():  # error: 0, "exit", Statement("function", lineno)
+    for _ in "":
+        await foo()
+
+
+async def foo_for_2():  # now safe
+    for _ in "":
+        await foo()
+    else:
+        await foo()
 
 
 async def foo_while_break_1():  # safe
@@ -230,6 +230,21 @@ async def foo_async_for_1():
 
 # async with
 # async with guarantees checkpoint on at least one of entry or exit
+async def foo_async_with():
+    async with trio.trick_pyright:
+        ...
+
+
+# raise
+async def foo_raise_1():  # safe
+    raise ValueError()
+
+
+async def foo_raise_2():  # safe
+    if _:
+        await foo()
+    else:
+        raise ValueError()
 
 
 # try
@@ -266,18 +281,6 @@ async def foo_try_3():  # safe
         raise
 
 
-# raise
-async def foo_raise_1():  # safe
-    raise ValueError()
-
-
-async def foo_raise_2():  # safe
-    if _:
-        await foo()
-    else:
-        raise ValueError()
-
-
 async def foo_try_4():  # safe
     try:
         ...
@@ -289,7 +292,7 @@ async def foo_try_4():  # safe
         await foo()
 
 
-async def foo_try_8():  # safe
+async def foo_try_5():  # safe
     await foo()
     try:
         pass
@@ -299,7 +302,7 @@ async def foo_try_8():  # safe
         pass
 
 
-async def foo_try_9():  # error: 0, "exit", Statement("function", lineno)
+async def foo_try_6():  # error: 0, "exit", Statement("function", lineno)
     try:
         pass
     except:
@@ -308,7 +311,7 @@ async def foo_try_9():  # error: 0, "exit", Statement("function", lineno)
         pass
 
 
-async def foo_try_10():  # safe
+async def foo_try_7():  # safe
     try:
         await foo()
     except:

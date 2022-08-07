@@ -590,15 +590,9 @@ class Visitor107_108(Flake8TrioVisitor):
         self.set_state(outer)
 
     def check_function_exit(self, node: Union[ast.Return, ast.AsyncFunctionDef]):
-        # error if function exits w/o checkpoint
-        # and there was either no decorator, or there was a yield in it
-        # we ignore contextmanager decorators with yields since the decorator may
-        # checkpoint on entry, which the yield then unsets. (and if there's no explicit
-        # checkpoint before yield, it will error)
-        if isinstance(node, ast.Return):
-            method = "return"
-        else:
-            method = "exit"
+        # error if function exits w/o guaranteed checkpoint since function entry
+        method = "return" if isinstance(node, ast.Return) else "exit"
+
         if self.always_checkpoint is not None:
             if self.yield_count:
                 self.error("TRIO108", node, method, self.always_checkpoint)
@@ -629,30 +623,39 @@ class Visitor107_108(Flake8TrioVisitor):
     # raising exception means we don't need to checkpoint so we can treat it as one
     visit_Raise = visit_Await
 
-    # checkpoint on one of enter and exit of with body
+    # guaranteed to checkpoint on at least one of enter and exit
+    # if it checkpoints on entry and there's a yield in it, we can't treat it as checkpoint
+    # but it may not checkpoint on entry, so yields inside need to raise problem
     def visit_AsyncWith(self, node: ast.AsyncWith):
         self.visit_nodes(node.items)
         prebody_yield_count = self.yield_count
+
+        # there's no guarantee of checkpoint before entry
         self.visit_nodes(node.body)
-        # if there was no yield in body that may unset a checkpoint on exit,
-        # treat this as a checkpoint
+
+        # no yield in body, treat as checkpoint
         if prebody_yield_count == self.yield_count:
             self.always_checkpoint = None
 
+    # error if no checkpoint since earlier yield or function entry
     def visit_Yield(self, node: ast.Yield):
         self.generic_visit(node)
         self.yield_count += 1
         if self.always_checkpoint is not None:
             self.error("TRIO108", node, "yield", self.always_checkpoint)
+
+        # mark as requiring checkpoint after
         self.always_checkpoint = Statement("yield", node.lineno)
 
     # valid checkpoint if there's valid checkpoints (or raise) in:
     # (try or else) and all excepts, or in finally
-
-    # try can jump into any except or into the finally at any point during it's execution
-    # so we need to make sure except & finally can handle a worst-case exception
+    #
+    # try can jump into any except or into the finally* at any point during it's
+    # execution so we need to make sure except & finally can handle worst-case
+    # * unless there's a bare except / except BaseException - not implemented.
     def visit_Try(self, node: ast.Try):
-        # check worst case try exception
+        # except & finally guaranteed to enter with checkpoint if checkpointed
+        # before try and no yield in try body.
         body_always_checkpoint = self.always_checkpoint
         for inner_node in self.walk(*node.body):
             if isinstance(inner_node, ast.Yield):
@@ -661,36 +664,38 @@ class Visitor107_108(Flake8TrioVisitor):
 
         # check try body
         self.visit_nodes(node.body)
+
+        # save state at end of try for entering else
         try_checkpoint = self.always_checkpoint
 
         # check that all except handlers checkpoint (await or most likely raise)
         all_except_checkpoint: Optional[Statement] = None
         for handler in node.handlers:
-            # if there's any `yield`s in try body, exception might be thrown there
+            # enter with worst case of try
             self.always_checkpoint = body_always_checkpoint
 
             self.visit_nodes(handler)
+
             if self.always_checkpoint is not None:
                 all_except_checkpoint = self.always_checkpoint
-                break
 
         # check else
         # if else runs it's after all of try, so restore state to back then
         self.always_checkpoint = try_checkpoint
         self.visit_nodes(node.orelse)
 
-        # checkpoint if else checkpoints, and all excepts
+        # checkpoint if else checkpoints, and all excepts checkpoint
         if all_except_checkpoint is not None:
             self.always_checkpoint = all_except_checkpoint
 
+        # if there's no finally, don't restore state from try
         if node.finalbody:
-            # if there's a finally, it can get jumped to at the worst time
-            # from the try
+            # can enter from try, else, or any except
             if body_always_checkpoint is not None:
                 self.always_checkpoint = body_always_checkpoint
             self.visit_nodes(node.finalbody)
 
-    # valid checkpoint if both body and orelse have checkpoints
+    # valid checkpoint if both body and orelse checkpoint
     def visit_If(self, node: Union[ast.If, ast.IfExp]):
         # visit condition
         self.visit_nodes(node.test)
@@ -713,11 +718,17 @@ class Visitor107_108(Flake8TrioVisitor):
     # inline if
     visit_IfExp = visit_If
 
+    # Check for yields w/o checkpoint inbetween due to entering loop body the first time,
+    # after completing all of loop body, and after any continues.
+    # yield in else have same requirement
+    # state after the loop same as above, and in addition the state at any break
     def visit_loop(self, node: Union[ast.While, ast.For, ast.AsyncFor]):
+        # save state in case of nested loops
         outer = self.get_state(
             "checkpoint_continue", "checkpoint_break", "suppress_errors"
         )
 
+        # visit condition
         if isinstance(node, ast.While):
             self.visit_nodes(node.test)
         else:
@@ -726,12 +737,14 @@ class Visitor107_108(Flake8TrioVisitor):
 
         self.checkpoint_continue = None
         pre_body_always_checkpoint = self.always_checkpoint
-        # Async for always enters and exit loop body with checkpoint (regardless of continue)
+
+        # AsyncFor guaranteed checkpoint at every iteration
         if isinstance(node, ast.AsyncFor):
             pre_body_always_checkpoint = None
             self.always_checkpoint = None
 
-        # check for worst-case start of loop due to `continue` or multiple iterations
+        # if we normally enter loop with checkpoint, check for worst-case start of loop
+        # due to `continue` or multiple iterations
         elif self.always_checkpoint is None:
             # silently check if body unsets yield
             # so we later can check if body errors out on worst case of entering
@@ -749,16 +762,22 @@ class Visitor107_108(Flake8TrioVisitor):
         self.checkpoint_break = None
         self.visit_nodes(node.body)
 
+        # AsyncFor guarantees checkpoint on running out of iterable
+        # so reset checkpoint state at end of loop. (but not state at break)
         if isinstance(node, ast.AsyncFor):
             self.always_checkpoint = None
         else:
-            # enter orelse with worst case: loop body might execute fully before
-            # entering orelse, or not at all, or at a continue
+            # enter orelse with worst case:
+            # loop body might execute fully before entering orelse
+            # (current state of self.always_checkpoint)
+            # or not at all
             if pre_body_always_checkpoint is not None:
                 self.always_checkpoint = pre_body_always_checkpoint
+            # or at a continue
             elif self.checkpoint_continue is not None:
                 self.always_checkpoint = self.checkpoint_continue
 
+        # visit orelse
         self.visit_nodes(node.orelse)
 
         # We may exit from:
@@ -767,12 +786,14 @@ class Visitor107_108(Flake8TrioVisitor):
         if self.checkpoint_break is not None:
             self.always_checkpoint = self.checkpoint_break
 
+        # reset state in case of nested loops
         self.set_state(outer)
 
     visit_While = visit_loop
     visit_For = visit_loop
     visit_AsyncFor = visit_loop
 
+    # save state in case of continue/break at a point not guaranteed to checkpoint
     def visit_Continue(self, node: ast.Continue):
         if self.always_checkpoint is not None:
             self.checkpoint_continue = self.always_checkpoint
@@ -781,12 +802,15 @@ class Visitor107_108(Flake8TrioVisitor):
         if self.always_checkpoint is not None:
             self.checkpoint_break = self.always_checkpoint
 
-    # first node in boolops can checkpoint, the others might not execute
+    # first node in a condition is guaranteed to run, but may shortcut so checkpoints
+    # in remaining nodes are not guaranteed
+    # Not fully implemented: worst case shortcut with yields in condition
     def visit_BoolOp(self, node: ast.BoolOp):
         self.visit(node.op)
         self.visit_nodes(node.values[:1])
         outer = self.always_checkpoint
         self.visit_nodes(node.values[1:])
+
         self.always_checkpoint = outer
 
 

@@ -1,8 +1,7 @@
 import contextlib
 import contextlib as anything
-import typing
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, Union, overload
+from typing import Any
 
 import trio
 
@@ -102,12 +101,11 @@ async def foo_async_for():  # error: 0, "exit", Statement("yield", lineno+6)
 
 
 # await anext(iter) is not called on break
-async def foo_async_for_2():  # error: 0, "exit", Statement("yield", lineno+5)
+async def foo_async_for_2():  # error: 0, "exit", Statement("yield", lineno+2)
     async for i in trio.trick_pyright:
         yield
         if ...:
             break
-    yield  # error: 4, "yield", Statement("yield", lineno-3)
 
 
 async def foo_async_for_3():  # safe
@@ -119,13 +117,6 @@ async def foo_async_for_4():  # safe
     async for i in trio.trick_pyright:
         yield
         continue
-
-
-# await anext(iter) is not called on break
-async def foo_async_for_6():  # error: 0, "exit", Statement("yield", lineno+2)
-    async for i in trio.trick_pyright:
-        yield
-        break
 
 
 # for
@@ -142,81 +133,47 @@ async def foo_for_1():  # error: 0, "exit", Statement("function definition", lin
 
 
 # while
-async def foo_while_0():  # error: 0, "exit", Statement("yield", lineno+7)
+
+# safe if checkpoint in else
+async def foo_while_1():  # error: 0, "exit", Statement("yield", lineno+5)
     while ...:
-        await foo()
-        if ...:
-            break  # if it breaks, have checkpointed
-    else:
-        await foo()  # runs if 0-iter
-    yield  # safe
-
-
-async def foo_while_1():  # error: 0, "exit", Statement("yield", lineno+7)
-    while ...:
-        if ...:
-            break
-        await foo()  # might not run
-    else:
-        await foo()  # might not run
-    yield  # error: 4, "yield", Statement("function definition", lineno-7)
-
-
-async def foo_while_2():  # error: 0, "exit", Statement("yield", lineno+5)
-    while ...:
-        await foo()
+        ...
     else:
         await foo()  # will always run
     yield  # safe
 
 
-async def foo_while_3():  # error: 0, "exit", Statement("yield", lineno+3)
+# simple yield-in-loop case
+async def foo_while_2():  # error: 0, "exit", Statement("yield", lineno+3)
     await foo()
     while ...:
         yield  # error: 8, "yield", Statement("yield", lineno)
 
 
+# multiple errors: 8, "yield", Statement("yield", lineno-2)
 # no checkpoint after yield if else is entered
-async def foo_while_4():  # error: 0, "exit", Statement("yield", lineno+6)
-    await foo()
+async def foo_while_3():  # error: 0, "exit", Statement("yield", lineno+5)
     while ...:
         await foo()
         yield
     else:
-        yield  # error: 8, "yield", Statement("yield", lineno-2)
+        yield  # error: 8, "yield", Statement("function definition", lineno-5)
 
 
-# no checkpoint after yield if else is entered
-async def foo_while_5():  # error: 0, "exit", Statement("yield", lineno+6)
-    while ...:
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
-        await foo()
-    else:
-        # might not enter loop body
-        yield  # error: 8, "yield", Statement("function definition", lineno-6)
-
-
-# Might not checkpoint after yield
-async def foo_while_6():  # error: 0, "exit", Statement("yield", lineno+3)
+# should raise multiple errors
+# check that errors are suppressed in visit_While
+async def foo_while_4():  # error: 0, "exit", Statement("yield", lineno+3)
     await foo()
     while ...:
         yield  # error: 8, "yield", Statement("yield", lineno)
-        if ...:
-            continue
-        await foo()
+        while ...:
+            yield  # error: 12, "yield", Statement("yield", lineno-2)
+            while ...:
+                yield  # error: 16, "yield", Statement("yield", lineno-2)
 
 
-async def foo_while_7():  # error: 0, "exit", Statement("yield", lineno+3)
-    await foo()
-    while ...:
-        yield  # safe
-        if ...:
-            break
-        await foo()
-
-
-# check nested error is only printed once
-async def foo_while_9():
+# check error suppression is reset
+async def foo_while_5():
     await foo()
     while ...:
         yield  # error: 8, "yield", Statement("yield", lineno)
@@ -227,21 +184,77 @@ async def foo_while_9():
     await foo()
 
 
-# might execute loop body once, and continue the first time
-# and therefore not checkpoint after yield
-async def foo_while_11():  # error: 0, "exit", Statement("yield", lineno+3)
+# --- while + continue ---
+# no checkpoint on continue
+async def foo_while_continue_1():  # error: 0, "exit", Statement("yield", lineno+3)
     await foo()
     while ...:
         yield  # error: 8, "yield", Statement("yield", lineno)
         if ...:
             continue
         await foo()
+
+
+# multiple continues
+async def foo_while_continue_2():  # error: 0, "exit", Statement("yield", lineno+3)
+    await foo()
+    while ...:
+        yield  # error: 8, "yield", Statement("yield", lineno)
+        if ...:
+            continue
+        await foo()
+        if ...:
+            continue
         while ...:
             yield  # safe
             await foo()
 
 
-async def foo_while_12():  # error: 0, "exit", Statement("yield", lineno+12)
+# --- while + break ---
+# else might not run
+async def foo_while_break_1():  # error: 0, "exit", Statement("yield", lineno+6)
+    while ...:
+        if ...:
+            break
+    else:
+        await foo()
+    yield  # error: 4, "yield", Statement("function definition", lineno-6)
+
+
+# no checkpoint on break
+async def foo_while_break_2():  # error: 0, "exit", Statement("yield", lineno+3)
+    await foo()
+    while ...:
+        yield  # safe
+        if ...:
+            break
+        await foo()
+
+
+# guaranteed if else and break
+async def foo_while_break_3():  # error: 0, "exit", Statement("yield", lineno+7)
+    while ...:
+        await foo()
+        if ...:
+            break  # if it breaks, have checkpointed
+    else:
+        await foo()  # runs if 0-iter
+    yield  # safe
+
+
+# break at non-guaranteed checkpoint
+async def foo_while_break_4():  # error: 0, "exit", Statement("yield", lineno+7)
+    while ...:
+        if ...:
+            break
+        await foo()  # might not run
+    else:
+        await foo()  # might not run
+    yield  # error: 4, "yield", Statement("function definition", lineno-7)
+
+
+# check break is reset on nested
+async def foo_while_break_5():  # error: 0, "exit", Statement("yield", lineno+12)
     await foo()
     while ...:
         yield
@@ -256,7 +269,8 @@ async def foo_while_12():  # error: 0, "exit", Statement("yield", lineno+12)
     yield  # error: 4, "yield", Statement("yield", lineno-9)
 
 
-async def foo_while_13():  # error: 0, "exit", Statement("yield", lineno+11)
+# check multiple breaks
+async def foo_while_break_6():  # error: 0, "exit", Statement("yield", lineno+11)
     await foo()
     while ...:
         yield
@@ -268,6 +282,15 @@ async def foo_while_13():  # error: 0, "exit", Statement("yield", lineno+11)
         if ...:
             break
     yield  # error: 4, "yield", Statement("yield", lineno-8)
+
+
+async def foo_while_break_7():  # error: 0, "exit", Statement("yield", lineno+5)
+    while ...:
+        await foo()
+        if ...:
+            break
+        yield
+        break
 
 
 # try
@@ -345,32 +368,10 @@ async def foo_try_7():  # error: 0, "exit", Statement("yield", lineno+16)
     yield  # error: 4, "yield", Statement("yield", lineno-13)
 
 
-# raise
-async def foo_raise_1():  # safe
-    raise ValueError()
-
-
-async def foo_raise_2():  # safe
-    if _:
-        await foo()
-    else:
-        raise ValueError()
-
-
-async def foo_try_8():  # safe
-    await foo()
-    try:
-        pass
-    except:
-        pass
-    else:
-        pass
-
-
 ## safe only if (try or else) and all except bodies either await or raise
 ## if foo() raises a ValueError it's not checkpointed
 # Should raise multiple errors
-async def foo_try_18():  # error: 0, "exit", Statement("yield", lineno+3)
+async def foo_try_8():  # error: 0, "exit", Statement("yield", lineno+3)
     try:
         await foo()
         yield
@@ -381,56 +382,27 @@ async def foo_try_18():  # error: 0, "exit", Statement("yield", lineno+3)
         raise
     else:
         await foo()
-
-
-async def foo_try_19():  # safe
-    try:
-        ...
-    except ValueError:
-        ...
-    except:
-        raise
-    finally:
-        await foo()
-
-
-async def foo_try_20():  # safe
-    try:
-        await foo()
-    except ValueError:
-        await foo()
-    except:
-        raise
-
-
-async def foo_try_21():  # safe
-    try:
-        ...
-    except ValueError:
-        raise
-    except:
-        raise
-    else:
-        await foo()
-
-
-async def foo_try_22():  # error: 0, "exit", Statement("yield", lineno+3)
-    try:
-        await foo()
-        yield
-        await foo()
-    except:
-        pass
 
 
 # no checkpoint after yield in else
-async def foo_try_24():  # error: 0, "exit", Statement("yield", lineno+6)
+async def foo_try_9():  # error: 0, "exit", Statement("yield", lineno+6)
     try:
         await foo()
     except:
         await foo()
     else:
         yield
+
+
+# in theory safe, but not currently handled
+async def foo_try_10():
+    try:
+        await foo()
+    except:
+        await foo()
+    finally:
+        yield  # error: 8, "yield", Statement("function definition", lineno-6)
+        await foo()
 
 
 # if
@@ -493,30 +465,6 @@ async def foo_if_6():  # error: 0, "exit", Statement("yield", lineno+8)
     yield  # error: 4, "yield", Statement("yield", lineno-5)
 
 
-# If
-
-# should raise multiple
-async def foo_if_11():  # error: 0, "exit", Statement("yield", lineno+2)
-    if ...:
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
-
-
-async def foo_if_12():  # error: 0, "exit", Statement("function definition", lineno)
-    if ...:
-        ...
-    else:
-        yield  # error: 8, "yield", Statement("function definition", lineno-4)
-
-
-async def foo_if_13():
-    if ...:
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
-        await foo()
-    else:
-        yield  # error: 8, "yield", Statement("function definition", lineno-5)
-        await foo()
-
-
 async def foo_if_14():  # error: 0, "exit", Statement("function definition", lineno)
     if ...:
         await foo()
@@ -533,6 +481,21 @@ async def foo_if_15():  # error: 0, "exit", Statement("function definition", lin
         await foo()
 
 
+# IfExp
+# should raise multiple
+async def foo_ifexp_1():  # error: 0, "exit", Statement("yield", lineno+1)
+    print((yield) if await foo() else (yield))
+
+
+# should raise multiple
+async def foo_ifexp_2():  # error: 0, "exit", Statement("yield", lineno+2)
+    print(
+        (yield)  # error: 9, "yield", Statement("function definition", lineno-2)
+        if False and await foo()
+        else await foo()
+    )
+
+
 # normal function
 def foo_normal_func_1():
     return
@@ -544,35 +507,6 @@ def foo_normal_func_2():
 
 def foo_normal_func_3():
     yield
-
-
-# overload decorator
-@overload
-async def foo_overload_1(_: bytes):
-    ...
-
-
-@typing.overload
-async def foo_overload_1(_: str):
-    ...
-
-
-async def foo_overload_1(_: Union[bytes, str]):
-    await foo()
-
-
-# IfExp
-async def foo_ifexp_1():  # safe
-    print(await foo() if _ else await foo())
-
-
-# should raise multiple
-async def foo_ifexp_2():  # error: 0, "exit", Statement("yield", lineno+2)
-    print(
-        (yield)  # error: 9, "yield", Statement("function definition", lineno-2)
-        if False and await foo()
-        else await foo()
-    )
 
 
 # nested function definition
@@ -603,25 +537,12 @@ async def foo_func_5():  # error: 0, "exit", Statement("yield", lineno+2)
             ...
 
 
-async def foo_while_break_5():  # error: 0, "exit", Statement("yield", lineno+5)
-    while ...:
-        await foo()
-        if ...:
-            break
-        yield
-        break
-
-
-async def foo_async_for_1():
-    async for _ in trio.trick_pyright:
-        ...
-
-
 # async def foo_multiple_1():  # error: 0, "exit", Statement("yield", lineno+2) # error: 0, "exit", Statement("function definition", lineno)
 #    if ...:
 #        yield  # error: 8, "yield", Statement("function definition", lineno-2)
 
 
+# TODO: in theory there's a guaranteed checkpoint in case `if` isn't entered
 @asynccontextmanager
 async def foo_cm_1():  # error: 0, "exit", Statement("yield", lineno+2)
     if ...:
