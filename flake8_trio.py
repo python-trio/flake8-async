@@ -100,7 +100,7 @@ cancel_scope_names = (
     "fail_after",
     "fail_at",
     "move_on_after",
-    "move_at",
+    "move_on_at",
     "CancelScope",
 )
 context_manager_names = (
