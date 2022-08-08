@@ -12,12 +12,12 @@ async def foo() -> Any:
     await foo()
 
 
-async def foo2():  # error: 0, "exit", Statement("function", lineno)
+async def foo2():  # error: 0, "exit", Statement("function definition", lineno)
     ...
 
 
 # If
-async def foo_if_1():  # error: 0, "exit", Statement("function", lineno)
+async def foo_if_1():  # error: 0, "exit", Statement("function definition", lineno)
     if _:
         await foo()
 
@@ -48,7 +48,7 @@ async def foo_ifexp_1():  # safe
     print(await foo() if _ else await foo())
 
 
-async def foo_ifexp_2():  # error: 0, "exit", Statement("function", lineno)
+async def foo_ifexp_2():  # error: 0, "exit", Statement("function definition", lineno)
     print(_ if False and await foo() else await foo())
 
 
@@ -56,22 +56,22 @@ async def foo_ifexp_2():  # error: 0, "exit", Statement("function", lineno)
 async def foo_func_1():
     await foo()
 
-    async def foo_func_2():  # error: 4, "exit", Statement("function", lineno)
+    async def foo_func_2():  # error: 4, "exit", Statement("function definition", lineno)
         ...
 
 
-async def foo_func_3():  # error: 0, "exit", Statement("function", lineno)
+async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
     async def foo_func_4():
         await foo()
 
 
-async def foo_func_5():  # error: 0, "exit", Statement("function", lineno)
+async def foo_func_5():  # error: 0, "exit", Statement("function definition", lineno)
     def foo_func_6():  # safe
-        async def foo_func_7():  # error: 8, "exit", Statement("function", lineno)
+        async def foo_func_7():  # error: 8, "exit", Statement("function definition", lineno)
             ...
 
 
-async def foo_func_8():  # error: 0, "exit", Statement("function", lineno)
+async def foo_func_8():  # error: 0, "exit", Statement("function definition", lineno)
     def foo_func_9():
         raise
 
@@ -106,12 +106,12 @@ async def foo_condition_1():  # safe
         ...
 
 
-async def foo_condition_2():  # error: 0, "exit", Statement("function", lineno)
+async def foo_condition_2():  # error: 0, "exit", Statement("function definition", lineno)
     if False and await foo():
         ...
 
 
-async def foo_condition_3():  # error: 0, "exit", Statement("function", lineno)
+async def foo_condition_3():  # error: 0, "exit", Statement("function definition", lineno)
     if ... and await foo():
         ...
 
@@ -132,7 +132,7 @@ async def foo_condition_6():  # in theory error, but not worth parsing
 
 
 # loops
-async def foo_while_1():  # error: 0, "exit", Statement("function", lineno)
+async def foo_while_1():  # error: 0, "exit", Statement("function definition", lineno)
     while _:
         await foo()
 
@@ -151,7 +151,7 @@ async def foo_while_3():  # safe
 
 
 # for
-async def foo_for_1():  # error: 0, "exit", Statement("function", lineno)
+async def foo_for_1():  # error: 0, "exit", Statement("function definition", lineno)
     for _ in "":
         await foo()
 
@@ -171,14 +171,14 @@ async def foo_while_break_1():  # safe
         await foo()
 
 
-async def foo_while_break_2():  # error: 0, "exit", Statement("function", lineno)
+async def foo_while_break_2():  # error: 0, "exit", Statement("function definition", lineno)
     while ...:
         break
     else:
         await foo()
 
 
-async def foo_while_break_3():  # error: 0, "exit", Statement("function", lineno)
+async def foo_while_break_3():  # error: 0, "exit", Statement("function definition", lineno)
     while ...:
         await foo()
         break
@@ -186,7 +186,7 @@ async def foo_while_break_3():  # error: 0, "exit", Statement("function", lineno
         ...
 
 
-async def foo_while_break_4():  # error: 0, "exit", Statement("function", lineno)
+async def foo_while_break_4():  # error: 0, "exit", Statement("function definition", lineno)
     while ...:
         break
     else:
@@ -208,7 +208,7 @@ async def foo_while_continue_2():  # safe
         await foo()
 
 
-async def foo_while_continue_3():  # error: 0, "exit", Statement("function", lineno)
+async def foo_while_continue_3():  # error: 0, "exit", Statement("function definition", lineno)
     while ...:
         await foo()
         continue
@@ -216,7 +216,7 @@ async def foo_while_continue_3():  # error: 0, "exit", Statement("function", lin
         ...
 
 
-async def foo_while_continue_4():  # error: 0, "exit", Statement("function", lineno)
+async def foo_while_continue_4():  # error: 0, "exit", Statement("function definition", lineno)
     while ...:
         continue
     else:
@@ -250,7 +250,7 @@ async def foo_raise_2():  # safe
 # try
 # safe only if (try or else) and all except bodies either await or raise
 # if foo() raises a ValueError it's not checkpointed
-async def foo_try_1():  # error: 0, "exit", Statement("function", lineno)
+async def foo_try_1():  # error: 0, "exit", Statement("function definition", lineno)
     try:
         await foo()
     except ValueError:
@@ -302,7 +302,7 @@ async def foo_try_5():  # safe
         pass
 
 
-async def foo_try_6():  # error: 0, "exit", Statement("function", lineno)
+async def foo_try_6():  # error: 0, "exit", Statement("function definition", lineno)
     try:
         pass
     except:
@@ -331,7 +331,7 @@ async def foo_return_2():  # safe
     await foo()
 
 
-async def foo_return_3():  # error: 0, "exit", Statement("function", lineno)
+async def foo_return_3():  # error: 0, "exit", Statement("function definition", lineno)
     if _:
         await foo()
         return  # safe
