@@ -70,13 +70,7 @@ class TrioScope:
 
 
 class Error:
-    def __init__(
-        self,
-        error_code: str,
-        lineno: int,
-        col: int,
-        *args: Union[HasLineInfo, TrioScope, str, int],
-    ):
+    def __init__(self, error_code: str, lineno: int, col: int, *args: object):
         self.line = lineno
         self.col = col
         self.code = error_code
