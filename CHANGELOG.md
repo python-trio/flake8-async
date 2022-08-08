@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.8.3
+- TRIO108 now gives multiple error messages; one for each path lacking a guaranteed checkpoint
+
 ## 22.8.2
 - Merged TRIO108 into TRIO107
 - TRIO108 now handles checkpointing in async iterators

@@ -126,7 +126,7 @@ async def foo_for():  # error: 0, "exit", Statement("yield", lineno+3)
         yield  # error: 8, "yield", Statement("yield", lineno)
 
 
-async def foo_for_1():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_for_1():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+3)
     for _ in "":
         await foo()
         yield
@@ -150,26 +150,24 @@ async def foo_while_2():  # error: 0, "exit", Statement("yield", lineno+3)
         yield  # error: 8, "yield", Statement("yield", lineno)
 
 
-# multiple errors: 8, "yield", Statement("yield", lineno-2)
 # no checkpoint after yield if else is entered
 async def foo_while_3():  # error: 0, "exit", Statement("yield", lineno+5)
     while ...:
         await foo()
         yield
     else:
-        yield  # error: 8, "yield", Statement("function definition", lineno-5)
+        yield  # error: 8, "yield", Statement("yield", lineno-2) # error: 8, "yield", Statement("function definition", lineno-5)
 
 
-# should raise multiple errors
 # check that errors are suppressed in visit_While
-async def foo_while_4():  # error: 0, "exit", Statement("yield", lineno+3)
+async def foo_while_4():  # error: 0, "exit", Statement("yield", lineno+3) # error: 0, "exit", Statement("yield", lineno+5) # error: 0, "exit", Statement("yield", lineno+7)
     await foo()
     while ...:
-        yield  # error: 8, "yield", Statement("yield", lineno)
+        yield  # error: 8, "yield", Statement("yield", lineno) # error: 8, "yield", Statement("yield", lineno+2) # error: 8, "yield", Statement("yield", lineno+4)
         while ...:
-            yield  # error: 12, "yield", Statement("yield", lineno-2)
+            yield  # error: 12, "yield", Statement("yield", lineno)# error: 12, "yield", Statement("yield", lineno-2)# error: 12, "yield", Statement("yield", lineno+2)
             while ...:
-                yield  # error: 16, "yield", Statement("yield", lineno-2)
+                yield  # error: 16, "yield", Statement("yield", lineno-2)# error: 16, "yield", Statement("yield", lineno)
 
 
 # check error suppression is reset
@@ -284,7 +282,7 @@ async def foo_while_break_6():  # error: 0, "exit", Statement("yield", lineno+11
     yield  # error: 4, "yield", Statement("yield", lineno-8)
 
 
-async def foo_while_break_7():  # error: 0, "exit", Statement("yield", lineno+5)
+async def foo_while_break_7():  # error: 0, "exit", Statement("function definition", lineno)# error: 0, "exit", Statement("yield", lineno+5)
     while ...:
         await foo()
         if ...:
@@ -294,7 +292,7 @@ async def foo_while_break_7():  # error: 0, "exit", Statement("yield", lineno+5)
 
 
 # try
-async def foo_try_1():  # error: 0, "exit", Statement("yield", lineno+2)
+async def foo_try_1():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+2)
     try:
         yield  # error: 8, "yield", Statement("function definition", lineno-2)
     except:
@@ -369,9 +367,8 @@ async def foo_try_7():  # error: 0, "exit", Statement("yield", lineno+16)
 
 
 ## safe only if (try or else) and all except bodies either await or raise
-## if foo() raises a ValueError it's not checkpointed
-# Should raise multiple errors
-async def foo_try_8():  # error: 0, "exit", Statement("yield", lineno+3)
+## if foo() raises a ValueError it's not checkpointed, and may or may not yield
+async def foo_try_8():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+3)
     try:
         await foo()
         yield
@@ -465,14 +462,14 @@ async def foo_if_6():  # error: 0, "exit", Statement("yield", lineno+8)
     yield  # error: 4, "yield", Statement("yield", lineno-5)
 
 
-async def foo_if_14():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_if_7():  # error: 0, "exit", Statement("function definition", lineno)
     if ...:
         await foo()
         yield
         await foo()
 
 
-async def foo_if_15():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_if_8():  # error: 0, "exit", Statement("function definition", lineno)
     if ...:
         ...
     else:
@@ -482,16 +479,16 @@ async def foo_if_15():  # error: 0, "exit", Statement("function definition", lin
 
 
 # IfExp
-# should raise multiple
-async def foo_ifexp_1():  # error: 0, "exit", Statement("yield", lineno+1)
+async def foo_ifexp_1():  # error: 0, "exit", Statement("yield", lineno+1) # error: 0, "exit", Statement("yield", lineno+1)
     print((yield) if await foo() else (yield))
 
 
-# should raise multiple
+# Will either enter else, and it's a guaranteed checkpoint - or enter if, in which
+# case the problem is the yield.
 async def foo_ifexp_2():  # error: 0, "exit", Statement("yield", lineno+2)
     print(
         (yield)  # error: 9, "yield", Statement("function definition", lineno-2)
-        if False and await foo()
+        if ... and await foo()
         else await foo()
     )
 
@@ -537,12 +534,7 @@ async def foo_func_5():  # error: 0, "exit", Statement("yield", lineno+2)
             ...
 
 
-# async def foo_multiple_1():  # error: 0, "exit", Statement("yield", lineno+2) # error: 0, "exit", Statement("function definition", lineno)
-#    if ...:
-#        yield  # error: 8, "yield", Statement("function definition", lineno-2)
-
-
-# TODO: in theory there's a guaranteed checkpoint in case `if` isn't entered
+# Guaranteed checkpoint in case `if` isn't entered
 @asynccontextmanager
 async def foo_cm_1():  # error: 0, "exit", Statement("yield", lineno+2)
     if ...:
@@ -577,3 +569,24 @@ def foo_cm_5():
 def foo_cm_6():
     if ...:
         yield
+
+
+# No error from function definition, but may shortcut after yield
+async def foo_boolops_1():  # error: 0, "exit", Stmt("yield", line+1)
+    _ = await foo() and (yield) and await foo()
+
+
+# may shortcut after any of the yields
+async def foo_boolops_2():  # error: 0, "exit", Stmt("yield", line+1) # error: 0, "exit", Stmt("yield", line+1)
+    _ = await foo() and (yield) and await foo() and (yield)
+
+
+# fmt: off
+async def foo_boolops_3():  # error: 0, "exit", Stmt("yield", line+1) # error: 0, "exit", Stmt("yield", line+4) # error: 0, "exit", Stmt("yield", line+5)
+    _ = (await foo() or (yield) or await foo()) or (
+        ...
+        or (
+            (yield)  # error: 13, "yield", Stmt("yield", line-3)
+            and (yield))  # error: 17, "yield", Stmt("yield", line-1)
+    )
+# fmt: on
