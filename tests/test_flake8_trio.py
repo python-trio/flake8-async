@@ -27,13 +27,6 @@ class ParseError(Exception):
     ...
 
 
-# These functions are messily cobbled together and their formatting requirements
-# should be documented in the readme
-#
-# filename: trioXXX.py
-# or: trioXXX_pyXY*.py, where X is major and Y is minor version
-# triggers on lines with error: <col>[, <param>]...
-# only checks the error message matching the file name
 @pytest.mark.parametrize("test, path", test_files)
 def test_eval(test: str, path: str):
     # version check
