@@ -11,20 +11,10 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.8.2"
-
-
-class Statement(NamedTuple):
-    name: str
-    lineno: int
-    col_offset: int = 0
-
-
-HasLineInfo = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
-Error = Tuple[int, int, str, Type[Any]]
 
 
 Error_codes = {
@@ -41,27 +31,82 @@ Error_codes = {
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
 }
 
+
+class Statement(NamedTuple):
+    name: str
+    lineno: int
+    col_offset: int = 0
+
+    # ignore col offset since many tests don't supply that
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, Statement) and self[:2] == other[:2]
+
+
+HasLineInfo = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
+
+
+class TrioScope:
+    def __init__(self, node: ast.Call, funcname: str):
+        self.node = node
+        self.funcname = funcname
+        self.variable_name: Optional[str] = None
+        self.shielded: bool = False
+        self.has_timeout: bool = False
+
+        if self.funcname == "CancelScope":
+            for kw in node.keywords:
+                # Only accepts constant values
+                if kw.arg == "shield" and isinstance(kw.value, ast.Constant):
+                    self.shielded = kw.value.value
+                # sets to True even if timeout is explicitly set to inf
+                if kw.arg == "deadline":
+                    self.has_timeout = True
+        else:
+            self.has_timeout = True
+
+    def __str__(self):
+        # Not supporting other ways of importing trio, per TRIO106
+        return f"trio.{self.funcname}"
+
+
+class Error:
+    def __init__(self, error_code: str, lineno: int, col: int, *args: object):
+        self.line = lineno
+        self.col = col
+        self.code = error_code
+        self.args = args
+
+    # for yielding to flake8
+    def __iter__(self):
+        yield self.line
+        yield self.col
+        yield f"{self.code}: " + Error_codes[self.code].format(*self.args)
+        yield type(Plugin)
+
+    def cmp(self):
+        return self.line, self.col, self.code, self.args
+
+    # for sorting in tests
+    def __lt__(self, other: Any) -> bool:
+        assert isinstance(other, Error)
+        return self.cmp() < other.cmp()
+
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, Error) and self.cmp() == other.cmp()
+
+
 checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
 cancel_scope_names = (
     "fail_after",
     "fail_at",
     "move_on_after",
-    "move_at",
+    "move_on_at",
     "CancelScope",
 )
 context_manager_names = (
     "contextmanager",
     "asynccontextmanager",
 )
-
-
-def make_error(error: str, lineno: int, col: int, *args: Any, **kwargs: Any) -> Error:
-    return (
-        lineno,
-        col,
-        f"{error}: " + Error_codes[error].format(*args, **kwargs),
-        type(Plugin),
-    )
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
@@ -90,11 +135,9 @@ class Flake8TrioVisitor(ast.NodeVisitor):
                 for node in arg:
                     visit(node)
 
-    def error(self, error: str, node: HasLineInfo, *args: Any, **kwargs: Any):
+    def error(self, error: str, node: HasLineInfo, *args: object):
         if not self.suppress_errors:
-            self._problems.append(
-                make_error(error, node.lineno, node.col_offset, *args, **kwargs)
-            )
+            self._problems.append(Error(error, node.lineno, node.col_offset, *args))
 
     def get_state(self, *attrs: str) -> Dict[str, Any]:
         if not attrs:
@@ -110,31 +153,6 @@ class Flake8TrioVisitor(ast.NodeVisitor):
             yield from ast.walk(b)
 
 
-class TrioScope:
-    def __init__(self, node: ast.Call, funcname: str, packagename: str):
-        self.node = node
-        self.funcname = funcname
-        self.packagename = packagename
-        self.variable_name: Optional[str] = None
-        self.shielded: bool = False
-        self.has_timeout: bool = False
-
-        if self.funcname == "CancelScope":
-            for kw in node.keywords:
-                # Only accepts constant values
-                if kw.arg == "shield" and isinstance(kw.value, ast.Constant):
-                    self.shielded = kw.value.value
-                # sets to True even if timeout is explicitly set to inf
-                if kw.arg == "deadline":
-                    self.has_timeout = True
-        else:
-            self.has_timeout = True
-
-    def __str__(self):
-        # Not supporting other ways of importing trio
-        return f"{self.packagename}.{self.funcname}"
-
-
 def get_trio_scope(node: ast.AST, *names: str) -> Optional[TrioScope]:
     if (
         isinstance(node, ast.Call)
@@ -143,7 +161,7 @@ def get_trio_scope(node: ast.AST, *names: str) -> Optional[TrioScope]:
         and node.func.value.id == "trio"
         and node.func.attr in names
     ):
-        return TrioScope(node, node.func.attr, node.func.value.id)
+        return TrioScope(node, node.func.attr)
     return None
 
 
@@ -199,7 +217,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
                 isinstance(x, checkpoint_node_types) and x != node
                 for x in ast.walk(node)
             ):
-                self.error("TRIO100", item, call)
+                self.error("TRIO100", item, str(call))
 
     # ---- 101 ----
     def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
@@ -372,7 +390,9 @@ class Visitor102(Flake8TrioVisitor):
     def visit_Try(self, node: ast.Try):
         # There's no visit_Finally, so we need to manually visit the Try fields.
         self.visit_nodes(node.body, node.handlers, node.orelse)
-        self.critical_visit(node.finalbody, Statement("try/finally", node.lineno))
+        self.critical_visit(
+            node.finalbody, Statement("try/finally", node.lineno, node.col_offset)
+        )
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
         res = critical_except(node)
@@ -582,7 +602,9 @@ class Visitor107_108(Flake8TrioVisitor):
         outer = self.get_state()
         self.set_state(self.default)
 
-        self.always_checkpoint = Statement("function definition", node.lineno)
+        self.always_checkpoint = Statement(
+            "function definition", node.lineno, node.col_offset
+        )
 
         self.generic_visit(node)
         self.check_function_exit(node)
@@ -591,13 +613,10 @@ class Visitor107_108(Flake8TrioVisitor):
 
     def check_function_exit(self, node: Union[ast.Return, ast.AsyncFunctionDef]):
         # error if function exits w/o guaranteed checkpoint since function entry
-        method = "return" if isinstance(node, ast.Return) else "exit"
-
         if self.always_checkpoint is not None:
-            if self.yield_count:
-                self.error("TRIO108", node, method, self.always_checkpoint)
-            else:
-                self.error("TRIO107", node, method, self.always_checkpoint)
+            method = "return" if isinstance(node, ast.Return) else "exit"
+            error_code = "TRIO108" if self.yield_count else "TRIO107"
+            self.error(error_code, node, method, self.always_checkpoint)
 
     def visit_Return(self, node: ast.Return):
         self.generic_visit(node)
@@ -645,7 +664,7 @@ class Visitor107_108(Flake8TrioVisitor):
             self.error("TRIO108", node, "yield", self.always_checkpoint)
 
         # mark as requiring checkpoint after
-        self.always_checkpoint = Statement("yield", node.lineno)
+        self.always_checkpoint = Statement("yield", node.lineno, node.col_offset)
 
     # valid checkpoint if there's valid checkpoints (or raise) in:
     # (try or else) and all excepts, or in finally
@@ -659,7 +678,9 @@ class Visitor107_108(Flake8TrioVisitor):
         body_always_checkpoint = self.always_checkpoint
         for inner_node in self.walk(*node.body):
             if isinstance(inner_node, ast.Yield):
-                body_always_checkpoint = Statement("yield", inner_node.lineno)
+                body_always_checkpoint = Statement(
+                    "yield", inner_node.lineno, inner_node.col_offset
+                )
                 break
 
         # check try body

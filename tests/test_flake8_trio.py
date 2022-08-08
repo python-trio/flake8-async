@@ -1,11 +1,12 @@
 import ast
+import copy
 import os
 import re
 import site
 import sys
 import unittest
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import DefaultDict, Iterable, List, Sequence, Tuple
 
 import pytest
 
@@ -13,7 +14,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import Error, Error_codes, Plugin, Statement, make_error
+from flake8_trio import Error, Error_codes, Plugin, Statement
 
 test_files: List[Tuple[str, str]] = sorted(
     (os.path.splitext(f)[0].upper(), f)
@@ -71,12 +72,14 @@ def test_eval(test: str, path: str):
             try:
                 # Append a bunch of empty strings so string formatting gives garbage
                 # instead of throwing an exception
-                args = (
-                    eval(
-                        f"[{reg_match}]",
-                        {"lineno": lineno, "Statement": Statement},
-                    )
-                    + [""] * 5
+                args = eval(
+                    f"[{reg_match}]",
+                    {
+                        "lineno": lineno,
+                        "line": lineno,
+                        "Statement": Statement,
+                        "Stmt": Statement,
+                    },
                 )
 
             except Exception as e:
@@ -89,7 +92,7 @@ def test_eval(test: str, path: str):
 
             # assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
             try:
-                expected.append(make_error(test, lineno, int(col), *args))
+                expected.append(Error(test, lineno, int(col), *args))
             except AttributeError as e:
                 msg = f'Line {lineno}: Failed to format\n "{Error_codes[test]}"\nwith\n{args}'
                 raise ParseError(msg) from e
@@ -102,82 +105,142 @@ def assert_expected_errors(test_file: str, include: Iterable[str], *expected: Er
     filename = Path(__file__).absolute().parent / test_file
     plugin = Plugin.from_filename(str(filename))
 
-    errors = tuple(sorted(e for e in plugin.run() if any(i in e[2] for i in include)))
+    errors = sorted(e for e in plugin.run() if e.code in include)
+    expected_ = sorted(expected)
 
-    assert_correct_lines(errors, expected)
-    assert_correct_columns(errors, expected)
-    assert_correct_messages(errors, expected)
+    print_first_diff(errors, expected_)
+    assert_correct_lines_and_codes(errors, expected_)
+    assert_correct_columns(errors, expected_)
+    assert_correct_args(errors, expected_)
 
     # full check
-    unittest.TestCase().assertSequenceEqual(sorted(errors), sorted(expected))
+    unittest.TestCase().assertEqual(errors, expected_)
+
+    # test tuple conversion and iter types
+    assert_tuple_and_types(errors, expected_)
 
 
-def assert_correct_lines(errors: Iterable[Error], expected: Iterable[Error]):
+def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
+    first_error_line: List[Error] = []
+    for e in errors:
+        if e.line == errors[0].line:
+            first_error_line.append(e)
+    first_expected_line: List[Error] = []
+    for e in expected:
+        if e.line == expected[0].line:
+            first_expected_line.append(e)
+    if first_expected_line != first_error_line:
+        print(
+            "First lines with different errors",
+            f"  actual: {[e.cmp() for e in first_error_line]}",
+            f"expected: {[e.cmp() for e in first_expected_line]}",
+            "",
+            sep="\n",
+            file=sys.stderr,
+        )
+
+
+def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[Error]):
+    MyDict = DefaultDict[int, DefaultDict[str, int]]
     # Check that errors are on correct lines
-    error_lines = sorted(line for line, *_ in errors)
-    expected_lines = sorted(line for line, *_ in expected)
-    unexpected_lines = sorted(set(error_lines) - set(expected_lines))
-    missing_lines = sorted(set(expected_lines) - set(error_lines))
-    unittest.TestCase().assertEqual(
-        unexpected_lines,
-        missing_lines,
-        msg="Lines with unexpected errors; missing errors",
-    )
-    diff_counts = {}
-    for line in expected_lines:
-        err_count = error_lines.count(line)
-        exp_count = expected_lines.count(line)
-        if err_count != exp_count:
-            diff_counts[line] = (err_count, exp_count)
-    assert not diff_counts, "Lines with (actual, expected) number of errors"
+    all_lines = sorted({e.line for e in (*errors, *expected)})
+    error_dict: MyDict = DefaultDict(lambda: DefaultDict(int))
+    expected_dict = copy.deepcopy(error_dict)
+
+    for e in errors:
+        error_dict[e.line][e.code] += 1
+    for e in expected:
+        expected_dict[e.line][e.code] += 1
+
+    any_error = False
+    for line in all_lines:
+        if error_dict[line] == expected_dict[line]:
+            continue
+        for code in {*error_dict[line], *expected_dict[line]}:
+            if not any_error:
+                print(
+                    "Lines with different # of errors:",
+                    "-" * 38,
+                    f"| line | {'code':7} | actual | expected |",
+                    sep="\n",
+                    file=sys.stderr,
+                )
+                any_error = True
+
+            print(
+                f"| {line:4}",
+                f"{code}",
+                f"{error_dict[line][code]:6}",
+                f"{expected_dict[line][code]:8} |",
+                sep=" | ",
+                file=sys.stderr,
+            )
+    assert not any_error
 
 
 def assert_correct_columns(errors: Iterable[Error], expected: Iterable[Error]):
     # check errors have correct columns
     col_error = False
-    for (line, error_col, *_), (_, expected_col, *_) in zip(errors, expected):
-        if error_col != expected_col:
+    for err, exp in zip(errors, expected):
+        assert err.line == exp.line
+        if err.col != exp.col:
             if not col_error:
                 print("Errors with same line but different columns:", file=sys.stderr)
                 print("| line | actual | expected |", file=sys.stderr)
                 col_error = True
             print(
-                f"| {line:4} | {error_col:6} | {expected_col:8} |",
+                f"| {err.line:4} | {err.col:6} | {exp.col:8} |",
                 file=sys.stderr,
             )
     assert not col_error
 
 
-def assert_correct_messages(errors: Iterable[Error], expected: Iterable[Error]):
+def assert_correct_args(errors: Iterable[Error], expected: Iterable[Error]):
     # check errors have correct messages
-    msg_error = False
-    for (line, _, error_msg, *_), (_, _, expected_msg, *_) in zip(errors, expected):
-        if error_msg != expected_msg:
-            if not msg_error:
+    args_error = False
+    for err, exp in zip(errors, expected):
+        assert (err.line, err.col, err.code) == (exp.line, exp.col, exp.code)
+        if err.args != exp.args:
+            if not args_error:
                 print(
-                    "Errors with different messages:",
+                    "Errors with different args:",
                     "-" * 20,
                     sep="\n",
                     file=sys.stderr,
                 )
-                msg_error = True
-            i = 0
-            while error_msg[i] == expected_msg[i]:
-                i += 1
-            j = -1
-            while error_msg[j] == expected_msg[j]:
-                j -= 1
-            end = None if j == -1 else j + 1
+                args_error = True
             print(
-                f"*    line: {line:3} differs\n",
-                f"    same: {error_msg[:i]}\n",
-                f"  actual: {error_msg[i:end]}\n",
-                f"expected: {expected_msg[i:end]}\n",
-                f"     end: {error_msg[end:]}\n" if end is not None else "",
+                f"*    line: {err.line:3} differs\n",
+                f"  actual: {err.args}\n",
+                f"expected: {exp.args}\n",
                 "-" * 20,
                 file=sys.stderr,
             )
-    assert not msg_error
+    assert not args_error
+
+
+def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
+    def info_tuple(error: Error):
+        try:
+            return tuple(error)
+        except IndexError:
+            print(
+                "Failed to format error message",
+                f"line: {error.line}",
+                f"col: {error.col}",
+                f"code: {error.code}",
+                f"args: {error.args}",
+                f'format string: "{Error_codes[error.code]}"',
+                sep="\n    ",
+                file=sys.stderr,
+            )
+            raise
+
+    for err, exp in zip(errors, expected):
+        err_msg = info_tuple(err)
+        for err, type_ in zip(err_msg, (int, int, str, type)):
+            assert isinstance(err, type_)
+        assert err_msg == info_tuple(exp)
 
 
 @pytest.mark.fuzz
