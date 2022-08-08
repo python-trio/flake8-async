@@ -39,10 +39,7 @@ class Statement(NamedTuple):
 
     # ignore col offset since many tests don't supply that
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, Statement) and (self.name, self.lineno) == (
-            other.name,
-            other.lineno,
-        )
+        return isinstance(other, Statement) and self[:2] == other[:2]
 
 
 HasLineInfo = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
@@ -68,7 +65,7 @@ class TrioScope:
             self.has_timeout = True
 
     def __str__(self):
-        # Not supporting other ways of importing trio
+        # Not supporting other ways of importing trio, per TRIO106
         return f"trio.{self.funcname}"
 
 
@@ -144,12 +141,7 @@ class Flake8TrioVisitor(ast.NodeVisitor):
                 for node in arg:
                     visit(node)
 
-    def error(
-        self,
-        error: str,
-        node: HasLineInfo,
-        *args: Union[HasLineInfo, TrioScope, str, int],
-    ):
+    def error(self, error: str, node: HasLineInfo, *args: object):
         if not self.suppress_errors:
             self._problems.append(Error(error, node.lineno, node.col_offset, *args))
 
@@ -404,7 +396,9 @@ class Visitor102(Flake8TrioVisitor):
     def visit_Try(self, node: ast.Try):
         # There's no visit_Finally, so we need to manually visit the Try fields.
         self.visit_nodes(node.body, node.handlers, node.orelse)
-        self.critical_visit(node.finalbody, Statement("try/finally", node.lineno))
+        self.critical_visit(
+            node.finalbody, Statement("try/finally", node.lineno, node.col_offset)
+        )
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
         res = critical_except(node)
@@ -614,7 +608,9 @@ class Visitor107_108(Flake8TrioVisitor):
         outer = self.get_state()
         self.set_state(self.default)
 
-        self.always_checkpoint = Statement("function definition", node.lineno)
+        self.always_checkpoint = Statement(
+            "function definition", node.lineno, node.col_offset
+        )
 
         self.generic_visit(node)
         self.check_function_exit(node)
@@ -623,10 +619,9 @@ class Visitor107_108(Flake8TrioVisitor):
 
     def check_function_exit(self, node: Union[ast.Return, ast.AsyncFunctionDef]):
         # error if function exits w/o guaranteed checkpoint since function entry
-        method = "return" if isinstance(node, ast.Return) else "exit"
-        error_code = "TRIO108" if self.yield_count else "TRIO107"
-
         if self.always_checkpoint is not None:
+            method = "return" if isinstance(node, ast.Return) else "exit"
+            error_code = "TRIO108" if self.yield_count else "TRIO107"
             self.error(error_code, node, method, self.always_checkpoint)
 
     def visit_Return(self, node: ast.Return):
@@ -675,7 +670,7 @@ class Visitor107_108(Flake8TrioVisitor):
             self.error("TRIO108", node, "yield", self.always_checkpoint)
 
         # mark as requiring checkpoint after
-        self.always_checkpoint = Statement("yield", node.lineno)
+        self.always_checkpoint = Statement("yield", node.lineno, node.col_offset)
 
     # valid checkpoint if there's valid checkpoints (or raise) in:
     # (try or else) and all excepts, or in finally
@@ -689,7 +684,9 @@ class Visitor107_108(Flake8TrioVisitor):
         body_always_checkpoint = self.always_checkpoint
         for inner_node in self.walk(*node.body):
             if isinstance(inner_node, ast.Yield):
-                body_always_checkpoint = Statement("yield", inner_node.lineno)
+                body_always_checkpoint = Statement(
+                    "yield", inner_node.lineno, inner_node.col_offset
+                )
                 break
 
         # check try body
