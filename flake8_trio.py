@@ -14,7 +14,7 @@ import tokenize
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.8.3"
+__version__ = "22.8.4"
 
 
 Error_codes = {
@@ -236,7 +236,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
 
     # ---- 101, 109 ----
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        self.check_109(node.args)
+        self.check_109(node)
         self.visit_FunctionDef(node)
 
     # ---- 101 ----
@@ -247,7 +247,10 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         self.generic_visit(node)
 
     # ---- 109 ----
-    def check_109(self, args: ast.arguments):
+    def check_109(self, node: ast.AsyncFunctionDef):
+        if node.decorator_list:
+            return
+        args = node.args
         for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
             if arg.arg == "timeout":
                 self.error("TRIO109", arg)

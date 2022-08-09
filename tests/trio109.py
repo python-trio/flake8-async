@@ -1,3 +1,5 @@
+import trio as anything
+
 timeout = 10
 
 
@@ -75,4 +77,20 @@ def foo_11(timeout, /):
 
 
 def foo_12(*, timeout):
+    ...
+
+
+# ignore all functions with a decorator
+@anything.anything
+async def foo_decorator_1(timeout):
+    ...
+
+
+@anything.anything
+async def foo_decorator_2(*, timeout):
+    ...
+
+
+@anything
+async def foo_decorator_3(timeout, /):
     ...
