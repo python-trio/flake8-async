@@ -19,15 +19,30 @@ __version__ = "22.8.4"
 
 Error_codes = {
     "TRIO100": "{} context contains no checkpoints, add `await trio.sleep(0)`",
-    "TRIO101": "yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling",
-    "TRIO102": "await inside {0.name} on line {0.lineno} must have shielded cancel scope with a timeout",
+    "TRIO101": (
+        "yield inside a nursery or cancel scope is only safe when implementing "
+        "a context manager - otherwise, it breaks exception handling"
+    ),
+    "TRIO102": (
+        "await inside {0.name} on line {0.lineno} must have shielded cancel "
+        "scope with a timeout"
+    ),
     "TRIO103": "{} block with a code path that doesn't re-raise the error",
     "TRIO104": "Cancelled (and therefore BaseException) must be re-raised",
     "TRIO105": "trio async function {} must be immediately awaited",
     "TRIO106": "trio must be imported with `import trio` for the linter to work",
-    "TRIO107": "{0} from async function with no guaranteed checkpoint or exception since function definition on line {1.lineno}",
-    "TRIO108": "{0} from async iterable with no guaranteed checkpoint since {1.name} on line {1.lineno}",
-    "TRIO109": "Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead",
+    "TRIO107": (
+        "{0} from async function with no guaranteed checkpoint or exception "
+        "since function definition on line {1.lineno}"
+    ),
+    "TRIO108": (
+        "{0} from async iterable with no guaranteed checkpoint since {1.name} "
+        "on line {1.lineno}"
+    ),
+    "TRIO109": (
+        "Async function definition with a `timeout` parameter - use "
+        "`trio.[fail/move_on]_[after/at]` instead"
+    ),
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
 }
 
@@ -298,16 +313,15 @@ def critical_except(node: ast.ExceptHandler) -> Optional[Statement]:
     if node.type is None:
         return Statement("bare except", node.lineno, node.col_offset)
     # several exceptions
-    elif isinstance(node.type, ast.Tuple):
+    if isinstance(node.type, ast.Tuple):
         for element in node.type.elts:
             name = has_exception(element)
             if name:
                 return Statement(name, element.lineno, element.col_offset)
     # single exception, either a Name or an Attribute
-    else:
-        name = has_exception(node.type)
-        if name:
-            return Statement(name, node.type.lineno, node.type.col_offset)
+    name = has_exception(node.type)
+    if name:
+        return Statement(name, node.type.lineno, node.type.col_offset)
     return None
 
 

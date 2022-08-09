@@ -15,15 +15,6 @@ except trio.Cancelled as e:
 except trio.Cancelled:  # error: 7, "trio.Cancelled"
     pass
 
-# raise different exception
-except BaseException:
-    raise ValueError()  # TRIO104
-except trio.Cancelled as e:
-    raise ValueError() from e  # TRIO104
-except trio.Cancelled as e:
-    # see https://github.com/Zac-HD/flake8-trio/pull/8#discussion_r932737341
-    raise BaseException() from e  # TRIO104
-
 # if
 except BaseException as e:  # error: 7, "BaseException"
     if True:
