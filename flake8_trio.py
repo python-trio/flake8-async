@@ -11,7 +11,7 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set, Union
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Union
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.8.4"
@@ -29,7 +29,7 @@ Error_codes = {
     "TRIO108": "{0} from async iterable with no guaranteed checkpoint since {1.name} on line {1.lineno}",
     "TRIO109": "Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead",
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
-    "TRIO302": "async context manager inside nursery opened on line {}. Nurseries should be outermost.",
+    "TRIO302": "call to nursery.start/start_soon with resource from context manager opened on line {} something something nursery on line {}",
 }
 
 
@@ -40,7 +40,7 @@ class Statement(NamedTuple):
 
     # ignore col offset since many tests don't supply that
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, Statement) and self[:2] == other[:2]
+        return isinstance(other, Statement) and self[:2] == other[:2]  # type: ignore
 
 
 HasLineInfo = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
@@ -140,10 +140,19 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         if not self.suppress_errors:
             self._problems.append(Error(error, node.lineno, node.col_offset, *args))
 
-    def get_state(self, *attrs: str) -> Dict[str, Any]:
+    def get_state(self, *attrs: str, copy: bool = False) -> Dict[str, Any]:
         if not attrs:
             attrs = tuple(self.__dict__.keys())
-        return {attr: getattr(self, attr) for attr in attrs if attr != "_problems"}
+        res: Dict[str, Any] = {}
+        for attr in attrs:
+            if attr == "_problems":
+                continue
+            value = getattr(self, attr)
+            if copy and hasattr(value, "copy"):
+                value = value.copy()
+            res[attr] = value
+        return res
+        # return {attr: getattr(self, attr) for attr in attrs if attr != "_problems"}
 
     def set_state(self, attrs: Dict[str, Any], copy: bool = False):
         for attr, value in attrs.items():
@@ -185,36 +194,41 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         # variables only used for 101
         self._yield_is_error = False
         self._safe_decorator = False
-        self._inside_nursery: Optional[int] = None
+        self._context_manager_stack: List[Tuple[ast.expr, str, bool]] = []
 
-    # ---- 100, 101 ----
+    # ---- 100, 101, 302 ----
     def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
-        # 100
         self.check_for_trio100(node)
 
-        # 101 for rest of function
-        outer = self.get_state("_yield_is_error")
+        outer = self.get_state("_yield_is_error", "_context_manager_stack", copy=True)
 
         # Check for a `with trio.<scope_creater>`
-        if not self._safe_decorator:
-            for item in (i.context_expr for i in node.items):
+        for item in node.items:
+            # 101
+            if not self._safe_decorator and not self._yield_is_error:
                 if (
-                    get_trio_scope(item, "open_nursery", *cancel_scope_names)
+                    get_trio_scope(
+                        item.context_expr, "open_nursery", *cancel_scope_names
+                    )
                     is not None
                 ):
                     self._yield_is_error = True
-                    break
+            # 302
+            if isinstance(item.optional_vars, ast.Name) and isinstance(
+                item.context_expr, ast.Call
+            ):
+                is_nursery = (
+                    get_trio_scope(item.context_expr, "open_nursery") is not None
+                )
+                poop = (item.context_expr.func, item.optional_vars.id, is_nursery)
+                self._context_manager_stack.append(poop)
 
         self.generic_visit(node)
 
         # reset yield_is_error
         self.set_state(outer)
 
-    def visit_AsyncWith(self, node: ast.AsyncWith):
-        outer = self._inside_nursery
-        self.check_for_trio302(node.items)
-        self.visit_With(node)
-        self._inside_nursery = outer
+    visit_AsyncWith = visit_With
 
     # ---- 100 ----
     def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]):
@@ -231,7 +245,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
         outer = self.get_state()
         self._yield_is_error = False
-        self._inside_nursery = None
+        self._context_manager_stack = []
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
         if has_decorator(node.decorator_list, *context_manager_names):
@@ -287,16 +301,40 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         ):
             self.error("TRIO110", node)
 
-    def check_for_trio302(self, withitems: List[ast.withitem]):
-        calls = [w.context_expr for w in withitems]
-        for call in calls:
-            ss = get_trio_scope(call)
-            if not ss:
-                continue
-            if ss.funcname == "open_nursery":
-                self._inside_nursery = ss.node.lineno
-            elif self._inside_nursery is not None:
-                self.error("TRIO302", ss.node, self._inside_nursery)
+    def visit_Call(self, node: ast.Call):
+        def get_id(node: ast.AST) -> Optional[ast.Name]:
+            if isinstance(node, ast.Name):
+                return node
+            if isinstance(node, ast.Attribute):
+                return get_id(node.value)
+            if isinstance(node, ast.keyword):
+                return get_id(node.value)
+            return None
+
+        if (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.attr in ("start", "start_soon")
+        ):
+            called_vars: Dict[str, ast.Name] = {}
+            for arg in (*node.args, *node.keywords):
+                name = get_id(arg)
+                if name:
+                    called_vars[name.id] = name
+
+            nursery_call = None
+            for expr, cm_name, is_nursery in self._context_manager_stack:
+                if node.func.value.id == cm_name:
+                    if not is_nursery:
+                        break
+                    nursery_call = expr
+                    continue
+                if nursery_call is None:
+                    continue
+                if cm_name in called_vars:
+                    self.error("TRIO302", node, expr.lineno, nursery_call.lineno)
+
+        self.generic_visit(node)
 
 
 def critical_except(node: ast.ExceptHandler) -> Optional[Statement]:
