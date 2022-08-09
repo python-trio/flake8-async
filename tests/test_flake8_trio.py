@@ -66,15 +66,19 @@ def test_eval(test: str, path: str):
             try:
                 # Append a bunch of empty strings so string formatting gives garbage
                 # instead of throwing an exception
-                args = eval(
-                    f"[{reg_match}]",
-                    {
-                        "lineno": lineno,
-                        "line": lineno,
-                        "Statement": Statement,
-                        "Stmt": Statement,
-                    },
-                )
+                try:
+                    args = eval(
+                        f"[{reg_match}]",
+                        {
+                            "lineno": lineno,
+                            "line": lineno,
+                            "Statement": Statement,
+                            "Stmt": Statement,
+                        },
+                    )
+                except NameError:
+                    print(f"failed to eval on line {lineno}", file=sys.stderr)
+                    raise
 
             except Exception as e:
                 print(f"lineno: {lineno}, line: {line}", file=sys.stderr)

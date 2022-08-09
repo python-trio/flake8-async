@@ -29,7 +29,7 @@ Error_codes = {
     "TRIO108": "{0} from async iterable with no guaranteed checkpoint since {1.name} on line {1.lineno}",
     "TRIO109": "Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead",
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
-    "TRIO302": "call to nursery.start/start_soon with resource from context manager opened on line {} something something nursery on line {}",
+    "TRIO302": "variable {2}, from context manager on line {0}, passed to {3} from nursery opened on {1}, might get closed while in use",
 }
 
 
@@ -191,10 +191,16 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     def __init__(self):
         super().__init__()
 
-        # variables only used for 101
+        # 101
         self._yield_is_error = False
         self._safe_decorator = False
+
+        # 302
         self._context_manager_stack: List[Tuple[ast.expr, str, bool]] = []
+        self._nursery_call_index: Optional[int] = None
+        self._nursery_call_name: Optional[str] = None
+
+        self.defaults = self.get_state()
 
     # ---- 100, 101, 302 ----
     def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
@@ -244,8 +250,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     # ---- 101 ----
     def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
         outer = self.get_state()
-        self._yield_is_error = False
-        self._context_manager_stack = []
+        self.set_state(self.defaults, copy=True)
 
         # check for @<context_manager_name> and @<library>.<context_manager_name>
         if has_decorator(node.decorator_list, *context_manager_names):
@@ -259,6 +264,12 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         self.check_109(node)
         self.visit_FunctionDef(node)
+
+    def visit_Lambda(self, node: ast.Lambda):
+        outer = self.get_state()
+        self.set_state(self.defaults, copy=True)
+        self.generic_visit(node)
+        self.set_state(outer)
 
     # ---- 101 ----
     def visit_Yield(self, node: ast.Yield):
@@ -286,6 +297,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         for name in node.names:
             if name.name == "trio" and name.asname is not None:
                 self.error("TRIO106", node)
+        self.generic_visit(node)
 
     # ---- 110 ----
     def visit_While(self, node: ast.While):
@@ -302,38 +314,37 @@ class VisitorMiscChecks(Flake8TrioVisitor):
             self.error("TRIO110", node)
 
     def visit_Call(self, node: ast.Call):
-        def get_id(node: ast.AST) -> Optional[ast.Name]:
-            if isinstance(node, ast.Name):
-                return node
-            if isinstance(node, ast.Attribute):
-                return get_id(node.value)
-            if isinstance(node, ast.keyword):
-                return get_id(node.value)
-            return None
+        outer = self.get_state("_nursery_call_index", "_nursery_call_name")
 
         if (
             isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
             and node.func.attr in ("start", "start_soon")
         ):
-            called_vars: Dict[str, ast.Name] = {}
-            for arg in (*node.args, *node.keywords):
-                name = get_id(arg)
-                if name:
-                    called_vars[name.id] = name
-
-            nursery_call = None
-            for expr, cm_name, is_nursery in self._context_manager_stack:
+            self._nursery_call_index = None
+            for i, (_, cm_name, is_nursery) in enumerate(self._context_manager_stack):
                 if node.func.value.id == cm_name:
-                    if not is_nursery:
-                        break
-                    nursery_call = expr
-                    continue
-                if nursery_call is None:
-                    continue
-                if cm_name in called_vars:
-                    self.error("TRIO302", node, expr.lineno, nursery_call.lineno)
+                    if is_nursery:
+                        self._nursery_call_index = i
+                        self._nursery_call_name = node.func.attr
+                    else:
+                        self._nursery_call_index = self._nursery_call_name = None
 
+        self.generic_visit(node)
+        self.set_state(outer)
+
+    def visit_Name(self, node: ast.Name):
+        if self._nursery_call_index is not None:
+            for i, (expr, cm_name, _) in enumerate(self._context_manager_stack):
+                if cm_name == node.id and i > self._nursery_call_index:
+                    self.error(
+                        "TRIO302",
+                        node,
+                        expr.lineno,
+                        self._context_manager_stack[self._nursery_call_index][0].lineno,
+                        node.id,
+                        self._nursery_call_name,
+                    )
         self.generic_visit(node)
 
 
