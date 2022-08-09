@@ -44,6 +44,7 @@ Error_codes = {
         "`trio.[fail/move_on]_[after/at]` instead"
     ),
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
+    "TRIO112": "consider using a regular function call instead",
 }
 
 
@@ -211,6 +212,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
         # 100
         self.check_for_trio100(node)
+        self.check_for_trio112(node)
 
         # 101 for rest of function
         outer = self.get_state("_yield_is_error")
@@ -301,6 +303,33 @@ class VisitorMiscChecks(Flake8TrioVisitor):
             and get_trio_scope(node.body[0].value.value, "sleep", "sleep_until")
         ):
             self.error("TRIO110", node)
+
+    def check_for_trio112(self, node: Union[ast.With, ast.AsyncWith]):
+        if (
+            len(node.items) == 1
+            and len(node.body) == 1
+            and isinstance(node.items[0].optional_vars, ast.Name)
+        ):
+            var_name = node.items[0].optional_vars.id
+            scope = get_trio_scope(node.items[0].context_expr, "open_nursery")
+            if (
+                isinstance(node.body[0], ast.Expr)
+                and isinstance(node.body[0].value, ast.Call)
+                and isinstance(node.body[0].value.func, ast.Attribute)
+                and isinstance(node.body[0].value.func.value, ast.Name)
+                and node.body[0].value.func.value.id == var_name
+                and node.body[0].value.func.attr in ("start", "start_soon")
+                and scope
+                and not any(
+                    (isinstance(n, ast.Name) and n.id == var_name)
+                    for n in self.walk(
+                        *node.body[0].value.args, *node.body[0].value.keywords
+                    )
+                )
+            ):
+
+                self.error("TRIO112", node)
+        self.generic_visit(node)
 
 
 def critical_except(node: ast.ExceptHandler) -> Optional[Statement]:
