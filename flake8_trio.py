@@ -50,11 +50,17 @@ Error_codes = {
 class Statement(NamedTuple):
     name: str
     lineno: int
-    col_offset: int = 0
+    col_offset: int = -1
 
-    # ignore col offset since many tests don't supply that
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, Statement) and self[:2] == other[:2]
+        return (
+            isinstance(other, Statement)
+            and self[:2] == other[:2]
+            and (
+                self.col_offset == other.col_offset
+                or -1 in (self.col_offset, other.col_offset)
+            )
+        )
 
 
 HasLineInfo = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
@@ -66,9 +72,12 @@ class TrioScope:
         self.funcname = funcname
         self.variable_name: Optional[str] = None
         self.shielded: bool = False
-        self.has_timeout: bool = False
+        self.has_timeout: bool = True
+
+        # scope.shield is assigned to in visit_Assign
 
         if self.funcname == "CancelScope":
+            self.has_timeout = False
             for kw in node.keywords:
                 # Only accepts constant values
                 if kw.arg == "shield" and isinstance(kw.value, ast.Constant):
@@ -76,8 +85,6 @@ class TrioScope:
                 # sets to True even if timeout is explicitly set to inf
                 if kw.arg == "deadline":
                     self.has_timeout = True
-        else:
-            self.has_timeout = True
 
     def __str__(self):
         # Not supporting other ways of importing trio, per TRIO106
