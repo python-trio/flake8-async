@@ -591,12 +591,19 @@ class Visitor107_108(Flake8TrioVisitor):
         super().__init__()
         self.yield_count = 0
         self.safe_decorator = False
+        self.async_function = False
 
         self.uncheckpointed_statements: Set[Statement] = set()
         self.uncheckpointed_before_continue: Set[Statement] = set()
         self.uncheckpointed_before_break: Set[Statement] = set()
 
         self.default = self.get_state()
+
+    def visit(self, node: ast.AST):
+        if not self.async_function and not isinstance(node, ast.AsyncFunctionDef):
+            self.generic_visit(node)
+        else:
+            super().visit(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         if has_decorator(node.decorator_list, "overload"):
@@ -605,6 +612,7 @@ class Visitor107_108(Flake8TrioVisitor):
         outer = self.get_state()
         self.set_state(self.default, copy=True)
         self.safe_decorator = has_decorator(node.decorator_list, *context_manager_names)
+        self.async_function = True
 
         self.uncheckpointed_statements = {
             Statement("function definition", node.lineno, node.col_offset)

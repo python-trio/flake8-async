@@ -494,16 +494,40 @@ async def foo_ifexp_2():  # error: 0, "exit", Statement("yield", lineno+2)
 
 
 # normal function
-def foo_normal_func_1():
+def foo_sync_1():
     return
 
 
-def foo_normal_func_2():
+def foo_sync_2():
     ...
 
 
-def foo_normal_func_3():
+def foo_sync_3():
     yield
+
+
+def foo_sync_4():
+    if ...:
+        return
+    yield
+
+
+def foo_sync_5():
+    if ...:
+        return
+    yield
+
+
+def foo_sync_6():
+    while ...:
+        yield
+
+
+def foo_sync_7():
+    while ...:
+        if ...:
+            return
+        yield
 
 
 # nested function definition
