@@ -1,8 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 22.8.4
 - Fix TRIO108 raising errors on yields in some sync code.
+- TRIO109 now skips all decorated functions to avoid false alarms
 
 ## 22.8.3
 - TRIO108 now gives multiple error messages; one for each path lacking a guaranteed checkpoint
