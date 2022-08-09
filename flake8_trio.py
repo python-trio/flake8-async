@@ -590,6 +590,7 @@ class Visitor107_108(Flake8TrioVisitor):
     def __init__(self):
         super().__init__()
         self.yield_count = 0
+        self.safe_decorator = False
 
         self.uncheckpointed_statements: Set[Statement] = set()
         self.uncheckpointed_before_continue: Set[Statement] = set()
