@@ -4,9 +4,10 @@ import os
 import re
 import site
 import sys
+import tokenize
 import unittest
 from pathlib import Path
-from typing import DefaultDict, Iterable, List, Sequence, Tuple
+from typing import DefaultDict, Iterable, List, Sequence, Tuple, Type
 
 import pytest
 
@@ -91,12 +92,53 @@ def test_eval(test: str, path: str):
                 raise ParseError(msg) from e
 
     assert expected, f"failed to parse any errors in file {path}"
-    assert_expected_errors(path, include, *expected)
+
+    plugin = read_file(path)
+    assert_expected_errors(plugin, include, *expected)
 
 
-def assert_expected_errors(test_file: str, include: Iterable[str], *expected: Error):
+# codes that should never error when run on sync code
+sync_errors = ["TRIO102", "TRIO107", "TRIO108", "TRIO109", "TRIO110"]
+
+
+class SyncTransformer(ast.NodeTransformer):
+    def visit_Await(self, node: ast.Await):
+        newnode = self.generic_visit(node.value)
+        return newnode
+
+    def replace_async(self, node: ast.AST, target: Type[ast.AST]) -> ast.AST:
+        node = self.generic_visit(node)
+        newnode = target()
+        newnode.__dict__ = node.__dict__
+        return newnode
+
+    def visit_AsyncFunctionDef(self, node: ast.AST):
+        return self.replace_async(node, ast.FunctionDef)
+
+    def visit_AsyncWith(self, node: ast.AST):
+        return self.replace_async(node, ast.With)
+
+    def visit_AsyncFor(self, node: ast.AST):
+        return self.replace_async(node, ast.For)
+
+
+@pytest.mark.parametrize("test, path", test_files)
+def test_noerror_on_sync_code(test: str, path: str):
+    if all(e not in test for e in sync_errors):
+        return
+    with tokenize.open(f"tests/{path}") as f:
+        source = f.read()
+    tree = SyncTransformer().visit(ast.parse(source))
+
+    assert_expected_errors(Plugin(tree), sync_errors)
+
+
+def read_file(test_file: str):
     filename = Path(__file__).absolute().parent / test_file
-    plugin = Plugin.from_filename(str(filename))
+    return Plugin.from_filename(str(filename))
+
+
+def assert_expected_errors(plugin: Plugin, include: Iterable[str], *expected: Error):
 
     errors = sorted(e for e in plugin.run() if e.code in include)
     expected_ = sorted(expected)
