@@ -20,7 +20,7 @@ class Version(NamedTuple):
 
 def get_releases() -> Iterable[Version]:
     valid_pattern = re.compile(r"^## (\d\d\.\d?\d\.\d?\d)$")
-    with open(Path(__file__).parent.parent / "CHANGELOG.md") as f:
+    with open(Path(__file__).parent.parent / "CHANGELOG.md", encoding="utf-8") as f:
         lines = f.readlines()
     for aline in lines:
         version_match = valid_pattern.match(aline)
@@ -54,7 +54,7 @@ class test_messages_documented(unittest.TestCase):
             "CHANGELOG.md",
             "README.md",
         ):
-            with open(Path(__file__).parent.parent / filename) as f:
+            with open(Path(__file__).parent.parent / filename, encoding="utf-8") as f:
                 lines = f.readlines()
             documented_errors[filename] = set()
             for line in lines:

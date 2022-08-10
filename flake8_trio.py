@@ -19,15 +19,30 @@ __version__ = "22.8.4"
 
 Error_codes = {
     "TRIO100": "{} context contains no checkpoints, add `await trio.sleep(0)`",
-    "TRIO101": "yield inside a nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling",
-    "TRIO102": "await inside {0.name} on line {0.lineno} must have shielded cancel scope with a timeout",
+    "TRIO101": (
+        "yield inside a nursery or cancel scope is only safe when implementing "
+        "a context manager - otherwise, it breaks exception handling"
+    ),
+    "TRIO102": (
+        "await inside {0.name} on line {0.lineno} must have shielded cancel "
+        "scope with a timeout"
+    ),
     "TRIO103": "{} block with a code path that doesn't re-raise the error",
     "TRIO104": "Cancelled (and therefore BaseException) must be re-raised",
     "TRIO105": "trio async function {} must be immediately awaited",
     "TRIO106": "trio must be imported with `import trio` for the linter to work",
-    "TRIO107": "{0} from async function with no guaranteed checkpoint or exception since function definition on line {1.lineno}",
-    "TRIO108": "{0} from async iterable with no guaranteed checkpoint since {1.name} on line {1.lineno}",
-    "TRIO109": "Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead",
+    "TRIO107": (
+        "{0} from async function with no guaranteed checkpoint or exception "
+        "since function definition on line {1.lineno}"
+    ),
+    "TRIO108": (
+        "{0} from async iterable with no guaranteed checkpoint since {1.name} "
+        "on line {1.lineno}"
+    ),
+    "TRIO109": (
+        "Async function definition with a `timeout` parameter - use "
+        "`trio.[fail/move_on]_[after/at]` instead"
+    ),
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
 }
 
@@ -35,11 +50,17 @@ Error_codes = {
 class Statement(NamedTuple):
     name: str
     lineno: int
-    col_offset: int = 0
+    col_offset: int = -1
 
-    # ignore col offset since many tests don't supply that
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, Statement) and self[:2] == other[:2]
+        return (
+            isinstance(other, Statement)
+            and self[:2] == other[:2]
+            and (
+                self.col_offset == other.col_offset
+                or -1 in (self.col_offset, other.col_offset)
+            )
+        )
 
 
 HasLineInfo = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
@@ -51,9 +72,12 @@ class TrioScope:
         self.funcname = funcname
         self.variable_name: Optional[str] = None
         self.shielded: bool = False
-        self.has_timeout: bool = False
+        self.has_timeout: bool = True
+
+        # scope.shield is assigned to in visit_Assign
 
         if self.funcname == "CancelScope":
+            self.has_timeout = False
             for kw in node.keywords:
                 # Only accepts constant values
                 if kw.arg == "shield" and isinstance(kw.value, ast.Constant):
@@ -61,8 +85,6 @@ class TrioScope:
                 # sets to True even if timeout is explicitly set to inf
                 if kw.arg == "deadline":
                     self.has_timeout = True
-        else:
-            self.has_timeout = True
 
     def __str__(self):
         # Not supporting other ways of importing trio, per TRIO106
@@ -298,16 +320,15 @@ def critical_except(node: ast.ExceptHandler) -> Optional[Statement]:
     if node.type is None:
         return Statement("bare except", node.lineno, node.col_offset)
     # several exceptions
-    elif isinstance(node.type, ast.Tuple):
+    if isinstance(node.type, ast.Tuple):
         for element in node.type.elts:
             name = has_exception(element)
             if name:
                 return Statement(name, element.lineno, element.col_offset)
     # single exception, either a Name or an Attribute
-    else:
-        name = has_exception(node.type)
-        if name:
-            return Statement(name, node.type.lineno, node.type.col_offset)
+    name = has_exception(node.type)
+    if name:
+        return Statement(name, node.type.lineno, node.type.col_offset)
     return None
 
 
