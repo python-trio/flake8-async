@@ -28,9 +28,8 @@ class ParseError(Exception):
     ...
 
 
-@pytest.mark.parametrize("test, path", test_files)
-def test_eval(test: str, path: str):
-    # version check
+# check for presence of _pyXX, skip if version is later, and prune parameter
+def check_version(test: str) -> str:
     python_version = re.search(r"(?<=_PY)\d*", test)
     if python_version:
         version_str = python_version.group()
@@ -38,13 +37,20 @@ def test_eval(test: str, path: str):
         v_i = sys.version_info
         if (v_i.major, v_i.minor) < (int(major), int(minor)):
             raise unittest.SkipTest("v_i, major, minor")
-        test = test.split("_")[0]
+        return test.split("_")[0]
+    return test
+
+
+@pytest.mark.parametrize("test, path", test_files)
+def test_eval(test: str, path: str):
+    # version check
+    test = check_version(test)
 
     assert test in Error_codes.keys(), "error code not defined in flake8_trio.py"
 
     include = [test]
     expected: List[Error] = []
-    with open(os.path.join("tests", path)) as file:
+    with open(os.path.join("tests", path), encoding="utf-8") as file:
         lines = file.readlines()
 
     for lineno, line in enumerate(lines, start=1):
@@ -200,7 +206,7 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
     for line in all_lines:
         if error_dict[line] == expected_dict[line]:
             continue
-        for code in {*error_dict[line], *expected_dict[line]}:
+        for code in sorted({*error_dict[line], *expected_dict[line]}):
             if not any_error:
                 print(
                     "Lines with different # of errors:",
