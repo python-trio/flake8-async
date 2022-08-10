@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- add TRIO112, nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.
+
 ## 22.8.4
 - Fix TRIO108 raising errors on yields in some sync code.
 - TRIO109 now skips all decorated functions to avoid false alarms
