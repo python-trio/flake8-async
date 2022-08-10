@@ -2,8 +2,8 @@
 *[CalVer, YY.month.patch](https://calver.org/)*
 
 ## Future
-- Added TRIO302: async context manager inside nursery. Nurseries should be outermost.
-- add TRIO112, nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.
+- Add TRIO111: async context manager inside nursery. Nurseries should be outermost.
+- Add TRIO112: nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.
 
 ## 22.8.4
 - Fix TRIO108 raising errors on yields in some sync code.
