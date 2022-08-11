@@ -3,7 +3,7 @@
 
 ## Future
 - Add TRIO111: async context manager inside nursery. Nurseries should be outermost.
-- Add TRIO112: nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.
+- Add TRIO112: this single-task nursery could be replaced by awaiting the function call directly.
 
 ## 22.8.4
 - Fix TRIO108 raising errors on yields in some sync code.

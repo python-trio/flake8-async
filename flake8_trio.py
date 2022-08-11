@@ -56,8 +56,9 @@ Error_codes = {
     ),
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
     "TRIO111": (
-        "variable {2}, from context manager on line {0}, "
-        "passed to {3} from nursery opened on {1}, might get closed while in use"
+        "variable {} is usable within the context manager on line {}, but that "
+        "will close before nursery opened on line {} - this is usually a bug.  "
+        "Nurseries should generally be the inner-most context manager."
     ),
     "TRIO112": "Redundant nursery {}, consider replacing with a regular function call",
 }
