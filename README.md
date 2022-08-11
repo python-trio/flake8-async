@@ -33,5 +33,5 @@ pip install flake8-trio
   Checkpoints are `await`, `async for`, and `async with` (on one of enter/exit).
 - **TRIO109**: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead
 - **TRIO110**: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.
-- **TRIO111**: Variable from context manager opened inside nursery passed to `start[_soon]` might get closed while in use.
+- **TRIO111**: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accesed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
 - **TRIO112**: nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.

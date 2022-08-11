@@ -25,7 +25,7 @@ from typing import (
 )
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.8.4"
+__version__ = "22.8.5"
 
 
 Error_codes = {
@@ -56,11 +56,11 @@ Error_codes = {
     ),
     "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
     "TRIO111": (
-        "variable {} is usable within the context manager on line {}, but that "
-        "will close before nursery opened on line {} - this is usually a bug.  "
+        "variable {2} is usable within the context manager on line {0}, but that "
+        "will close before nursery opened on line {1} - this is usually a bug.  "
         "Nurseries should generally be the inner-most context manager."
     ),
-    "TRIO112": "Redundant nursery {}, consider replacing with a regular function call",
+    "TRIO112": "Redundant nursery {}, consider replacing with directly awaiting the function call",
 }
 
 
