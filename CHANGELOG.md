@@ -1,8 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
-- add TRIO112, nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.
+## 22.8.5
+- Add TRIO111: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accesed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
+- Add TRIO112: this single-task nursery could be replaced by awaiting the function call directly.
 
 ## 22.8.4
 - Fix TRIO108 raising errors on yields in some sync code.

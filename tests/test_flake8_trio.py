@@ -72,20 +72,27 @@ def test_eval(test: str, path: str):
             try:
                 # Append a bunch of empty strings so string formatting gives garbage
                 # instead of throwing an exception
-                args = eval(
-                    f"[{reg_match}]",
-                    {
-                        "lineno": lineno,
-                        "line": lineno,
-                        "Statement": Statement,
-                        "Stmt": Statement,
-                    },
-                )
+                try:
+                    args = eval(
+                        f"[{reg_match}]",
+                        {
+                            "lineno": lineno,
+                            "line": lineno,
+                            "Statement": Statement,
+                            "Stmt": Statement,
+                        },
+                    )
+                except NameError:
+                    print(f"failed to eval on line {lineno}", file=sys.stderr)
+                    raise
 
             except Exception as e:
                 print(f"lineno: {lineno}, line: {line}", file=sys.stderr)
                 raise e
-            col, *args = args
+            if args:
+                col, *args = args
+            else:
+                col = 0
             assert isinstance(
                 col, int
             ), f'invalid column "{col}" @L{lineno}, in "{line}"'
@@ -163,13 +170,15 @@ def assert_expected_errors(plugin: Plugin, include: Iterable[str], *expected: Er
 
 def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
     first_error_line: List[Error] = []
-    for e in errors:
-        if e.line == errors[0].line:
-            first_error_line.append(e)
     first_expected_line: List[Error] = []
-    for e in expected:
-        if e.line == expected[0].line:
-            first_expected_line.append(e)
+    for err, exp in zip(errors, expected):
+        if err == exp:
+            continue
+        if not first_error_line or err.line == first_error_line[0]:
+            first_error_line.append(err)
+        if not first_expected_line or exp.line == first_expected_line[0]:
+            first_expected_line.append(exp)
+
     if first_expected_line != first_error_line:
         print(
             "First lines with different errors",
