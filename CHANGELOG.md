@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.8.6
+- TRIO103 now correctly handles raises in loops, i.e. `raise` in else is guaranteed to run unless there's a `break` in the body.
+
 ## 22.8.5
 - Add TRIO111: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accesed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
 - Add TRIO112: this single-task nursery could be replaced by awaiting the function call directly.

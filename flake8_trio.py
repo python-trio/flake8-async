@@ -25,7 +25,7 @@ from typing import (
 )
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.8.5"
+__version__ = "22.8.6"
 
 
 Error_codes = {
@@ -595,6 +595,7 @@ class Visitor103_104(Flake8TrioVisitor):
         super().__init__()
         self.except_name: Optional[str] = ""
         self.unraised: bool = False
+        self.unraised_break: bool = False
         self.loop_depth = 0
 
     # If an `except` is bare, catches `BaseException`, or `trio.Cancelled`
@@ -662,8 +663,7 @@ class Visitor103_104(Flake8TrioVisitor):
             self.unraised = True
 
         # but it's fine if we raise in finally
-        for n in node.finalbody:
-            self.visit(n)
+        self.visit_nodes(node.finalbody)
 
     # Treat if's as fully covering if both `if` and `else` raise.
     # `elif` is parsed by the ast as a new if statement inside the else.
@@ -673,39 +673,50 @@ class Visitor103_104(Flake8TrioVisitor):
             return
 
         body_raised = False
-        for n in node.body:
-            self.visit(n)
+        self.visit_nodes(node.body)
 
         # does body always raise correctly
         body_raised = not self.unraised
 
         self.unraised = True
-        for n in node.orelse:
-            self.visit(n)
+        self.visit_nodes(node.orelse)
 
         # if body didn't raise, or it's unraised after else, set unraise
         self.unraised = not body_raised or self.unraised
 
-    # It's hard to check for full coverage of `raise`s inside loops, so
-    # we completely disregard them when checking coverage by resetting the
-    # effects of them afterwards
+    # A loop is guaranteed to raise if:
+    # condition always raises, or
+    #   else always raises, and
+    #   always raise before break
     def visit_For(self, node: Union[ast.For, ast.While]):
-        outer = self.get_state("unraised")
+        if isinstance(node, ast.While):
+            self.visit_nodes(node.test)
+        else:
+            self.visit_nodes(node.target)
+            self.visit_nodes(node.iter)
+
+        prebody = self.get_state("unraised_break", "unraised")
+        self.unraised_break = False
 
         self.loop_depth += 1
-        for n in node.body:
-            self.visit(n)
+        self.visit_nodes(node.body)
         self.loop_depth -= 1
-        for n in node.orelse:
-            self.visit(n)
 
-        self.set_state(outer)
+        # body might not be entered, reset state to before body
+        self.unraised = prebody["unraised"]
+        self.visit_nodes(node.orelse)
+
+        # stay unraised if unraised before body, and either unraised
+        # after orelse or there was an unraised brak
+        self.unraised = prebody["unraised"] and (self.unraised or self.unraised_break)
+        self.unraised_break = prebody["unraised_break"]
 
     visit_While = visit_For
 
     def visit_Break(self, node: Union[ast.Break, ast.Continue]):
         if self.unraised and self.loop_depth == 0:
             self.error("TRIO104", node)
+        self.unraised_break |= self.unraised
         self.generic_visit(node)
 
     visit_Continue = visit_Break
