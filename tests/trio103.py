@@ -35,13 +35,42 @@ except BaseException:  # safe
         raise
 
 # loops
+# raises inside the body are never guaranteed to run and are ignored
 except trio.Cancelled:  # error: 7, "trio.Cancelled"
-    while True:
+    while ...:
+        raise
+
+# raise inside else are guaranteed to run, unless there's a break
+except trio.Cancelled:
+    while ...:
+        ...
+    else:
+        raise
+except trio.Cancelled:
+    for _ in "":
+        ...
+    else:
+        raise
+except BaseException:  # error: 7, "BaseException"
+    while ...:
+        if ...:
+            break
         raise
     else:
         raise
-except trio.Cancelled:  # error: 7, "trio.Cancelled"
+except BaseException:  # error: 7, "BaseException"
     for _ in "":
+        if ...:
+            break
+        raise
+    else:
+        raise
+# ensure we don't ignore previous guaranteed raise (although that's unreachable code)
+except BaseException:
+    raise
+    for _ in "":
+        if ...:
+            break
         raise
     else:
         raise
