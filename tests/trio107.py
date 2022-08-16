@@ -179,7 +179,7 @@ async def foo_while_break_2():  # error: 0, "exit", Statement("function definiti
 
 
 async def foo_while_break_3():  # error: 0, "exit", Statement("function definition", lineno)
-    while ...:
+    while foo():
         await foo()
         break
     else:
@@ -209,7 +209,7 @@ async def foo_while_continue_2():  # safe
 
 
 async def foo_while_continue_3():  # error: 0, "exit", Statement("function definition", lineno)
-    while ...:
+    while foo():
         await foo()
         continue
     else:
@@ -335,3 +335,36 @@ async def foo_return_3():  # error: 0, "exit", Statement("function definition", 
     if _:
         await foo()
         return  # safe
+
+
+# loop over non-empty static collection
+async def foo_loop_static():
+    for i in [1, 2, 3]:
+        await foo()
+
+
+# also handle range with constants
+async def foo_range_1():
+    for i in range(5):
+        await foo()
+
+
+async def foo_range_2():
+    for i in range(5, 10):
+        await foo()
+
+
+async def foo_range_3():
+    for i in range(10, 5, -1):
+        await foo()
+
+
+async def foo_range_4():  # error: 0, "exit", Statement("function definition", lineno)
+    for i in range(10, 5):
+        await foo()
+
+
+# error on complex parameters
+async def foo_range_5():  # error: 0, "exit", Statement("function definition", lineno)
+    for i in range(2 - 2):
+        await foo()

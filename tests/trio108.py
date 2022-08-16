@@ -5,7 +5,7 @@ from typing import Any
 
 import trio
 
-_ = ""
+_: Any = ""
 
 # INCLUDE TRIO107
 
@@ -152,7 +152,7 @@ async def foo_while_2():  # error: 0, "exit", Statement("yield", lineno+3)
 
 # no checkpoint after yield if else is entered
 async def foo_while_3():  # error: 0, "exit", Statement("yield", lineno+5)
-    while ...:
+    while foo():
         await foo()
         yield
     else:
@@ -162,11 +162,11 @@ async def foo_while_3():  # error: 0, "exit", Statement("yield", lineno+5)
 # check that errors are suppressed in visit_While
 async def foo_while_4():  # error: 0, "exit", Statement("yield", lineno+3) # error: 0, "exit", Statement("yield", lineno+5) # error: 0, "exit", Statement("yield", lineno+7)
     await foo()
-    while ...:
+    while foo():
         yield  # error: 8, "yield", Statement("yield", lineno) # error: 8, "yield", Statement("yield", lineno+2) # error: 8, "yield", Statement("yield", lineno+4)
-        while ...:
+        while foo():
             yield  # error: 12, "yield", Statement("yield", lineno)# error: 12, "yield", Statement("yield", lineno-2)# error: 12, "yield", Statement("yield", lineno+2)
-            while ...:
+            while foo():
                 yield  # error: 16, "yield", Statement("yield", lineno-2)# error: 16, "yield", Statement("yield", lineno)
 
 
@@ -186,7 +186,7 @@ async def foo_while_5():
 # no checkpoint on continue
 async def foo_while_continue_1():  # error: 0, "exit", Statement("yield", lineno+3)
     await foo()
-    while ...:
+    while foo():
         yield  # error: 8, "yield", Statement("yield", lineno)
         if ...:
             continue
@@ -196,14 +196,14 @@ async def foo_while_continue_1():  # error: 0, "exit", Statement("yield", lineno
 # multiple continues
 async def foo_while_continue_2():  # error: 0, "exit", Statement("yield", lineno+3)
     await foo()
-    while ...:
+    while foo():
         yield  # error: 8, "yield", Statement("yield", lineno)
-        if ...:
+        if foo():
             continue
         await foo()
         if ...:
             continue
-        while ...:
+        while foo():
             yield  # safe
             await foo()
 
@@ -283,7 +283,7 @@ async def foo_while_break_6():  # error: 0, "exit", Statement("yield", lineno+11
 
 
 async def foo_while_break_7():  # error: 0, "exit", Statement("function definition", lineno)# error: 0, "exit", Statement("yield", lineno+5)
-    while ...:
+    while foo():
         await foo()
         if ...:
             break
@@ -614,3 +614,188 @@ async def foo_boolops_3():  # error: 0, "exit", Stmt("yield", line+1) # error: 0
             and (yield))  # error: 17, "yield", Stmt("yield", line-1)
     )
 # fmt: on
+
+# loop over non-empty static collection
+async def foo_loop_static():
+    # break/else behaviour on guaranteed body execution
+    for _ in [1, 2, 3]:
+        await foo()
+    else:
+        yield
+    await foo()
+    yield
+
+    for _ in [1, 2, 3]:
+        await foo()
+        if ...:
+            break
+    else:
+        yield
+        await foo()
+    yield
+
+    # continue
+    for _ in [1, 2, 3]:
+        if ...:
+            continue
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-7)
+
+    # continue/else
+    for _ in [1, 2, 3]:
+        if ...:
+            continue
+        await foo()
+    else:
+        yield  # error: 8, "yield", Stmt("yield", line-8)
+    await foo()
+    yield
+
+    for _ in [1, 2, 3]:
+        await foo()
+        if ...:
+            break
+    else:
+        yield
+        await foo()
+    yield
+
+    # test different containers
+    for _ in (1, 2, 3):
+        await foo()
+    yield
+
+    for _ in (foo(), foo()):
+        await foo()
+    yield
+
+    for _ in ((),):
+        await foo()
+    yield
+
+    for _ in "hello":
+        await foo()
+    yield
+
+    for _ in b"hello":
+        await foo()
+    yield
+
+    for _ in r"hello":
+        await foo()
+    yield
+
+    for _ in {1, 2, 3}:
+        await foo()
+    yield
+
+    for _ in ():
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in {1: 2, 3: 4}:
+        await foo()
+    yield
+
+    for _ in "   ".strip():
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in range(0):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in (*range(0),):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in (*(1, 2),):
+        await foo()
+    yield
+
+    for _ in {**{}}:
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in {**{}, **{}}:
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in {**{1: 2}}:
+        await foo()
+    yield
+
+    for _ in (*range(0), *[1, 2, 3]):
+        await foo()
+    yield
+
+    for _ in {**{}, **{1: 2}}:
+        await foo()
+    yield
+
+    x: Any = ...
+    for _ in (*x, *[1, 2, 3]):
+        await foo()
+    yield
+
+    for _ in {**x, **{1: 2}}:
+        await foo()
+    yield
+
+    for _ in {}:
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in "":
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in [[], []][0]:
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in [[], []].__getitem__(0):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # not handled
+    for _ in list((1, 2)):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-5)
+
+    for _ in list():
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # while
+    while True:
+        await foo()
+        if ...:
+            break
+    yield
+
+    while True:
+        if ...:
+            break
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-6)
+
+    while True:
+        if ...:
+            continue
+        await foo()
+        if ...:
+            break
+    yield
+
+    # will get caught by any number of linters, but trio108 will also complain
+    for _ in 5:  # type: ignore
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-5)
+
+    # range with constant arguments also handled, see more extensive tests in 107
+    for i in range(5):
+        await foo()
+    yield
+
+    await foo()
