@@ -729,6 +729,19 @@ async def foo_loop_static():
         await foo()
     yield
 
+    for _ in {**{}, **{1: 2}}:
+        await foo()
+    yield
+
+    x: Any = ...
+    for _ in (*x, *[1, 2, 3]):
+        await foo()
+    yield
+
+    for _ in {**x, **{1: 2}}:
+        await foo()
+    yield
+
     for _ in {}:
         await foo()
     yield  # error: 4, "yield", Stmt("yield", line-4)
