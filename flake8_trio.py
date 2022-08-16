@@ -837,7 +837,7 @@ def empty_body(body: List[ast.stmt]) -> bool:
 class Visitor107_108(Flake8TrioVisitor):
     def __init__(self):
         super().__init__()
-        self.yield_count = 0
+        self.has_yield = False
         self.safe_decorator = False
         self.async_function = False
 
@@ -861,32 +861,33 @@ class Visitor107_108(Flake8TrioVisitor):
 
         outer = self.get_state()
         self.set_state(self.default, copy=True)
-        self.safe_decorator = has_decorator(node.decorator_list, "asynccontextmanager")
-        self.async_function = True
 
-        self.uncheckpointed_statements = {
-            Statement("function definition", node.lineno, node.col_offset)
-        }
+        # disable checks in asynccontextmanagers by saying the function isn't async
+        self.async_function = not has_decorator(
+            node.decorator_list, "asynccontextmanager"
+        )
+
+        if self.async_function:
+            self.uncheckpointed_statements = {
+                Statement("function definition", node.lineno, node.col_offset)
+            }
 
         self.generic_visit(node)
-        self.check_function_exit(node)
+
+        if self.async_function:
+            self.check_function_exit(node)
 
         self.set_state(outer)
 
     # error if function exits or returns with uncheckpointed statements
     def check_function_exit(self, node: Union[ast.Return, ast.AsyncFunctionDef]):
-        method = "return" if isinstance(node, ast.Return) else "exit"
         for statement in self.uncheckpointed_statements:
-            # function contextmanagers guarantee checkpoint on entry or exit
-            if (
-                self.safe_decorator
-                and statement.name == "function definition"
-                and method == "exit"
-            ):
-                continue
-
-            error_code = "TRIO108" if self.yield_count else "TRIO107"
-            self.error(error_code, node, method, statement)
+            self.error(
+                "TRIO108" if self.has_yield else "TRIO107",
+                node,
+                "return" if isinstance(node, ast.Return) else "exit",
+                statement,
+            )
 
     def visit_Return(self, node: ast.Return):
         self.generic_visit(node)
@@ -914,24 +915,20 @@ class Visitor107_108(Flake8TrioVisitor):
     # raising exception means we don't need to checkpoint so we can treat it as one
     visit_Raise = visit_Await
 
-    # guaranteed to checkpoint on at least one of enter and exit
-    # if it checkpoints on entry and there's a yield in it, we can't treat it as checkpoint
-    # but it may not checkpoint on entry, so yields inside need to raise problem
+    # conservatively it's at least in trio only guaranteed to checkpoint on at least
+    # one of enter and exit, but we treat both entry and exit as checkpoint
     def visit_AsyncWith(self, node: ast.AsyncWith):
         self.visit_nodes(node.items)
-        prebody_yield_count = self.yield_count
 
-        # there's no guarantee of checkpoint before entry
+        self.uncheckpointed_statements = set()
         self.visit_nodes(node.body)
 
-        # no yield in body, treat as checkpoint
-        if prebody_yield_count == self.yield_count:
-            self.uncheckpointed_statements = set()
+        self.uncheckpointed_statements = set()
 
     # error if no checkpoint since earlier yield or function entry
     def visit_Yield(self, node: ast.Yield):
+        self.has_yield = True
         self.generic_visit(node)
-        self.yield_count += 1
         for statement in self.uncheckpointed_statements:
             self.error("TRIO108", node, "yield", statement)
 
