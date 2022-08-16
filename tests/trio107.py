@@ -1,4 +1,8 @@
+import abc
+import abc as anything
 import typing
+from abc import abstractclassmethod, abstractmethod, abstractproperty
+from contextlib import asynccontextmanager
 from typing import Any, Union, overload
 
 import trio
@@ -7,13 +11,18 @@ _ = ""
 
 # INCLUDE TRIO108
 
+# treat any function with ellipsis as sole body as safe
+async def foo3():
+    ...
 
 async def foo() -> Any:
     await foo()
 
 
 async def foo2():  # error: 0, "exit", Statement("function definition", lineno)
-    ...
+    pass
+
+
 
 
 # If
@@ -57,7 +66,7 @@ async def foo_func_1():
     await foo()
 
     async def foo_func_2():  # error: 4, "exit", Statement("function definition", lineno)
-        ...
+        pass
 
 
 async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
@@ -68,7 +77,7 @@ async def foo_func_3():  # error: 0, "exit", Statement("function definition", li
 async def foo_func_5():  # error: 0, "exit", Statement("function definition", lineno)
     def foo_func_6():  # safe
         async def foo_func_7():  # error: 8, "exit", Statement("function definition", lineno)
-            ...
+            pass
 
 
 async def foo_func_8():  # error: 0, "exit", Statement("function definition", lineno)
@@ -368,3 +377,31 @@ async def foo_range_4():  # error: 0, "exit", Statement("function definition", l
 async def foo_range_5():  # error: 0, "exit", Statement("function definition", lineno)
     for i in range(2 - 2):
         await foo()
+
+class foo_class:
+    @abstractmethod
+    async def foo_decorator_1(_):
+        pass
+
+    @abc.abstractmethod
+    async def foo_decorator_2(_):
+        pass
+
+    @anything.abstractmethod
+    async def foo_decorator_3(_):
+        pass
+
+    @abstractproperty
+    async def foo_decorator_4(_):
+        pass
+
+
+@abstractclassmethod
+async def foo_decorator_5():
+    pass
+
+
+@asynccontextmanager
+async def foo_decorator_6():
+    if ...:
+        yield

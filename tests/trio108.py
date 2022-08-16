@@ -2,6 +2,7 @@ import contextlib
 import contextlib as anything
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any
+from abc import abstractmethod
 
 import trio
 

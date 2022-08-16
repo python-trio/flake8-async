@@ -135,6 +135,11 @@ context_manager_names = (
     "contextmanager",
     "asynccontextmanager",
 )
+abstract_decorators = (
+    "abstractmethod",
+    "abstractclassmethod",
+    "abstractproperty",
+)
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
@@ -841,12 +846,20 @@ class Visitor107_108(Flake8TrioVisitor):
             super().visit(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        if has_decorator(node.decorator_list, "overload"):
+        # don't lint overloaded functions or function bodies solely consisting of `...`
+        if has_decorator(node.decorator_list, "overload") or (
+            len(node.body) == 1
+            and isinstance(node.body[0], ast.Expr)
+            and isinstance(node.body[0].value, ast.Constant)
+            and node.body[0].value.value is Ellipsis
+        ):
             return
 
         outer = self.get_state()
         self.set_state(self.default, copy=True)
-        self.safe_decorator = has_decorator(node.decorator_list, *context_manager_names)
+        self.safe_decorator = has_decorator(
+            node.decorator_list, "asynccontextmanager", *abstract_decorators
+        )
         self.async_function = True
 
         self.uncheckpointed_statements = {
