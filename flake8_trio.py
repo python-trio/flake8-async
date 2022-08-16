@@ -596,6 +596,7 @@ class Visitor103_104(Flake8TrioVisitor):
         self.except_name: Optional[str] = ""
         self.unraised: bool = False
         self.unraised_break: bool = False
+        self.unraised_continue: bool = False
         self.loop_depth = 0
 
     # If an `except` is bare, catches `BaseException`, or `trio.Cancelled`
@@ -688,38 +689,93 @@ class Visitor103_104(Flake8TrioVisitor):
     # condition always raises, or
     #   else always raises, and
     #   always raise before break
+    # or body always raises (before break) and is guaranteed to run at least once
     def visit_For(self, node: Union[ast.For, ast.While]):
+        if not self.unraised:
+            self.generic_visit(node)
+            return
+
+        infinite_loop = False
         if isinstance(node, ast.While):
+            try:
+                infinite_loop = body_guaranteed_once = bool(ast.literal_eval(node.test))
+            except Exception:
+                body_guaranteed_once = False
             self.visit_nodes(node.test)
         else:
+            body_guaranteed_once = iter_guaranteed_once(node.iter)
             self.visit_nodes(node.target)
             self.visit_nodes(node.iter)
 
-        prebody = self.get_state("unraised_break", "unraised")
+        prebody = self.get_state("unraised_break", "unraised_continue")
         self.unraised_break = False
+        self.unraised_continue = False
 
         self.loop_depth += 1
         self.visit_nodes(node.body)
         self.loop_depth -= 1
 
-        # body might not be entered, reset state to before body
-        self.unraised = prebody["unraised"]
+        # if body is not guaranteed to run, or can continue at unraised, reset
+        if not (infinite_loop or (body_guaranteed_once and not self.unraised_continue)):
+            self.unraised = True
         self.visit_nodes(node.orelse)
 
-        # stay unraised if unraised before body, and either unraised
-        # after orelse or there was an unraised brak
-        self.unraised = prebody["unraised"] and (self.unraised or self.unraised_break)
-        self.unraised_break = prebody["unraised_break"]
+        # if we might break at an unraised point, set unraised
+        self.unraised |= self.unraised_break
+        self.set_state(prebody)
 
     visit_While = visit_For
 
-    def visit_Break(self, node: Union[ast.Break, ast.Continue]):
+    def visit_Break(self, node: ast.Break):
         if self.unraised and self.loop_depth == 0:
             self.error("TRIO104", node)
         self.unraised_break |= self.unraised
         self.generic_visit(node)
 
-    visit_Continue = visit_Break
+    def visit_Continue(self, node: ast.Continue):
+        if self.unraised and self.loop_depth == 0:
+            self.error("TRIO104", node)
+        self.unraised_continue |= self.unraised
+        self.generic_visit(node)
+
+
+def iter_guaranteed_once(iterable: ast.expr) -> bool:
+    # static container with an "elts" attribute
+    if hasattr(iterable, "elts"):
+        elts: Iterable[ast.expr] = iterable.elts  # type: ignore
+        for elt in elts:
+            assert isinstance(elt, ast.expr)
+            # recurse starred expression
+            if isinstance(elt, ast.Starred):
+                if iter_guaranteed_once(elt.value):
+                    return True
+            else:
+                return True
+        return False
+    if isinstance(iterable, ast.Constant):
+        try:
+            return len(iterable.value) > 0
+        except Exception:
+            return False
+    if isinstance(iterable, ast.Dict):
+        for key, val in zip(iterable.keys, iterable.values):
+            # {**{...}, **{<...>}} is parsed as {None: {...}, None: {<...>}}
+            if key is None and isinstance(val, ast.Dict):
+                if iter_guaranteed_once(val):
+                    return True
+            else:
+                return True
+    # check for range() with literal parameters
+    if (
+        isinstance(iterable, ast.Call)
+        and isinstance(iterable.func, ast.Name)
+        and iterable.func.id == "range"
+    ):
+        try:
+            return len(range(*[ast.literal_eval(a) for a in iterable.args])) > 0
+        except Exception:
+            return False
+    return False
 
 
 trio_async_functions = (
@@ -942,11 +998,17 @@ class Visitor107_108(Flake8TrioVisitor):
     # state after the loop same as above, and in addition the state at any break
     def visit_loop(self, node: Union[ast.While, ast.For, ast.AsyncFor]):
         # visit condition
+        infinite_loop = False
         if isinstance(node, ast.While):
+            try:
+                infinite_loop = body_guaranteed_once = bool(ast.literal_eval(node.test))
+            except Exception:
+                body_guaranteed_once = False
             self.visit_nodes(node.test)
         else:
             self.visit_nodes(node.target)
             self.visit_nodes(node.iter)
+            body_guaranteed_once = iter_guaranteed_once(node.iter)
 
         # save state in case of nested loops
         outer = self.get_state(
@@ -995,9 +1057,15 @@ class Visitor107_108(Flake8TrioVisitor):
             # loop body might execute fully before entering orelse
             # (current state of self.uncheckpointed_statements)
             # or not at all
-            self.uncheckpointed_statements.update(pre_body_uncheckpointed_statements)
-            # or at a continue
-            self.uncheckpointed_statements.update(self.uncheckpointed_before_continue)
+            if not body_guaranteed_once:
+                self.uncheckpointed_statements.update(
+                    pre_body_uncheckpointed_statements
+                )
+            # or at a continue, unless it's an infinite loop
+            if not infinite_loop:
+                self.uncheckpointed_statements.update(
+                    self.uncheckpointed_before_continue
+                )
 
         # visit orelse
         self.visit_nodes(node.orelse)

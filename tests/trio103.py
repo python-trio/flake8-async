@@ -1,4 +1,11 @@
+from typing import Any
+
 import trio
+
+
+def foo() -> Any:
+    ...
+
 
 try:
     pass
@@ -37,7 +44,7 @@ except BaseException:  # safe
 # loops
 # raises inside the body are never guaranteed to run and are ignored
 except trio.Cancelled:  # error: 7, "trio.Cancelled"
-    while ...:
+    while foo():
         raise
 
 # raise inside else are guaranteed to run, unless there's a break
@@ -133,3 +140,29 @@ except (
     trio.Cancelled,  # no complaint on this line
 ):
     pass
+
+# loop over non-empty static collection
+except BaseException as e:
+    for i in [1, 2, 3]:
+        raise
+except BaseException:  # error: 7, "BaseException"
+    for i in [1, 2, 3]:
+        ...
+except BaseException:  # error: 7, "BaseException"
+    for i in [1, 2, 3]:
+        if ...:
+            continue
+        raise
+except BaseException:
+    while True:
+        raise
+except BaseException:  # error: 7, "BaseException"
+    while True:
+        if ...:
+            break
+        raise
+except BaseException:
+    while True:
+        if ...:
+            continue
+        raise

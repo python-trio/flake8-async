@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- TRIO103, 107 and 108 now inspects `while` conditions and `for` iterables to avoid false alarms on a couple cases where the loop body is guaranteed to run at least once.
+
 ## 22.8.6
 - TRIO103 now correctly handles raises in loops, i.e. `raise` in else is guaranteed to run unless there's a `break` in the body.
 
