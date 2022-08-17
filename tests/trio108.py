@@ -1,9 +1,9 @@
 import contextlib
-import contextlib as anything
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager
 from typing import Any
 
 import trio
+import trio as anything
 
 _: Any = ""
 
@@ -56,38 +56,24 @@ async def foo_yield_return_3():
 
 
 # async with
-# async with guarantees checkpoint on at least one of entry or exit
-async def foo_async_with():  # error: 0, "exit", Statement("yield", lineno+2)
+# checkpoint on both entry and exit
+async def foo_async_with():
     async with trio.fail_after(5):
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
+        yield
 
 
 # fmt: off
-async def foo_async_with_2():  # error: 0, "exit", Statement("yield", lineno+4)
+async def foo_async_with_2():
     # with'd expression evaluated before checkpoint
     async with (yield):  # error: 16, "yield", Statement("function definition", lineno-2)
-        # not guaranteed that async with checkpoints on entry (or is that only for trio?)
-        yield  # error: 8, "yield", Statement("yield", lineno-2)
+        yield
 # fmt: on
 
 
-async def foo_async_with_3():  # error: 0, "exit", Statement("yield", lineno+3)
+async def foo_async_with_3():
     async with trio.fail_after(5):
-        ...
-    yield  # safe
-
-
-async def foo_async_with_4():  # error: 0, "exit", Statement("yield", lineno+4)
-    async with trio.fail_after(5):
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
-        await foo()
-    yield
-
-
-async def foo_async_with_5():  # error: 0, "exit", Statement("yield", lineno+3)
-    async with trio.fail_after(5):
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
-    yield  # error: 4, "yield", Statement("yield", lineno-1)
+        yield
+        yield  # error: 8, "yield", Statement("yield", lineno-1)
 
 
 # async for
@@ -558,41 +544,33 @@ async def foo_func_5():  # error: 0, "exit", Statement("yield", lineno+2)
             ...
 
 
-# Guaranteed checkpoint in case `if` isn't entered
+# Completely ignore checking asynccontextmanagers, since they might checkpoint on
+# either or both of __aenter__ and __aexit__ and correct context managers only
+# actually yield once (even if there might be multiple yield statements).
 @asynccontextmanager
-async def foo_cm_1():  # error: 0, "exit", Statement("yield", lineno+2)
-    if ...:
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
+async def foo_cm_1():
+    while True:
+        yield
 
 
 @contextlib.asynccontextmanager
-async def foo_cm_2():  # error: 0, "exit", Statement("yield", lineno+2)
-    if ...:
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
+async def foo_cm_2():
+    # Just imagine some fancy control flow so that only one of these executes.
+    yield
+    yield
+    yield
 
 
 @anything.asynccontextmanager
-async def foo_cm_3():  # error: 0, "exit", Statement("yield", lineno+2)
-    if ...:
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
-
-
-@contextmanager
-def foo_cm_4():
+async def foo_cm_3():
     if ...:
         yield
 
 
-@contextlib.contextmanager
-def foo_cm_5():
-    if ...:
-        yield
-
-
+# note: not asynccontextmanager, so treat this function as an async iterable.
 @anything.contextmanager
-def foo_cm_6():
-    if ...:
-        yield
+async def foo_cm_4():  # error: 0, "exit", Stmt("yield", line+1)
+    yield  # error: 4, "yield", Statement("function definition", lineno-1)
 
 
 # No error from function definition, but may shortcut after yield
