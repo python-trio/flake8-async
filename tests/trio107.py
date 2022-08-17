@@ -5,15 +5,39 @@ import trio
 
 _ = ""
 
+
+def __() -> Any:
+    ...
+
+
 # INCLUDE TRIO108
+
+# function whose body solely consists of pass, ellipsis, or string constants is safe
+async def foo_empty_1():
+    ...
+
+
+async def foo_empty_2():
+    pass
+
+
+async def foo_empty_3():
+    """comment"""
+
+
+async def foo_empty_4():
+    ...
+    """comment"""
+    ...
+    """comment2"""
 
 
 async def foo() -> Any:
     await foo()
 
 
-async def foo2():  # error: 0, "exit", Statement("function definition", lineno)
-    ...
+async def foo1():  # error: 0, "exit", Statement("function definition", lineno)
+    __()
 
 
 # If
@@ -57,7 +81,7 @@ async def foo_func_1():
     await foo()
 
     async def foo_func_2():  # error: 4, "exit", Statement("function definition", lineno)
-        ...
+        __()
 
 
 async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
@@ -68,7 +92,7 @@ async def foo_func_3():  # error: 0, "exit", Statement("function definition", li
 async def foo_func_5():  # error: 0, "exit", Statement("function definition", lineno)
     def foo_func_6():  # safe
         async def foo_func_7():  # error: 8, "exit", Statement("function definition", lineno)
-            ...
+            __()
 
 
 async def foo_func_8():  # error: 0, "exit", Statement("function definition", lineno)

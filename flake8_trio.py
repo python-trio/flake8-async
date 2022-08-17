@@ -821,6 +821,21 @@ class Visitor105(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
+def empty_body(body: List[ast.stmt]) -> bool:
+    # loop until we hit a statement that's not pass, ellipsis, or a string constant
+    for stmt in body:
+        if not (
+            isinstance(stmt, ast.Pass)
+            or (
+                isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Constant)
+                and (stmt.value.value is Ellipsis or isinstance(stmt.value.value, str))
+            )
+        ):
+            return False
+    return True
+
+
 class Visitor107_108(Flake8TrioVisitor):
     def __init__(self):
         super().__init__()
@@ -841,12 +856,14 @@ class Visitor107_108(Flake8TrioVisitor):
             super().visit(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        if has_decorator(node.decorator_list, "overload"):
+        # don't lint functions whose bodies solely consist of pass or ellipsis
+        if has_decorator(node.decorator_list, "overload") or empty_body(node.body):
+            # no reason to generic_visit an empty body
             return
 
         outer = self.get_state()
         self.set_state(self.default, copy=True)
-        self.safe_decorator = has_decorator(node.decorator_list, *context_manager_names)
+        self.safe_decorator = has_decorator(node.decorator_list, "asynccontextmanager")
         self.async_function = True
 
         self.uncheckpointed_statements = {
