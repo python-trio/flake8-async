@@ -826,6 +826,21 @@ class Visitor105(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
+def empty_body(body: List[ast.stmt]) -> bool:
+    # loop until we hit a statement that's not pass, ellipsis, or a string constant
+    for stmt in body:
+        if not (
+            isinstance(stmt, ast.Pass)
+            or (
+                isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Constant)
+                and (stmt.value.value is Ellipsis or isinstance(stmt.value.value, str))
+            )
+        ):
+            return False
+    return True
+
+
 class Visitor107_108(Flake8TrioVisitor):
     def __init__(self):
         super().__init__()
@@ -846,13 +861,9 @@ class Visitor107_108(Flake8TrioVisitor):
             super().visit(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        # don't lint overloaded functions or function bodies solely consisting of `...`
-        if has_decorator(node.decorator_list, "overload") or (
-            len(node.body) == 1
-            and isinstance(node.body[0], ast.Expr)
-            and isinstance(node.body[0].value, ast.Constant)
-            and node.body[0].value.value is Ellipsis
-        ):
+        # don't lint functions whose bodies solely consist of pass or ellipsis
+        if empty_body(node.body):
+            # no reason to generic_visit an empty body
             return
 
         outer = self.get_state()

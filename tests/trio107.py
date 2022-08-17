@@ -2,27 +2,46 @@ import abc
 import abc as anything
 import typing
 from abc import abstractclassmethod, abstractmethod, abstractproperty
-from contextlib import asynccontextmanager
 from typing import Any, Union, overload
 
 import trio
 
 _ = ""
 
+
+def __() -> Any:
+    ...
+
+
 # INCLUDE TRIO108
 
-# treat any function with ellipsis as sole body as safe
+# treat any function whose body solely consists of pass, ellipsis, or string constants
+# as safe
 async def foo3():
     ...
+
+
+async def foo4():
+    pass
+
+
+async def foo5():
+    """comment"""
+
+
+async def foo6():
+    ...
+    """comment"""
+    ...
+    """comment2"""
+
 
 async def foo() -> Any:
     await foo()
 
 
 async def foo2():  # error: 0, "exit", Statement("function definition", lineno)
-    pass
-
-
+    __()
 
 
 # If
@@ -66,7 +85,7 @@ async def foo_func_1():
     await foo()
 
     async def foo_func_2():  # error: 4, "exit", Statement("function definition", lineno)
-        pass
+        __()
 
 
 async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
@@ -77,7 +96,7 @@ async def foo_func_3():  # error: 0, "exit", Statement("function definition", li
 async def foo_func_5():  # error: 0, "exit", Statement("function definition", lineno)
     def foo_func_6():  # safe
         async def foo_func_7():  # error: 8, "exit", Statement("function definition", lineno)
-            pass
+            __()
 
 
 async def foo_func_8():  # error: 0, "exit", Statement("function definition", lineno)
@@ -94,14 +113,15 @@ def foo_normal_func_2():
     ...
 
 
-# overload decorator
+# overload decorator is no longer special-cased, but pyright will complain if body
+# consists of anything but string, pass or ellipsis
 @overload
-async def foo_overload_1(_: bytes):
+async def foo_overload_1(_: str):
     ...
 
 
 @typing.overload
-async def foo_overload_1(_: str):
+async def foo_overload_1(_: bytes):
     ...
 
 
@@ -378,6 +398,7 @@ async def foo_range_5():  # error: 0, "exit", Statement("function definition", l
     for i in range(2 - 2):
         await foo()
 
+
 class foo_class:
     @abstractmethod
     async def foo_decorator_1(_):
@@ -399,9 +420,3 @@ class foo_class:
 @abstractclassmethod
 async def foo_decorator_5():
     pass
-
-
-@asynccontextmanager
-async def foo_decorator_6():
-    if ...:
-        yield
