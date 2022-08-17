@@ -25,7 +25,7 @@ from typing import (
 )
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.8.6"
+__version__ = "22.8.7"
 
 
 Error_codes = {
@@ -915,8 +915,9 @@ class Visitor107_108(Flake8TrioVisitor):
     # raising exception means we don't need to checkpoint so we can treat it as one
     visit_Raise = visit_Await
 
-    # conservatively it's at least in trio only guaranteed to checkpoint on at least
-    # one of enter and exit, but we treat both entry and exit as checkpoint
+    # Async context managers can reasonably checkpoint on either or both of entry and
+    # exit.  Given that we can't tell which, we assume "both" to avoid raising a
+    # missing-checkpoint warning when there might in fact be one (i.e. a false alarm).
     def visit_AsyncWith(self, node: ast.AsyncWith):
         self.visit_nodes(node.items)
 

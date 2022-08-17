@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 22.8.7
 - TRIO107+108 now ignores `asynccontextmanager`s, since both `__aenter__` and `__aexit__` should checkpoint. `async with` is also treated as checkpointing on both enter and exit.
 - TRIO107 now completely ignores any function whose body consists solely of ellipsis, pass, or string constants.
 - TRIO103, 107 and 108 now inspects `while` conditions and `for` iterables to avoid false alarms on a couple cases where the loop body is guaranteed to run at least once.
