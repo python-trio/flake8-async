@@ -1,7 +1,4 @@
-import abc
-import abc as anything
 import typing
-from abc import abstractclassmethod, abstractmethod, abstractproperty
 from typing import Any, Union, overload
 
 import trio
@@ -15,21 +12,20 @@ def __() -> Any:
 
 # INCLUDE TRIO108
 
-# treat any function whose body solely consists of pass, ellipsis, or string constants
-# as safe
-async def foo3():
+# function whose body solely consists of pass, ellipsis, or string constants is safe
+async def foo_empty_1():
     ...
 
 
-async def foo4():
+async def foo_empty_2():
     pass
 
 
-async def foo5():
+async def foo_empty_3():
     """comment"""
 
 
-async def foo6():
+async def foo_empty_4():
     ...
     """comment"""
     ...
@@ -40,7 +36,7 @@ async def foo() -> Any:
     await foo()
 
 
-async def foo2():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo1():  # error: 0, "exit", Statement("function definition", lineno)
     __()
 
 
@@ -113,15 +109,14 @@ def foo_normal_func_2():
     ...
 
 
-# overload decorator is no longer special-cased, but pyright will complain if body
-# consists of anything but string, pass or ellipsis
+# overload decorator
 @overload
-async def foo_overload_1(_: str):
+async def foo_overload_1(_: bytes):
     ...
 
 
 @typing.overload
-async def foo_overload_1(_: bytes):
+async def foo_overload_1(_: str):
     ...
 
 
@@ -397,26 +392,3 @@ async def foo_range_4():  # error: 0, "exit", Statement("function definition", l
 async def foo_range_5():  # error: 0, "exit", Statement("function definition", lineno)
     for i in range(2 - 2):
         await foo()
-
-
-class foo_class:
-    @abstractmethod
-    async def foo_decorator_1(_):
-        pass
-
-    @abc.abstractmethod
-    async def foo_decorator_2(_):
-        pass
-
-    @anything.abstractmethod
-    async def foo_decorator_3(_):
-        pass
-
-    @abstractproperty
-    async def foo_decorator_4(_):
-        pass
-
-
-@abstractclassmethod
-async def foo_decorator_5():
-    pass

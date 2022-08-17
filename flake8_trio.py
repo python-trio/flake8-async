@@ -135,11 +135,6 @@ context_manager_names = (
     "contextmanager",
     "asynccontextmanager",
 )
-abstract_decorators = (
-    "abstractmethod",
-    "abstractclassmethod",
-    "abstractproperty",
-)
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
@@ -862,15 +857,13 @@ class Visitor107_108(Flake8TrioVisitor):
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         # don't lint functions whose bodies solely consist of pass or ellipsis
-        if empty_body(node.body):
+        if has_decorator(node.decorator_list, "overload") or empty_body(node.body):
             # no reason to generic_visit an empty body
             return
 
         outer = self.get_state()
         self.set_state(self.default, copy=True)
-        self.safe_decorator = has_decorator(
-            node.decorator_list, "asynccontextmanager", *abstract_decorators
-        )
+        self.safe_decorator = has_decorator(node.decorator_list, "asynccontextmanager")
         self.async_function = True
 
         self.uncheckpointed_statements = {

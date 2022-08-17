@@ -1,6 +1,5 @@
 import contextlib
 import contextlib as anything
-from abc import abstractmethod
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any
 
@@ -800,11 +799,3 @@ async def foo_loop_static():
     yield
 
     await foo()
-
-
-# abstract decorators are now ignored
-class foo_class:
-    @abstractmethod
-    async def foo_decorator_1(_):  # error: 4, "exit", Stmt("yield", line+2)
-        yield  # error: 8, "yield", Stmt("function definition", line-1)
-        yield  # error: 8, "yield", Stmt("yield", line-1)
