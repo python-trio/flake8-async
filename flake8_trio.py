@@ -822,18 +822,16 @@ class Visitor105(Flake8TrioVisitor):
 
 
 def empty_body(body: List[ast.stmt]) -> bool:
-    # loop until we hit a statement that's not pass, ellipsis, or a string constant
-    for stmt in body:
-        if not (
-            isinstance(stmt, ast.Pass)
-            or (
-                isinstance(stmt, ast.Expr)
-                and isinstance(stmt.value, ast.Constant)
-                and (stmt.value.value is Ellipsis or isinstance(stmt.value.value, str))
-            )
-        ):
-            return False
-    return True
+    # Does the function body consist solely of `pass`, `...`, and (doc)string literals?
+    return all(
+        isinstance(stmt, ast.Pass)
+        or (
+            isinstance(stmt, ast.Expr)
+            and isinstance(stmt.value, ast.Constant)
+            and (stmt.value.value is Ellipsis or isinstance(stmt.value.value, str))
+        )
+        for stmt in body
+    )
 
 
 class Visitor107_108(Flake8TrioVisitor):
