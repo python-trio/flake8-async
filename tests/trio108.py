@@ -333,7 +333,7 @@ async def foo_try_6():  # error: 0, "exit", Statement("yield", lineno+5)
     yield  # error: 4, "yield", Statement("function definition", lineno-5)
 
 
-async def foo_try_7():  # error: 0, "exit", Statement("yield", lineno+16)
+async def foo_try_7():  # error: 0, "exit", Statement("yield", lineno+17)
     await foo()
     try:
         yield
@@ -349,7 +349,8 @@ async def foo_try_7():  # error: 0, "exit", Statement("yield", lineno+16)
         pass
     # If the try raises an exception without checkpointing, and it's not caught
     # by any of the excepts, jumping straight to the finally.
-    yield  # error: 4, "yield", Statement("yield", lineno-13)
+    # Then the error will be propagated upwards
+    yield  # safe
 
 
 ## safe only if (try or else) and all except bodies either await or raise
@@ -377,14 +378,44 @@ async def foo_try_9():  # error: 0, "exit", Statement("yield", lineno+6)
         yield
 
 
-# in theory safe, but not currently handled
+# bare except means we'll jump to finally after full execution of either try or the except
 async def foo_try_10():
     try:
         await foo()
     except:
         await foo()
     finally:
+        yield
+        await foo()
+
+
+async def foo_try_10_BaseException():
+    try:
+        await foo()
+    except BaseException:
+        await foo()
+    finally:
+        yield
+        await foo()
+
+
+# not fully covering excepts
+async def foo_try_10_exception():
+    try:
+        await foo()
+    except ValueError:
+        await foo()
+    finally:
         yield  # error: 8, "yield", Statement("function definition", lineno-6)
+        await foo()
+
+
+async def foo_try_10_no_except():
+    try:
+        await foo()
+    finally:
+        # try might crash before checkpoint
+        yield  # error: 8, "yield", Statement("function definition", lineno-5)
         await foo()
 
 

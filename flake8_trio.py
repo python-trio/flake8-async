@@ -961,14 +961,15 @@ class Visitor107_108(Flake8TrioVisitor):
         try_checkpoint = self.uncheckpointed_statements
 
         # check that all except handlers checkpoint (await or most likely raise)
-        all_except_checkpoint: Set[Statement] = set()
+        except_uncheckpointed_statements: Set[Statement] = set()
+
         for handler in node.handlers:
             # enter with worst case of try
             self.uncheckpointed_statements = body_uncheckpointed_statements.copy()
 
             self.visit_nodes(handler)
 
-            all_except_checkpoint.update(self.uncheckpointed_statements)
+            except_uncheckpointed_statements.update(self.uncheckpointed_statements)
 
         # check else
         # if else runs it's after all of try, so restore state to back then
@@ -976,14 +977,26 @@ class Visitor107_108(Flake8TrioVisitor):
         self.visit_nodes(node.orelse)
 
         # checkpoint if else checkpoints, and all excepts checkpoint
-        if all_except_checkpoint:
-            self.uncheckpointed_statements.update(all_except_checkpoint)
+        self.uncheckpointed_statements.update(except_uncheckpointed_statements)
 
-        # if there's no finally, don't restore state from try
         if node.finalbody:
-            # can enter from try, else, or any except
-            self.uncheckpointed_statements.update(body_uncheckpointed_statements)
+            added = body_uncheckpointed_statements.difference(
+                self.uncheckpointed_statements
+            )
+            # if there's no bare except or except BaseException, we can jump into
+            # finally from any point in try. But the exception will be reraised after
+            # finally, so track what we add so it can be removed later.
+            # (This is for catching return or yield in the finally, which is usually
+            # very bad)
+            if not any(
+                h.type is None
+                or (isinstance(h.type, ast.Name) and h.type.id == "BaseException")
+                for h in node.handlers
+            ):
+                self.uncheckpointed_statements.update(added)
+
             self.visit_nodes(node.finalbody)
+            self.uncheckpointed_statements.difference_update(added)
 
     # valid checkpoint if both body and orelse checkpoint
     def visit_If(self, node: Union[ast.If, ast.IfExp]):

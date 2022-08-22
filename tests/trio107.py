@@ -344,6 +344,66 @@ async def foo_try_7():  # safe
         pass
 
 
+# https://github.com/Zac-HD/flake8-trio/issues/45
+async def to_queue(iter_func, queue):
+    async with iter_func() as it:
+        async for x in it:
+            queue.put(x)
+
+
+async def to_queue2(iter_func, queue):
+    try:
+        async with iter_func() as it:
+            async for x in it:
+                queue.put(x)
+    finally:
+        queue.put(None)
+
+
+# safe, exception is propagated out
+async def try_checkpoint_empty_finally():
+    try:
+        await trio.sleep(0)
+    finally:
+        ...
+
+
+# unsafe, exception is suppressed
+async def try_exception_suppressed():  # error: 0, 'exit', Statement('function definition', lineno)
+    try:
+        await trio.sleep(0)
+    except:
+        ...
+
+
+# safe
+async def try_bare_except_reraises():
+    try:
+        await trio.sleep(0)
+    except:
+        raise
+    finally:
+        ...
+
+
+async def return_in_finally_bare_except_checkpoint():
+    try:
+        await trio.sleep(0)
+    except:
+        await trio.sleep(0)
+    finally:
+        return
+
+
+async def return_in_finally_bare_except_empty():
+    try:
+        await trio.sleep(0)
+    except:
+        ...
+    finally:
+        return  # error: 8, 'return', Statement('function definition', lineno-6)
+
+
 # early return
 async def foo_return_1():
     return  # error: 4, "return", Statement("function definition", lineno-1)
