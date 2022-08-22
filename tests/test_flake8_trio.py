@@ -66,15 +66,15 @@ def test_eval(test: str, path: str):
             continue
 
         # get text between `error:` and (end of line or another comment)
-        k = re.findall(r"(?<=error:)[^#]*(?=#|$)", line)
+        k = re.findall(r"(error|TRIO...):([^#]*)(?=#|$)", line)
 
-        for reg_match in k:
+        for err_code, err_args in k:
             try:
                 # Append a bunch of empty strings so string formatting gives garbage
                 # instead of throwing an exception
                 try:
                     args = eval(
-                        f"[{reg_match}]",
+                        f"[{err_args}]",
                         {
                             "lineno": lineno,
                             "line": lineno,
@@ -99,7 +99,9 @@ def test_eval(test: str, path: str):
 
             # assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
             try:
-                expected.append(Error(test, lineno, int(col), *args))
+                if err_code == "error":
+                    err_code = test
+                expected.append(Error(err_code, lineno, int(col), *args))
             except AttributeError as e:
                 msg = f'Line {lineno}: Failed to format\n "{Error_codes[test]}"\nwith\n{args}'
                 raise ParseError(msg) from e
