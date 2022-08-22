@@ -7,7 +7,7 @@ import sys
 import tokenize
 import unittest
 from pathlib import Path
-from typing import DefaultDict, Iterable, List, Sequence, Tuple, Type
+from typing import DefaultDict, Iterable, List, Optional, Sequence, Tuple, Type
 
 import pytest
 
@@ -293,6 +293,72 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
         for err, type_ in zip(err_msg, (int, int, str, type)):
             assert isinstance(err, type_)
         assert err_msg == info_tuple(exp)
+
+
+check = "await foo()"
+
+
+@pytest.mark.parametrize("try_", (check, "..."))
+@pytest.mark.parametrize("exc1", (check, "...", "raise", "return", None))
+@pytest.mark.parametrize("exc2", (check, "...", "raise", "return", None))
+@pytest.mark.parametrize("bare_exc", (check, "...", "raise", "return", None))
+@pytest.mark.parametrize("else_", (check, "...", "return", None))
+@pytest.mark.parametrize("finally_", (check, "...", "return", None))
+def test_107_try_permutations(
+    try_: Optional[str],
+    exc1: Optional[str],
+    exc2: Optional[str],
+    bare_exc: Optional[str],
+    else_: Optional[str],
+    finally_: Optional[str],
+):
+    if exc1 is None and exc2 is not None:
+        pytest.skip("redundant")
+
+    arg_dict = {
+        "except ValueError": exc1,
+        "except SyntaxError": exc2,
+        "except": bare_exc,
+        "else": else_,
+        "finally": finally_,
+    }
+
+    function_str = f"async def foo():\n  try:\n    {try_}\n"
+
+    for arg, val in arg_dict.items():
+        if val is not None:
+            function_str += f"  {arg}:\n    {val}\n"
+
+    try:
+        tree = ast.parse(function_str)
+    except Exception:
+        assert exc1 is exc2 is bare_exc is None and (
+            finally_ is None or else_ is not None
+        )
+        pytest.skip("invalid syntax")
+
+    errors = [e for e in Plugin(tree).run() if e.code == "TRIO107"]
+
+    if (
+        # return in exception
+        "return" in (exc1, exc2, bare_exc)
+        # exception and finally doesn't checkpoint, checkpoint in try might not run
+        or ("..." in (exc1, exc2, bare_exc) and finally_ != check)
+        # no checkpoints in normal control flow
+        or check not in (try_, finally_, else_)
+        # return in else|finally w/o checkpoint before
+        or ("return" in (else_, finally_) and check not in (else_, try_))
+        # return in finally with no bare exception, checkpoint in try might not run
+        or (finally_ == "return" and bare_exc is None)
+    ):
+        if not errors:
+            print("\nmissing alarm:\n", function_str)
+            pytest.fail("missing alarm")
+        return
+
+    if errors:
+        print("\nfalse alarm:\n", function_str)
+        pytest.fail("false alarm")
 
 
 @pytest.mark.fuzz
