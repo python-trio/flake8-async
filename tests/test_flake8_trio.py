@@ -298,13 +298,22 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
 check = "await foo()"
 
 
-@pytest.mark.parametrize("try_", (check, "..."))
-@pytest.mark.parametrize("exc1", (check, "...", "raise", "return", None))
-@pytest.mark.parametrize("exc2", (check, "...", "raise", "return", None))
-@pytest.mark.parametrize("bare_exc", (check, "...", "raise", "return", None))
-@pytest.mark.parametrize("else_", (check, "...", "return", None))
-@pytest.mark.parametrize("finally_", (check, "...", "return", None))
-def test_107_try_permutations(
+def test_107_permutations():
+    # since each test is so fast, and there's so many permutations, manually doing
+    # the permutations in a single test is much faster than the permutations from using
+    # pytest parametrization - and does not clutter up the output massively.
+    for try_ in (check, "..."):
+        for exc1 in (check, "...", "raise", "return", None):
+            for exc2 in (check, "...", "raise", "return", None):
+                for bare_exc in (check, "...", "raise", "return", None):
+                    for else_ in (check, "...", "return", None):
+                        for finally_ in (check, "...", "return", None):
+                            _try_permutation(
+                                try_, exc1, exc2, bare_exc, else_, finally_
+                            )
+
+
+def _try_permutation(
     try_: Optional[str],
     exc1: Optional[str],
     exc2: Optional[str],
@@ -313,7 +322,7 @@ def test_107_try_permutations(
     finally_: Optional[str],
 ):
     if exc1 is None and exc2 is not None:
-        pytest.skip("redundant")
+        return
 
     arg_dict = {
         "except ValueError": exc1,
@@ -335,7 +344,7 @@ def test_107_try_permutations(
         assert exc1 is exc2 is bare_exc is None and (
             finally_ is None or else_ is not None
         )
-        pytest.skip("invalid syntax")
+        return
 
     errors = [e for e in Plugin(tree).run() if e.code == "TRIO107"]
 
