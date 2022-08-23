@@ -10,7 +10,9 @@ Pairs well with flake8-async and flake8-bugbear.
 """
 
 import ast
+import re
 import tokenize
+from argparse import Namespace
 from typing import (
     Any,
     Dict,
@@ -23,6 +25,8 @@ from typing import (
     Union,
     cast,
 )
+
+from flake8.options.manager import OptionManager  # type: ignore
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.8.8"
@@ -138,14 +142,15 @@ context_manager_names = (
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, options: Optional[Namespace] = None):
         super().__init__()
         self._problems: List[Error] = []
         self.suppress_errors = False
+        self.options = options
 
     @classmethod
-    def run(cls, tree: ast.AST) -> Iterable[Error]:
-        visitor = cls()
+    def run(cls, tree: ast.AST, options: Optional[Namespace] = None) -> Iterable[Error]:
+        visitor = cls(options)
         visitor.visit(tree)
         yield from visitor._problems
 
@@ -200,6 +205,36 @@ def has_decorator(decorator_list: List[ast.expr], *names: str):
     return False
 
 
+def regex_has_decorator(decorator_list: List[ast.expr], *names: str):
+    def wild_match(match_str: str, target: str) -> bool:
+        if match_str == "*":
+            return True
+        if "*" not in match_str:
+            return match_str == target
+        return bool(re.match(re.escape(match_str).replace("\\*", ".*"), target))
+
+    def recursive_check(expr: ast.expr, attrs: List[str]) -> bool:
+        if len(attrs) == 1:
+            return attrs[0] == "*" or (
+                isinstance(expr, ast.Name) and wild_match(attrs[0], expr.id)
+            )
+        return (
+            isinstance(expr, ast.Attribute)
+            and wild_match(attrs[0], expr.attr)
+            and recursive_check(expr.value, attrs[1:])
+        )
+
+    for name in names:
+        if name[0] == "@":
+            name = name[1:]
+        split_name = name.split(".")
+        split_name.reverse()
+        for dec in decorator_list:
+            if recursive_check(dec, split_name):
+                return True
+    return False
+
+
 # handles 100, 101, 106, 109, 110, 111, 112
 class VisitorMiscChecks(Flake8TrioVisitor):
     class NurseryCall(NamedTuple):
@@ -211,8 +246,8 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         name: str
         is_nursery: bool
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
 
         # 101
         self._yield_is_error = False
@@ -475,8 +510,8 @@ class Visitor102(Flake8TrioVisitor):
                     if kw.arg == "deadline":
                         self.has_timeout = True
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
         self._critical_scope: Optional[Statement] = None
         self._trio_context_managers: List[Visitor102.TrioScope] = []
         self._safe_decorator = False
@@ -591,8 +626,8 @@ class Visitor102(Flake8TrioVisitor):
 # Never have an except Cancelled or except BaseException block with a code path that
 # doesn't re-raise the error
 class Visitor103_104(Flake8TrioVisitor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
         self.except_name: Optional[str] = ""
         self.unraised: bool = False
         self.unraised_break: bool = False
@@ -797,8 +832,8 @@ trio_async_functions = (
 
 
 class Visitor105(Flake8TrioVisitor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
         self.node_stack: List[ast.AST] = []
 
     def visit(self, node: ast.AST):
@@ -835,8 +870,8 @@ def empty_body(body: List[ast.stmt]) -> bool:
 
 
 class Visitor107_108(Flake8TrioVisitor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
         self.has_yield = False
         self.safe_decorator = False
         self.async_function = False
@@ -861,20 +896,28 @@ class Visitor107_108(Flake8TrioVisitor):
 
         outer = self.get_state()
         self.set_state(self.default, copy=True)
+        extra_decorators = getattr(self.options, "no_checkpoint_warning_decorators", [])
 
         # disable checks in asynccontextmanagers by saying the function isn't async
-        self.async_function = not has_decorator(
+        self.async_function = not regex_has_decorator(
+            node.decorator_list, *extra_decorators
+        )
+        # self.async_function = not has_decorator(
+        #    node.decorator_list, "asynccontextmanager"
+        # )
+
+        check_start_and_exit = self.async_function and not has_decorator(
             node.decorator_list, "asynccontextmanager"
         )
 
-        if self.async_function:
+        if check_start_and_exit:
             self.uncheckpointed_statements = {
                 Statement("function definition", node.lineno, node.col_offset)
             }
 
         self.generic_visit(node)
 
-        if self.async_function:
+        if check_start_and_exit:
             self.check_function_exit(node)
 
         self.set_state(outer)
@@ -1142,6 +1185,7 @@ class Visitor107_108(Flake8TrioVisitor):
 class Plugin:
     name = __name__
     version = __version__
+    options: Optional[Namespace] = None
 
     def __init__(self, tree: ast.AST):
         self._tree = tree
@@ -1154,4 +1198,25 @@ class Plugin:
 
     def run(self) -> Iterable[Error]:
         for v in Flake8TrioVisitor.__subclasses__():
-            yield from v.run(self._tree)
+            yield from v.run(self._tree, self.options)
+
+    @staticmethod
+    def add_options(option_manager: OptionManager):  # type: ignore
+        option_manager.add_option(  # type: ignore
+            "--no-checkpoint-warning-decorators",
+            default="",
+            parse_from_config=True,
+            required=False,
+            comma_separated_list=True,
+            help=(
+                "Comma-separated list of decorators to disable TRIO107 & TRIO108"
+                " checkpoint warnings for."
+                " Decorators can be dotted or not, as well as support * as a wildcard."
+                " For example, ``--no-checkpoint-warning-decorators=app.route,"
+                "mydecorator,mypackage.mydecorators.*``"
+            ),
+        )
+
+    @staticmethod
+    def parse_options(options: Namespace):
+        Plugin.options = options

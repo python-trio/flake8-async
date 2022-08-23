@@ -593,14 +593,12 @@ async def foo_func_5():  # error: 0, "exit", Statement("yield", lineno+2)
 @asynccontextmanager
 async def foo_cm_1():
     while True:
+        await foo()
         yield
 
 
 @contextlib.asynccontextmanager
 async def foo_cm_2():
-    # Just imagine some fancy control flow so that only one of these executes.
-    yield
-    yield
     yield
 
 
@@ -614,6 +612,12 @@ async def foo_cm_3():
 @anything.contextmanager
 async def foo_cm_4():  # error: 0, "exit", Stmt("yield", line+1)
     yield  # error: 4, "yield", Statement("function definition", lineno-1)
+
+
+@asynccontextmanager
+async def foo_cm_5():
+    yield
+    yield  # error: 4, "yield", Statement("yield", lineno-1)
 
 
 # No error from function definition, but may shortcut after yield

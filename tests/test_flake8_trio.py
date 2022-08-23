@@ -21,7 +21,7 @@ from flake8_trio import Error, Error_codes, Plugin, Statement
 test_files: List[Tuple[str, str]] = sorted(
     (os.path.splitext(f)[0].upper(), f)
     for f in os.listdir("tests")
-    if re.match(r"trio.*.py", f)
+    if re.match(r"trio\d\d\d(_py.*)?.py", f)
 )
 
 

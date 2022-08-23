@@ -66,7 +66,7 @@ class test_messages_documented(unittest.TestCase):
         documented_errors["tests/trio*.py"] = {
             os.path.splitext(f)[0].upper().split("_")[0]
             for f in os.listdir("tests")
-            if re.match(r"^trio.*.py", f)
+            if re.match(r"^trio\d\d\d.*.py", f)
         }
 
         unique_errors: Dict[str, Set[str]] = {}
