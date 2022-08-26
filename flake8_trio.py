@@ -896,11 +896,10 @@ class Visitor107_108(Flake8TrioVisitor):
 
         outer = self.get_state()
         self.set_state(self.default, copy=True)
-        extra_decorators = self.options.no_checkpoint_warning_decorators
 
         # disable checks in asynccontextmanagers by saying the function isn't async
         self.async_function = not regex_has_decorator(
-            node.decorator_list, *extra_decorators
+            node.decorator_list, *self.options.no_checkpoint_warning_decorators
         )
 
         if self.async_function:
