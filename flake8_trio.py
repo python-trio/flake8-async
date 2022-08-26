@@ -26,7 +26,7 @@ from typing import (
     cast,
 )
 
-from flake8.options.manager import OptionManager  # type: ignore
+from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.8.8"
@@ -1194,8 +1194,8 @@ class Plugin:
             yield from v.run(self._tree, self.options)
 
     @staticmethod
-    def add_options(option_manager: OptionManager):  # type: ignore
-        option_manager.add_option(  # type: ignore
+    def add_options(option_manager: OptionManager):
+        option_manager.add_option(
             "--no-checkpoint-warning-decorators",
             default="",
             parse_from_config=True,
