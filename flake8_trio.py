@@ -142,14 +142,14 @@ context_manager_names = (
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
-    def __init__(self, options: Optional[Namespace] = None):
+    def __init__(self, options: Namespace):
         super().__init__()
         self._problems: List[Error] = []
         self.suppress_errors = False
         self.options = options
 
     @classmethod
-    def run(cls, tree: ast.AST, options: Optional[Namespace] = None) -> Iterable[Error]:
+    def run(cls, tree: ast.AST, options: Namespace) -> Iterable[Error]:
         visitor = cls(options)
         visitor.visit(tree)
         yield from visitor._problems
@@ -896,28 +896,21 @@ class Visitor107_108(Flake8TrioVisitor):
 
         outer = self.get_state()
         self.set_state(self.default, copy=True)
-        extra_decorators = getattr(self.options, "no_checkpoint_warning_decorators", [])
+        extra_decorators = self.options.no_checkpoint_warning_decorators
 
         # disable checks in asynccontextmanagers by saying the function isn't async
         self.async_function = not regex_has_decorator(
             node.decorator_list, *extra_decorators
         )
-        # self.async_function = not has_decorator(
-        #    node.decorator_list, "asynccontextmanager"
-        # )
 
-        check_start_and_exit = self.async_function and not has_decorator(
-            node.decorator_list, "asynccontextmanager"
-        )
-
-        if check_start_and_exit:
+        if self.async_function:
             self.uncheckpointed_statements = {
                 Statement("function definition", node.lineno, node.col_offset)
             }
 
         self.generic_visit(node)
 
-        if check_start_and_exit:
+        if self.async_function:
             self.check_function_exit(node)
 
         self.set_state(outer)
@@ -1185,7 +1178,7 @@ class Visitor107_108(Flake8TrioVisitor):
 class Plugin:
     name = __name__
     version = __version__
-    options: Optional[Namespace] = None
+    options: Namespace = Namespace(no_checkpoint_warning_decorators=[])
 
     def __init__(self, tree: ast.AST):
         self._tree = tree

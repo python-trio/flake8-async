@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from typing import Dict, Iterable, NamedTuple, Set
 
+from test_flake8_trio import trio_test_files_regex
+
 import flake8_trio
 
 
@@ -66,7 +68,7 @@ class test_messages_documented(unittest.TestCase):
         documented_errors["tests/trio*.py"] = {
             os.path.splitext(f)[0].upper().split("_")[0]
             for f in os.listdir("tests")
-            if re.match(r"^trio\d\d\d.*.py", f)
+            if re.match(trio_test_files_regex, f)
         }
 
         unique_errors: Dict[str, Set[str]] = {}
