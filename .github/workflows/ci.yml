@@ -41,7 +41,7 @@ jobs:
         python -m pip install --upgrade pip setuptools tox
         python -m tox --notest --recreate -e test
     - name: Run tests
-      run: python -m tox -e test -- -n auto
+      run: python -m tox -e test
 
   release:
     runs-on: ubuntu-latest
