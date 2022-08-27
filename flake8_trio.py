@@ -25,7 +25,7 @@ from typing import (
 )
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.8.7"
+__version__ = "22.8.8"
 
 
 Error_codes = {
@@ -1096,10 +1096,17 @@ class Visitor107_108(Flake8TrioVisitor):
         # visit orelse
         self.visit_nodes(node.orelse)
 
-        # We may exit from:
-        # orelse (covering: no body, body until continue, and all body)
-        # break
-        self.uncheckpointed_statements.update(self.uncheckpointed_before_break)
+        # if this is an infinite loop, with no break in it, don't raise
+        # alarms about the state after it.
+        if infinite_loop and not any(
+            isinstance(n, ast.Break) for n in self.walk(*node.body)
+        ):
+            self.uncheckpointed_statements = set()
+        else:
+            # We may exit from:
+            # orelse (covering: no body, body until continue, and all body)
+            # break
+            self.uncheckpointed_statements.update(self.uncheckpointed_before_break)
 
         # reset break & continue in case of nested loops
         self.set_state(outer)

@@ -122,7 +122,7 @@ async def foo_for_1():  # error: 0, "exit", Statement("function definition", lin
 
 # safe if checkpoint in else
 async def foo_while_1():  # error: 0, "exit", Statement("yield", lineno+5)
-    while ...:
+    while foo():
         ...
     else:
         await foo()  # will always run
@@ -132,7 +132,7 @@ async def foo_while_1():  # error: 0, "exit", Statement("yield", lineno+5)
 # simple yield-in-loop case
 async def foo_while_2():  # error: 0, "exit", Statement("yield", lineno+3)
     await foo()
-    while ...:
+    while foo():
         yield  # error: 8, "yield", Statement("yield", lineno)
 
 
@@ -159,7 +159,7 @@ async def foo_while_4():  # error: 0, "exit", Statement("yield", lineno+3) # err
 # check error suppression is reset
 async def foo_while_5():
     await foo()
-    while ...:
+    while foo():
         yield  # error: 8, "yield", Statement("yield", lineno)
 
         async def foo_nested_error():  # error: 8, "exit", Statement("yield", lineno+1)# error: 8, "exit", Statement("yield", lineno+1)
@@ -197,7 +197,7 @@ async def foo_while_continue_2():  # error: 0, "exit", Statement("yield", lineno
 # --- while + break ---
 # else might not run
 async def foo_while_break_1():  # error: 0, "exit", Statement("yield", lineno+6)
-    while ...:
+    while foo():
         if ...:
             break
     else:
@@ -208,7 +208,7 @@ async def foo_while_break_1():  # error: 0, "exit", Statement("yield", lineno+6)
 # no checkpoint on break
 async def foo_while_break_2():  # error: 0, "exit", Statement("yield", lineno+3)
     await foo()
-    while ...:
+    while foo():
         yield  # safe
         if ...:
             break
@@ -217,7 +217,7 @@ async def foo_while_break_2():  # error: 0, "exit", Statement("yield", lineno+3)
 
 # guaranteed if else and break
 async def foo_while_break_3():  # error: 0, "exit", Statement("yield", lineno+7)
-    while ...:
+    while foo():
         await foo()
         if ...:
             break  # if it breaks, have checkpointed
@@ -228,7 +228,7 @@ async def foo_while_break_3():  # error: 0, "exit", Statement("yield", lineno+7)
 
 # break at non-guaranteed checkpoint
 async def foo_while_break_4():  # error: 0, "exit", Statement("yield", lineno+7)
-    while ...:
+    while foo():
         if ...:
             break
         await foo()  # might not run
@@ -240,12 +240,12 @@ async def foo_while_break_4():  # error: 0, "exit", Statement("yield", lineno+7)
 # check break is reset on nested
 async def foo_while_break_5():  # error: 0, "exit", Statement("yield", lineno+12)
     await foo()
-    while ...:
+    while foo():
         yield
         if ...:
             break
         await foo()
-        while ...:
+        while foo():
             yield  # safe
             await foo()
         yield  # safe
@@ -256,7 +256,7 @@ async def foo_while_break_5():  # error: 0, "exit", Statement("yield", lineno+12
 # check multiple breaks
 async def foo_while_break_6():  # error: 0, "exit", Statement("yield", lineno+11)
     await foo()
-    while ...:
+    while foo():
         yield
         if ...:
             break
@@ -275,6 +275,18 @@ async def foo_while_break_7():  # error: 0, "exit", Statement("function definiti
             break
         yield
         break
+
+
+async def foo_while_endless_1():
+    while True:
+        await foo()
+        yield
+
+
+async def foo_while_endless_2():  # error: 0, "exit", Statement("function definition", lineno)# error: 0, "exit", Statement("yield", lineno+3)
+    while foo():
+        await foo()
+        yield
 
 
 # try
@@ -536,12 +548,12 @@ def foo_sync_5():
 
 
 def foo_sync_6():
-    while ...:
+    while foo():
         yield
 
 
 def foo_sync_7():
-    while ...:
+    while foo():
         if ...:
             return
         yield

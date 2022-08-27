@@ -188,7 +188,7 @@ async def foo_for_2():  # now safe
 
 
 async def foo_while_break_1():  # safe
-    while ...:
+    while foo():
         await foo()
         break
     else:
@@ -196,7 +196,7 @@ async def foo_while_break_1():  # safe
 
 
 async def foo_while_break_2():  # error: 0, "exit", Statement("function definition", lineno)
-    while ...:
+    while foo():
         break
     else:
         await foo()
@@ -211,14 +211,14 @@ async def foo_while_break_3():  # error: 0, "exit", Statement("function definiti
 
 
 async def foo_while_break_4():  # error: 0, "exit", Statement("function definition", lineno)
-    while ...:
+    while foo():
         break
     else:
         ...
 
 
 async def foo_while_continue_1():  # safe
-    while ...:
+    while foo():
         await foo()
         continue
     else:
@@ -226,7 +226,7 @@ async def foo_while_continue_1():  # safe
 
 
 async def foo_while_continue_2():  # safe
-    while ...:
+    while foo():
         continue
     else:
         await foo()
@@ -241,7 +241,7 @@ async def foo_while_continue_3():  # error: 0, "exit", Statement("function defin
 
 
 async def foo_while_continue_4():  # error: 0, "exit", Statement("function definition", lineno)
-    while ...:
+    while foo():
         continue
     else:
         ...
@@ -452,3 +452,27 @@ async def foo_range_4():  # error: 0, "exit", Statement("function definition", l
 async def foo_range_5():  # error: 0, "exit", Statement("function definition", lineno)
     for i in range(2 - 2):
         await foo()
+
+
+# https://github.com/Zac-HD/flake8-trio/issues/47
+async def f():
+    while True:
+        if ...:
+            await trio.sleep(0)
+            return
+        # If you delete this loop, no warning.
+        while foo():
+            await __()
+
+
+async def f1():
+    while True:
+        if ...:
+            await trio.sleep(0)
+            return
+
+
+async def f2():
+    while True:
+        await trio.sleep(0)
+        return

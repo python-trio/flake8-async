@@ -1,8 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 22.8.8
 - Fix false alarm on TRIO107 with checkpointing `try` and empty `finally`
+- Fix false alarm on TRIO107&108 with infinite loops
 
 ## 22.8.7
 - TRIO107+108 now ignores `asynccontextmanager`s, since both `__aenter__` and `__aexit__` should checkpoint. `async with` is also treated as checkpointing on both enter and exit.
