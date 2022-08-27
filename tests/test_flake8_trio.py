@@ -1,5 +1,6 @@
 import ast
 import copy
+import itertools
 import os
 import re
 import site
@@ -7,7 +8,7 @@ import sys
 import tokenize
 import unittest
 from pathlib import Path
-from typing import DefaultDict, Iterable, List, Optional, Sequence, Tuple, Type
+from typing import DefaultDict, Iterable, List, Sequence, Tuple, Type
 
 import pytest
 
@@ -295,79 +296,59 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
         assert err_msg == info_tuple(exp)
 
 
-check = "await foo()"
-
-
 def test_107_permutations():
     # since each test is so fast, and there's so many permutations, manually doing
     # the permutations in a single test is much faster than the permutations from using
     # pytest parametrization - and does not clutter up the output massively.
-    for try_ in (check, "..."):
-        for exc1 in (check, "...", "raise", "return", None):
-            for exc2 in (check, "...", "raise", "return", None):
-                for bare_exc in (check, "...", "raise", "return", None):
-                    for else_ in (check, "...", "return", None):
-                        for finally_ in (check, "...", "return", None):
-                            _try_permutation(
-                                try_, exc1, exc2, bare_exc, else_, finally_
-                            )
-
-
-def _try_permutation(
-    try_: Optional[str],
-    exc1: Optional[str],
-    exc2: Optional[str],
-    bare_exc: Optional[str],
-    else_: Optional[str],
-    finally_: Optional[str],
-):
-    if exc1 is None and exc2 is not None:
-        return
-
-    arg_dict = {
-        "except ValueError": exc1,
-        "except SyntaxError": exc2,
-        "except": bare_exc,
-        "else": else_,
-        "finally": finally_,
-    }
-
-    function_str = f"async def foo():\n  try:\n    {try_}\n"
-
-    for arg, val in arg_dict.items():
-        if val is not None:
-            function_str += f"  {arg}:\n    {val}\n"
-
-    try:
-        tree = ast.parse(function_str)
-    except Exception:
-        assert exc1 is exc2 is bare_exc is None and (
-            finally_ is None or else_ is not None
-        )
-        return
-
-    errors = [e for e in Plugin(tree).run() if e.code == "TRIO107"]
-
-    if (
-        # return in exception
-        "return" in (exc1, exc2, bare_exc)
-        # exception and finally doesn't checkpoint, checkpoint in try might not run
-        or ("..." in (exc1, exc2, bare_exc) and finally_ != check)
-        # no checkpoints in normal control flow
-        or check not in (try_, finally_, else_)
-        # return in else|finally w/o checkpoint before
-        or ("return" in (else_, finally_) and check not in (else_, try_))
-        # return in finally with no bare exception, checkpoint in try might not run
-        or (finally_ == "return" and bare_exc is None)
+    check = "await foo()"
+    for try_, exc1, exc2, bare_exc, else_, finally_ in itertools.product(
+        (check, "..."),
+        (check, "...", "raise", "return", None),
+        (check, "...", "raise", "return", None),
+        (check, "...", "raise", "return", None),
+        (check, "...", "return", None),
+        (check, "...", "return", None),
     ):
-        if not errors:
-            print("\nmissing alarm:\n", function_str)
-            pytest.fail("missing alarm")
-        return
+        if exc1 is None and exc2 is not None:
+            continue
 
-    if errors:
-        print("\nfalse alarm:\n", function_str)
-        pytest.fail("false alarm")
+        function_str = f"async def foo():\n  try:\n    {try_}\n"
+
+        for arg, val in {
+            "except ValueError": exc1,
+            "except SyntaxError": exc2,
+            "except": bare_exc,
+            "else": else_,
+            "finally": finally_,
+        }.items():
+            if val is not None:
+                function_str += f"  {arg}:\n    {val}\n"
+
+        try:
+            tree = ast.parse(function_str)
+        except Exception:
+            assert exc1 is exc2 is bare_exc is None and (
+                finally_ is None or else_ is not None
+            )
+            return
+
+        errors = [e for e in Plugin(tree).run() if e.code == "TRIO107"]
+
+        if (
+            # return in exception
+            "return" in (exc1, exc2, bare_exc)
+            # exception and finally doesn't checkpoint, checkpoint in try might not run
+            or ("..." in (exc1, exc2, bare_exc) and finally_ != check)
+            # no checkpoints in normal control flow
+            or check not in (try_, finally_, else_)
+            # return in else|finally w/o checkpoint before
+            or ("return" in (else_, finally_) and check not in (else_, try_))
+            # return in finally with no bare exception, checkpoint in try might not run
+            or (finally_ == "return" and bare_exc is None)
+        ):
+            assert errors, "# missing alarm:\n" + function_str
+        else:
+            assert not errors, "# false alarm:\n" + function_str
 
 
 @pytest.mark.fuzz
