@@ -4,7 +4,7 @@ from typing import Tuple
 
 from flake8.main.application import Application
 
-from flake8_trio import Error_codes, Plugin, Statement, regex_has_decorator
+from flake8_trio import Error_codes, Plugin, Statement, fnmatch_decorator
 
 
 def dec_list(*decorators: str) -> ast.Module:
@@ -19,7 +19,7 @@ def dec_list(*decorators: str) -> ast.Module:
 def wrap(decorators: Tuple[str, ...], decs2: str) -> bool:
     tree = dec_list(*decorators)
     assert isinstance(tree.body[0], ast.AsyncFunctionDef)
-    return regex_has_decorator(tree.body[0].decorator_list, decs2)
+    return fnmatch_decorator(tree.body[0].decorator_list, decs2)
 
 
 def test_basic():
@@ -58,11 +58,10 @@ def test_wildcard():
     assert wrap(("foo.bar",), "foo.*")
     assert not wrap(("bar.foo",), "foo.*")
 
-
-def test_wildcard_regex():
     assert wrap(("foo",), "foo*")
     assert wrap(("foobar",), "foo*")
-    assert not wrap(("foobar.bar",), "foo*")
+    assert wrap(("foobar.bar",), "foo*")
+    assert wrap(("foo.bar",), "*.bar")
 
 
 def test_at():
@@ -79,14 +78,11 @@ def test_plugin():
     assert not tuple(plugin.run())
 
 
+common_flags = ["--select=TRIO", "tests/trio_options.py"]
+
+
 def test_command_line_1(capfd):
-    Application().run(
-        [
-            "--ignore=E,F,W",
-            "--no-checkpoint-warning-decorators=app.route",
-            "tests/trio_options.py",
-        ]
-    )
+    Application().run(common_flags + ["--no-checkpoint-warning-decorators=app.route"])
     out, err = capfd.readouterr()
     assert not out and not err
 
@@ -99,23 +95,12 @@ expected_out = (
 
 
 def test_command_line_2(capfd):
-    Application().run(
-        [
-            "--ignore=E,F,W",
-            "--no-checkpoint-warning-decorators=app",
-            "tests/trio_options.py",
-        ]
-    )
+    Application().run(common_flags + ["--no-checkpoint-warning-decorators=app"])
     out, err = capfd.readouterr()
     assert out == expected_out and not err
 
 
 def test_command_line_3(capfd):
-    Application().run(
-        [
-            "--ignore=E,F,W",
-            "tests/trio_options.py",
-        ]
-    )
+    Application().run(common_flags)
     out, err = capfd.readouterr()
     assert out == expected_out and not err

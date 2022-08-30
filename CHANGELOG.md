@@ -2,7 +2,7 @@
 *[CalVer, YY.month.patch](https://calver.org/)*
 
 ## Future
-- Added `--no-checkpoint-warning-decorators`, 107/108 no longer ignores `asynccontextmanager` by default.
+- Added `--no-checkpoint-warning-decorators`.
 
 ## 22.8.8
 - Fix false alarm on TRIO107 with checkpointing `try` and empty `finally`

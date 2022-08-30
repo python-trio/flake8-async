@@ -10,9 +10,9 @@ Pairs well with flake8-async and flake8-bugbear.
 """
 
 import ast
-import re
 import tokenize
 from argparse import Namespace
+from fnmatch import fnmatch
 from typing import (
     Any,
     Dict,
@@ -196,6 +196,7 @@ class Flake8TrioVisitor(ast.NodeVisitor):
             yield from ast.walk(b)
 
 
+# ignores module and only checks the unqualified name of the decorator
 def has_decorator(decorator_list: List[ast.expr], *names: str):
     for dec in decorator_list:
         if (isinstance(dec, ast.Name) and dec.id in names) or (
@@ -205,32 +206,18 @@ def has_decorator(decorator_list: List[ast.expr], *names: str):
     return False
 
 
-def regex_has_decorator(decorator_list: List[ast.expr], *names: str):
-    def wild_match(match_str: str, target: str) -> bool:
-        if match_str == "*":
-            return True
-        if "*" not in match_str:
-            return match_str == target
-        return bool(re.match(re.escape(match_str).replace("\\*", ".*"), target))
+# matches the full decorator name against fnmatch pattern
+def fnmatch_decorator(decorator_list: List[ast.expr], *patterns: str):
+    def construct_name(expr: ast.expr) -> str:
+        if isinstance(expr, ast.Name):
+            return expr.id
+        assert isinstance(expr, ast.Attribute)
+        return construct_name(expr.value) + "." + expr.attr
 
-    def recursive_check(expr: ast.expr, attrs: List[str]) -> bool:
-        if len(attrs) == 1:
-            return attrs[0] == "*" or (
-                isinstance(expr, ast.Name) and wild_match(attrs[0], expr.id)
-            )
-        return (
-            isinstance(expr, ast.Attribute)
-            and wild_match(attrs[0], expr.attr)
-            and recursive_check(expr.value, attrs[1:])
-        )
-
-    for name in names:
-        if name[0] == "@":
-            name = name[1:]
-        split_name = name.split(".")
-        split_name.reverse()
-        for dec in decorator_list:
-            if recursive_check(dec, split_name):
+    for decorator in decorator_list:
+        qualified_decorator_name = construct_name(decorator)
+        for pattern in patterns:
+            if fnmatch(qualified_decorator_name, pattern.lstrip("@")):
                 return True
     return False
 
@@ -898,7 +885,7 @@ class Visitor107_108(Flake8TrioVisitor):
         self.set_state(self.default, copy=True)
 
         # disable checks in asynccontextmanagers by saying the function isn't async
-        self.async_function = not regex_has_decorator(
+        self.async_function = not fnmatch_decorator(
             node.decorator_list, *self.options.no_checkpoint_warning_decorators
         )
 
@@ -1196,7 +1183,7 @@ class Plugin:
     def add_options(option_manager: OptionManager):
         option_manager.add_option(
             "--no-checkpoint-warning-decorators",
-            default="",
+            default="asynccontextmanager",
             parse_from_config=True,
             required=False,
             comma_separated_list=True,
