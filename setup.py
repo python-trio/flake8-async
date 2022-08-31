@@ -48,6 +48,6 @@ setuptools.setup(
     ),
     long_description_content_type="text/markdown",
     entry_points={
-        "flake8.extension": ["TRIO = flake8_trio:Plugin"],
+        "flake8.extension": ["TRI = flake8_trio:Plugin"],
     },
 )

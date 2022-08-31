@@ -11,6 +11,8 @@ Pairs well with flake8-async and flake8-bugbear.
 
 import ast
 import tokenize
+from argparse import Namespace
+from fnmatch import fnmatch
 from typing import (
     Any,
     Dict,
@@ -23,6 +25,8 @@ from typing import (
     Union,
     cast,
 )
+
+from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.8.8"
@@ -138,14 +142,15 @@ context_manager_names = (
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, options: Namespace):
         super().__init__()
         self._problems: List[Error] = []
         self.suppress_errors = False
+        self.options = options
 
     @classmethod
-    def run(cls, tree: ast.AST) -> Iterable[Error]:
-        visitor = cls()
+    def run(cls, tree: ast.AST, options: Namespace) -> Iterable[Error]:
+        visitor = cls(options)
         visitor.visit(tree)
         yield from visitor._problems
 
@@ -191,12 +196,29 @@ class Flake8TrioVisitor(ast.NodeVisitor):
             yield from ast.walk(b)
 
 
+# ignores module and only checks the unqualified name of the decorator
 def has_decorator(decorator_list: List[ast.expr], *names: str):
     for dec in decorator_list:
         if (isinstance(dec, ast.Name) and dec.id in names) or (
             isinstance(dec, ast.Attribute) and dec.attr in names
         ):
             return True
+    return False
+
+
+# matches the full decorator name against fnmatch pattern
+def fnmatch_decorator(decorator_list: List[ast.expr], *patterns: str):
+    def construct_name(expr: ast.expr) -> str:
+        if isinstance(expr, ast.Name):
+            return expr.id
+        assert isinstance(expr, ast.Attribute)
+        return construct_name(expr.value) + "." + expr.attr
+
+    for decorator in decorator_list:
+        qualified_decorator_name = construct_name(decorator)
+        for pattern in patterns:
+            if fnmatch(qualified_decorator_name, pattern.lstrip("@")):
+                return True
     return False
 
 
@@ -211,8 +233,8 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         name: str
         is_nursery: bool
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
 
         # 101
         self._yield_is_error = False
@@ -475,8 +497,8 @@ class Visitor102(Flake8TrioVisitor):
                     if kw.arg == "deadline":
                         self.has_timeout = True
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
         self._critical_scope: Optional[Statement] = None
         self._trio_context_managers: List[Visitor102.TrioScope] = []
         self._safe_decorator = False
@@ -591,8 +613,8 @@ class Visitor102(Flake8TrioVisitor):
 # Never have an except Cancelled or except BaseException block with a code path that
 # doesn't re-raise the error
 class Visitor103_104(Flake8TrioVisitor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
         self.except_name: Optional[str] = ""
         self.unraised: bool = False
         self.unraised_break: bool = False
@@ -797,8 +819,8 @@ trio_async_functions = (
 
 
 class Visitor105(Flake8TrioVisitor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
         self.node_stack: List[ast.AST] = []
 
     def visit(self, node: ast.AST):
@@ -835,8 +857,8 @@ def empty_body(body: List[ast.stmt]) -> bool:
 
 
 class Visitor107_108(Flake8TrioVisitor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
         self.has_yield = False
         self.safe_decorator = False
         self.async_function = False
@@ -863,8 +885,8 @@ class Visitor107_108(Flake8TrioVisitor):
         self.set_state(self.default, copy=True)
 
         # disable checks in asynccontextmanagers by saying the function isn't async
-        self.async_function = not has_decorator(
-            node.decorator_list, "asynccontextmanager"
+        self.async_function = not fnmatch_decorator(
+            node.decorator_list, *self.options.no_checkpoint_warning_decorators
         )
 
         if self.async_function:
@@ -1142,6 +1164,7 @@ class Visitor107_108(Flake8TrioVisitor):
 class Plugin:
     name = __name__
     version = __version__
+    options: Namespace = Namespace(no_checkpoint_warning_decorators=[])
 
     def __init__(self, tree: ast.AST):
         self._tree = tree
@@ -1154,4 +1177,25 @@ class Plugin:
 
     def run(self) -> Iterable[Error]:
         for v in Flake8TrioVisitor.__subclasses__():
-            yield from v.run(self._tree)
+            yield from v.run(self._tree, self.options)
+
+    @staticmethod
+    def add_options(option_manager: OptionManager):
+        option_manager.add_option(
+            "--no-checkpoint-warning-decorators",
+            default="asynccontextmanager",
+            parse_from_config=True,
+            required=False,
+            comma_separated_list=True,
+            help=(
+                "Comma-separated list of decorators to disable TRIO107 & TRIO108"
+                " checkpoint warnings for."
+                " Decorators can be dotted or not, as well as support * as a wildcard."
+                " For example, ``--no-checkpoint-warning-decorators=app.route,"
+                "mydecorator,mypackage.mydecorators.*``"
+            ),
+        )
+
+    @staticmethod
+    def parse_options(options: Namespace):
+        Plugin.options = options

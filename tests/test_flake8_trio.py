@@ -18,10 +18,12 @@ from hypothesmith import from_grammar, from_node
 
 from flake8_trio import Error, Error_codes, Plugin, Statement
 
+trio_test_files_regex = re.compile(r"trio\d\d\d(_py.*)?.py")
+
 test_files: List[Tuple[str, str]] = sorted(
     (os.path.splitext(f)[0].upper(), f)
     for f in os.listdir("tests")
-    if re.match(r"trio.*.py", f)
+    if re.match(trio_test_files_regex, f)
 )
 
 

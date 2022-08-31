@@ -35,3 +35,13 @@ pip install flake8-trio
 - **TRIO110**: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.
 - **TRIO111**: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accesed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
 - **TRIO112**: nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.
+
+
+## Configuration
+`no-checkpoint-warning-decorators`: Specify a list of decorators to disable checkpointing checks for, turning off TRIO107 and TRIO108 warnings for functions decorated with any decorator matching any in the list. Matching is done with [fnmatch](https://docs.python.org/3/library/fnmatch.html). Defaults to disabling for `asynccontextmanager`.
+
+For example:
+```
+[flake8]
+no-checkpoint-warning-decorators = mydecorator, mydecoratorpackage.checkpointing_decorators.*, ign*, *.ignore
+```

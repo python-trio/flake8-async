@@ -1,9 +1,6 @@
-import contextlib
-from contextlib import asynccontextmanager
 from typing import Any
 
 import trio
-import trio as anything
 
 _: Any = ""
 
@@ -585,35 +582,6 @@ async def foo_func_5():  # error: 0, "exit", Statement("yield", lineno+2)
         async def foo_func_7():
             await foo()
             ...
-
-
-# Completely ignore checking asynccontextmanagers, since they might checkpoint on
-# either or both of __aenter__ and __aexit__ and correct context managers only
-# actually yield once (even if there might be multiple yield statements).
-@asynccontextmanager
-async def foo_cm_1():
-    while True:
-        yield
-
-
-@contextlib.asynccontextmanager
-async def foo_cm_2():
-    # Just imagine some fancy control flow so that only one of these executes.
-    yield
-    yield
-    yield
-
-
-@anything.asynccontextmanager
-async def foo_cm_3():
-    if ...:
-        yield
-
-
-# note: not asynccontextmanager, so treat this function as an async iterable.
-@anything.contextmanager
-async def foo_cm_4():  # error: 0, "exit", Stmt("yield", line+1)
-    yield  # error: 4, "yield", Statement("function definition", lineno-1)
 
 
 # No error from function definition, but may shortcut after yield
