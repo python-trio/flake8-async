@@ -187,8 +187,10 @@ async def foo5():
 
 
 # multiple errors on same line
+# fmt: off
 async def foo6():
     try:
         ...
     except trio.Cancelled:
-        await foo(), await foo()  # error: 8, Statement("trio.Cancelled", lineno-1) # error: 21, Statement("trio.Cancelled", lineno-1)
+        _ = await foo(), await foo()  # error: 12, Statement("trio.Cancelled", lineno-1) # error: 25, Statement("trio.Cancelled", lineno-1)
+# fmt: on
