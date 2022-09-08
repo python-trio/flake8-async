@@ -1,8 +1,8 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
-- Added `--no-checkpoint-warning-decorators`.
+## 22.9.1
+- Add `--no-checkpoint-warning-decorators` option, to disable missing-checkpoint warnings for certain decorated functions.
 
 ## 22.8.8
 - Fix false alarm on TRIO107 with checkpointing `try` and empty `finally`
