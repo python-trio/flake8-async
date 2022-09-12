@@ -29,7 +29,7 @@ from typing import (
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.9.1"
+__version__ = "22.9.2"
 
 
 Error_codes = {
@@ -208,14 +208,22 @@ def has_decorator(decorator_list: List[ast.expr], *names: str):
 
 # matches the full decorator name against fnmatch pattern
 def fnmatch_decorator(decorator_list: List[ast.expr], *patterns: str):
-    def construct_name(expr: ast.expr) -> str:
+    def construct_name(expr: ast.expr) -> Optional[str]:
+        if isinstance(expr, ast.Call):
+            expr = expr.func
         if isinstance(expr, ast.Name):
             return expr.id
-        assert isinstance(expr, ast.Attribute)
-        return construct_name(expr.value) + "." + expr.attr
+        elif isinstance(expr, ast.Attribute):
+            attr = construct_name(expr.value)
+            assert attr is not None
+            return attr + "." + expr.attr
+        # See https://peps.python.org/pep-0614/ - we don't handle everything
+        return None  # pragma: no cover  # impossible on Python 3.8
 
     for decorator in decorator_list:
         qualified_decorator_name = construct_name(decorator)
+        if qualified_decorator_name is None:
+            continue  # pragma: no cover  # impossible on Python 3.8
         for pattern in patterns:
             if fnmatch(qualified_decorator_name, pattern.lstrip("@")):
                 return True

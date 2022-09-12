@@ -40,6 +40,8 @@ pip install flake8-trio
 ## Configuration
 `no-checkpoint-warning-decorators`: Specify a list of decorators to disable checkpointing checks for, turning off TRIO107 and TRIO108 warnings for functions decorated with any decorator matching any in the list. Matching is done with [fnmatch](https://docs.python.org/3/library/fnmatch.html). Defaults to disabling for `asynccontextmanager`.
 
+Decorators-to-match must be identifiers or dotted names only (not PEP-614 expressions), and will match against the name only - e.g. `foo.bar` matches `foo.bar`, `foo.bar()`, and `foo.bar(args, here)`, etc.
+
 For example:
 ```
 [flake8]

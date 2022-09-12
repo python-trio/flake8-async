@@ -1,7 +1,9 @@
 import ast
+import sys
 from argparse import Namespace
 from typing import Tuple
 
+import pytest
 from flake8.main.application import Application
 
 from flake8_trio import Error_codes, Plugin, Statement, fnmatch_decorator
@@ -67,6 +69,19 @@ def test_wildcard():
 def test_at():
     assert wrap(("foo",), "@foo")
     assert wrap(("foo.bar",), "@foo.bar")
+
+
+def test_calls():
+    assert wrap(("foo()",), "@foo")
+    assert wrap(("foo(1, 2, *x, **y)",), "@foo")
+    assert wrap(("foo.bar()",), "@foo.bar")
+    assert wrap(("foo.bar(1, 2, *x, **y)",), "@foo.bar")
+
+
+@pytest.mark.skipif(sys.version_info[:2] < (3, 9), reason="not yet supported")
+def test_pep614():
+    # Just don't crash and we'll be good.
+    assert not wrap(("(any, expression, we, like)",), "no match here")
 
 
 def test_plugin():

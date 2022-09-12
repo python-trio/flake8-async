@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.9.2
+- Fix a crash on nontrivial decorator expressions (calls, PEP-614) and document behavior.
+
 ## 22.9.1
 - Add `--no-checkpoint-warning-decorators` option, to disable missing-checkpoint warnings for certain decorated functions.
 
