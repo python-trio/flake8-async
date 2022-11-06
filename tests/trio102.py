@@ -136,12 +136,14 @@ async def foo():
             await foo()  # error: 12, Statement("try/finally", lineno-3)
 
 
+# change of functionality, no longer treated as safe
+# https://github.com/Zac-HD/flake8-trio/issues/54
 @asynccontextmanager
 async def foo2():
     try:
         yield 1
     finally:
-        await foo()  # safe
+        await foo()  # error: 8, Statement("try/finally", lineno-3)
 
 
 async def foo3():

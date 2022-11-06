@@ -135,10 +135,6 @@ cancel_scope_names = (
     "move_on_at",
     "CancelScope",
 )
-context_manager_names = (
-    "contextmanager",
-    "asynccontextmanager",
-)
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
@@ -312,8 +308,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         outer = self.get_state()
         self.set_state(self.defaults, copy=True)
 
-        # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if has_decorator(node.decorator_list, *context_manager_names):
+        if has_decorator(node.decorator_list, "contextmanager", "asynccontextmanager"):
             self._safe_decorator = True
 
         self.generic_visit(node)
@@ -509,21 +504,16 @@ class Visitor102(Flake8TrioVisitor):
         super().__init__(*args, **kwargs)
         self._critical_scope: Optional[Statement] = None
         self._trio_context_managers: List[Visitor102.TrioScope] = []
-        self._safe_decorator = False
 
-    # if we're inside a finally, and not inside a context_manager, and we're not
-    # inside a scope that doesn't have both a timeout and shield
+    # if we're inside a finally, and we're not inside a scope that doesn't have
+    # both a timeout and shield
     def visit_Await(
         self,
         node: Union[ast.Await, ast.AsyncFor, ast.AsyncWith],
         visit_children: bool = True,
     ):
-        if (
-            self._critical_scope is not None
-            and not self._safe_decorator
-            and not any(
-                cm.has_timeout and cm.shielded for cm in self._trio_context_managers
-            )
+        if self._critical_scope is not None and not any(
+            cm.has_timeout and cm.shielded for cm in self._trio_context_managers
         ):
             self.error("TRIO102", node, self._critical_scope)
         if visit_children:
@@ -559,19 +549,6 @@ class Visitor102(Flake8TrioVisitor):
     def visit_AsyncWith(self, node: ast.AsyncWith):
         self.visit_Await(node, visit_children=False)
         self.visit_With(node)
-
-    def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
-        outer = self.get_state("_safe_decorator")
-
-        # check for @<context_manager_name> and @<library>.<context_manager_name>
-        if has_decorator(node.decorator_list, *context_manager_names):
-            self._safe_decorator = True
-
-        self.generic_visit(node)
-
-        self.set_state(outer)
-
-    visit_AsyncFunctionDef = visit_FunctionDef
 
     def critical_visit(
         self,
