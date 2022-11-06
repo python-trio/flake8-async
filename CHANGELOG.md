@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.11.1
+- TRIO102 is no longer skipped in (async) context managers, since it's not a missing-checkpoint warning.
+
 ## 22.9.2
 - Fix a crash on nontrivial decorator expressions (calls, PEP-614) and document behavior.
 

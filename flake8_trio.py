@@ -29,7 +29,7 @@ from typing import (
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.9.2"
+__version__ = "22.11.1"
 
 
 Error_codes = {
