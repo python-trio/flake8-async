@@ -785,27 +785,31 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
     return False
 
 
-trio_async_functions = (
-    "aclose_forcefully",
-    "open_file",
-    "open_ssl_over_tcp_listeners",
-    "open_ssl_over_tcp_stream",
-    "open_tcp_listeners",
-    "open_tcp_stream",
-    "open_unix_socket",
-    "run_process",
-    "serve_listeners",
-    "serve_ssl_over_tcp",
-    "serve_tcp",
-    "sleep",
-    "sleep_forever",
-    "sleep_until",
-)
+trio_async_functions: Dict[str, Tuple[str, ...]] = {
+    "trio": (
+        "aclose_forcefully",
+        "open_file",
+        "open_ssl_over_tcp_listeners",
+        "open_ssl_over_tcp_stream",
+        "open_tcp_listeners",
+        "open_tcp_stream",
+        "open_unix_socket",
+        "run_process",
+        "serve_listeners",
+        "serve_ssl_over_tcp",
+        "serve_tcp",
+        "sleep",
+        "sleep_forever",
+        "sleep_until",
+    ),
+    "nursery": ("start", "start_soon"),
+}
 
 
 class Visitor105(Flake8TrioVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        # keep a node stack so we can check whether calls are awaited
         self.node_stack: List[ast.AST] = []
 
     def visit(self, node: ast.AST):
@@ -817,8 +821,7 @@ class Visitor105(Flake8TrioVisitor):
         if (
             isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "trio"
-            and node.func.attr in trio_async_functions
+            and node.func.attr in trio_async_functions.get(node.func.value.id, ())
             and (
                 len(self.node_stack) < 2
                 or not isinstance(self.node_stack[-2], ast.Await)
