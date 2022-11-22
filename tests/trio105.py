@@ -48,3 +48,12 @@ async def foo():
     # it isn't supported
     k = trio.open_file()  # error: 8, "open_file"
     await k
+
+    # issue #56
+    nursery = trio.open_nursery()
+    await nursery.start()
+    await nursery.start_foo()
+
+    nursery.start()  # error: 4, "start"
+    nursery.start_soon()
+    nursery.start_foo()

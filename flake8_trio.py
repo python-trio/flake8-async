@@ -29,7 +29,7 @@ from typing import (
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.11.1"
+__version__ = "22.11.2"
 
 
 Error_codes = {
@@ -785,7 +785,7 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
     return False
 
 
-trio_async_functions = (
+trio_async_funcs = (
     "aclose_forcefully",
     "open_file",
     "open_ssl_over_tcp_listeners",
@@ -806,6 +806,7 @@ trio_async_functions = (
 class Visitor105(Flake8TrioVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        # keep a node stack so we can check whether calls are awaited
         self.node_stack: List[ast.AST] = []
 
     def visit(self, node: ast.AST):
@@ -817,8 +818,10 @@ class Visitor105(Flake8TrioVisitor):
         if (
             isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "trio"
-            and node.func.attr in trio_async_functions
+            and (
+                (node.func.value.id == "trio" and node.func.attr in trio_async_funcs)
+                or (node.func.value.id == "nursery" and node.func.attr == "start")
+            )
             and (
                 len(self.node_stack) < 2
                 or not isinstance(self.node_stack[-2], ast.Await)
