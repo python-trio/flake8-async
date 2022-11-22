@@ -1,8 +1,8 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
-- TRIO105 now also checks for nursery.start() and nursery.start_soon()
+## 22.11.2
+- TRIO105 now also checks that you `await`ed `nursery.start()`.
 
 ## 22.11.1
 - TRIO102 is no longer skipped in (async) context managers, since it's not a missing-checkpoint warning.

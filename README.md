@@ -26,7 +26,7 @@ pip install flake8-trio
   cancel scope with a timeout.
 - **TRIO103**: `except BaseException` and `except trio.Cancelled` with a code path that doesn't re-raise.
 - **TRIO104**: `Cancelled` and `BaseException` must be re-raised - when a user tries to `return` or `raise` a different exception.
-- **TRIO105**: Calling a trio async function without immediately `await`ing it. Also triggers on `.start()` and `.start()` on variables named nursery.
+- **TRIO105**: Calling a trio async function without immediately `await`ing it.
 - **TRIO106**: trio must be imported with `import trio` for the linter to work.
 - **TRIO107**: exit or `return` from async function with no guaranteed checkpoint or exception since function definition.
 - **TRIO108**: exit, yield or return from async iterable with no guaranteed checkpoint since possible function entry (yield or function definition)

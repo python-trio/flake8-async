@@ -52,10 +52,8 @@ async def foo():
     # issue #56
     nursery = trio.open_nursery()
     await nursery.start()
-    await nursery.start_soon()
     await nursery.start_foo()
 
     nursery.start()  # error: 4, "start"
-    nursery.start_soon()  # error: 4, "start_soon"
+    nursery.start_soon()
     nursery.start_foo()
-    nursery.sleep()
