@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import DefaultDict, Iterable, List, Sequence, Tuple, Type
 
 import pytest
+from flake8.options.manager import OptionManager
 
 # import trio  # type: ignore
 from hypothesis import HealthCheck, given, settings
@@ -157,6 +158,10 @@ def read_file(test_file: str):
 
 
 def assert_expected_errors(plugin: Plugin, include: Iterable[str], *expected: Error):
+    # initialize default option values
+    om = OptionManager(version="", plugin_versions="", parents=[])
+    plugin.add_options(om)
+    plugin.parse_options(om.parse_args(args=[""]))
 
     errors = sorted(e for e in plugin.run() if e.code in include)
     expected_ = sorted(expected)
@@ -351,6 +356,31 @@ def test_107_permutations():
             assert errors, "# missing alarm:\n" + function_str
         else:
             assert not errors, "# false alarm:\n" + function_str
+
+
+def test_113_options():
+    # check that no errors are given if we give an empty list of startable methods
+    # (overriding the default)
+    plugin = read_file("trio113.py")
+    om = OptionManager(version="", plugin_versions="", parents=[])
+    plugin.add_options(om)
+    plugin.parse_options(
+        om.parse_args(args=["--startable-methods-in-context-manager=''"])
+    )
+    assert not any(sorted(e for e in plugin.run() if e.code == "TRIO113"))
+
+    # and that the expected errors are given if we empty it and then extend it
+    plugin.parse_options(
+        om.parse_args(
+            args=[
+                "--startable-methods-in-context-manager=''",
+                "--extend-startable-methods-in-context-manager=*.serve_tcp,serve",
+            ]
+        )
+    )
+    errors = sorted(e for e in plugin.run() if e.code == "TRIO113")
+    expected = [Error("TRIO113", 46, 8), Error("TRIO113", 48, 8)]
+    assert errors == expected
 
 
 @pytest.mark.fuzz

@@ -6,7 +6,7 @@ from typing import Tuple
 import pytest
 from flake8.main.application import Application
 
-from flake8_trio import Error_codes, Plugin, Statement, fnmatch_decorator
+from flake8_trio import Error_codes, Plugin, Statement, fnmatch_qualified_name
 
 
 def dec_list(*decorators: str) -> ast.Module:
@@ -21,7 +21,7 @@ def dec_list(*decorators: str) -> ast.Module:
 def wrap(decorators: Tuple[str, ...], decs2: str) -> bool:
     tree = dec_list(*decorators)
     assert isinstance(tree.body[0], ast.AsyncFunctionDef)
-    return fnmatch_decorator(tree.body[0].decorator_list, decs2)
+    return fnmatch_qualified_name(tree.body[0].decorator_list, decs2)
 
 
 def test_basic():
@@ -87,6 +87,7 @@ def test_pep614():
 def test_plugin():
     tree = dec_list("app.route")
     plugin = Plugin(tree)
+    plugin.options = Namespace(no_checkpoint_warning_decorators=[])
     assert tuple(plugin.run())
 
     plugin.options = Namespace(no_checkpoint_warning_decorators=["app.route"])
