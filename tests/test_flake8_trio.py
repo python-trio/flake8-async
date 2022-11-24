@@ -359,28 +359,18 @@ def test_107_permutations():
 
 
 def test_113_options():
-    # check that no errors are given if we give an empty list of startable methods
-    # (overriding the default)
+    # check that no errors are given by default
     plugin = read_file("trio113.py")
     om = OptionManager(version="", plugin_versions="", parents=[])
     plugin.add_options(om)
-    plugin.parse_options(
-        om.parse_args(args=["--startable-methods-in-context-manager=''"])
-    )
-    assert not any(sorted(e for e in plugin.run() if e.code == "TRIO113"))
+    plugin.parse_options(om.parse_args(args=["--startable-in-context-manager=''"]))
+    assert not sorted(e for e in plugin.run() if e.code == "TRIO113")
 
     # and that the expected errors are given if we empty it and then extend it
-    plugin.parse_options(
-        om.parse_args(
-            args=[
-                "--startable-methods-in-context-manager=''",
-                "--extend-startable-methods-in-context-manager=*.serve_tcp,serve",
-            ]
-        )
-    )
+    arg = "--startable-in-context-manager='custom_startable_function'"
+    plugin.parse_options(om.parse_args(args=[arg]))
     errors = sorted(e for e in plugin.run() if e.code == "TRIO113")
-    expected = [Error("TRIO113", 46, 8), Error("TRIO113", 48, 8)]
-    assert errors == expected
+    assert errors == [Error("TRIO113", 58, 8)]
 
 
 @pytest.mark.fuzz

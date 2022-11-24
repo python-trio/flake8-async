@@ -29,7 +29,7 @@ from typing import (
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.11.2"
+__version__ = "22.11.3"
 
 
 Error_codes = {
@@ -806,6 +806,15 @@ trio_async_funcs = (
 )
 
 
+def is_nursery_call(node: ast.AST, name: str) -> bool:
+    assert name in ("start", "start_soon")
+    if isinstance(node, ast.Attribute):
+        if not isinstance(node.value, ast.Name):
+            return is_nursery_call(node.value, name)  # might be self.nursery.start()
+        return node.value.id.endswith("nursery") and node.attr == "start"
+    return False
+
+
 class Visitor105(Flake8TrioVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -818,18 +827,10 @@ class Visitor105(Flake8TrioVisitor):
         self.node_stack.pop()
 
     def visit_Call(self, node: ast.Call):
-        if (
-            isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and (
-                (node.func.value.id == "trio" and node.func.attr in trio_async_funcs)
-                or (node.func.value.id == "nursery" and node.func.attr == "start")
-            )
-            and (
-                len(self.node_stack) < 2
-                or not isinstance(self.node_stack[-2], ast.Await)
-            )
+        if is_nursery_call(node.func, "start") and (
+            len(self.node_stack) < 2 or not isinstance(self.node_stack[-2], ast.Await)
         ):
+            assert isinstance(node.func, ast.Attribute)
             self.error("TRIO105", node, node.func.attr)
         self.generic_visit(node)
 
@@ -1160,6 +1161,14 @@ def _get_identifier(node: ast.expr) -> str:
     return ""  # pragma: no cover
 
 
+STARTABLE_CALLS = (
+    "trio.run_process",
+    "trio.serve_ssl_over_tcp",
+    "trio.serve_tcp",
+    "trio.serve_listeners",
+)
+
+
 class Visitor113(Flake8TrioVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -1183,16 +1192,12 @@ class Visitor113(Flake8TrioVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         if (
             self.aenter
-            and isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            # requires that the nursery is named "nursery" for now
-            and node.func.value.id == "nursery"
-            and node.func.attr == "start_soon"
+            and is_nursery_call(node.func, "start_soon")
             and len(node.args) > 0
             and fnmatch_qualified_name(
                 node.args[:1],
-                *self.options.startable_methods_in_context_manager,
-                *self.options.extend_startable_methods_in_context_manager,
+                *STARTABLE_CALLS,
+                *self.options.startable_in_context_manager,
             )
         ):
             self.error("TRIO113", node)
@@ -1233,8 +1238,8 @@ class Plugin:
             ),
         )
         option_manager.add_option(
-            "--startable-methods-in-context-manager",
-            default="trio.run_process, trio.serve_ssl_over_tcp, trio.serve_tcp, trio.serve_listeners,*.serve",
+            "--startable-in-context-manager",
+            default="",
             parse_from_config=True,
             required=False,
             comma_separated_list=True,
@@ -1243,23 +1248,8 @@ class Plugin:
                 " warnings for."
                 " Use if you want to override the default methods the check is enabled for."
                 " Methods can be dotted or not, as well as support * as a wildcard."
-                " For example, ``--startable-methods-in-context-manager=mylib.myfun,"
-                "myfun2,mypackage.myfunlib.*``"
-            ),
-        )
-        option_manager.add_option(
-            "--extend-startable-methods-in-context-manager",
-            default="",
-            parse_from_config=True,
-            required=False,
-            comma_separated_list=True,
-            help=(
-                "Comma-separated list of method calls to enable TRIO113"
-                " warnings for."
-                " Use if you want to extend the list of default methods the check is enabled for."
-                " Methods can be dotted or not, as well as support * as a wildcard."
-                " For example, ``--extend-startable-methods-in-context-manager=mylib.myfun,"
-                "myfun2,mypackage.myfunlib.*``"
+                " For example, ``--startable-in-context-manager=worker_serve,"
+                "mypackage.sub.*``"
             ),
         )
 

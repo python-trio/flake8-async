@@ -1,8 +1,8 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## FUTURE
-- TRIO113 check for [nursery].start_soon(fn, ...) in context managers for fn's that take a task_status argument.
+## 22.11.3
+- Add TRIO113, prefer `await nursery.start(...)` to `nursery.start_soon()` for compatible functions when opening a context manager
 
 ## 22.11.2
 - TRIO105 now also checks that you `await`ed `nursery.start()`.

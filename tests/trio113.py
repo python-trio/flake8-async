@@ -36,17 +36,26 @@ class foo:
             yield
 
 
-nursery = anything = serve = trio  # type: ignore
+nursery = anything = custom_startable_function = trio  # type: ignore
 
 
 class foo2:
+    _nursery = nursery
+
     async def __aenter__(self):
         nursery.start_soon(trio.run_process)  # error: 8
         nursery.start_soon(trio.serve_ssl_over_tcp)  # error: 8
         nursery.start_soon(trio.serve_tcp)  # error: 8
         nursery.start_soon(trio.serve_listeners)  # error: 8
-        nursery.start_soon(serve)
-        nursery.start_soon(anything.serve)  # error: 8
+
+        # Where does `nursery` come from in __aenter__?  Probably an attribute:
+        self._nursery.start_soon(trio.run_process)  # error: 8
+        self._nursery.start_soon(trio.serve_ssl_over_tcp)  # error: 8
+        self._nursery.start_soon(trio.serve_tcp)  # error: 8
+        self._nursery.start_soon(trio.serve_listeners)  # error: 8
+
+        # We have a test that sets `startable-in-context-manager` to error here
+        nursery.start_soon(custom_startable_function)
 
 
 class foo3:
@@ -54,9 +63,9 @@ class foo3:
         nursery.start_soon(trio.run_process)  # error: 8
 
 
-# safe, requires that aenter takes a single parameter
+# might be monkeypatched onto an instance, count this as an error too
 async def __aenter__():
-    nursery.start_soon(trio.run_process)
+    nursery.start_soon(trio.run_process)  # error: 4
 
 
 # this only takes a single parameter ... right? :P
