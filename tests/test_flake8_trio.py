@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import DefaultDict, Iterable, List, Sequence, Tuple, Type
 
 import pytest
+from flake8.options.manager import OptionManager
 
 # import trio  # type: ignore
 from hypothesis import HealthCheck, given, settings
@@ -157,6 +158,15 @@ def read_file(test_file: str):
 
 
 def assert_expected_errors(plugin: Plugin, include: Iterable[str], *expected: Error):
+    # initialize default option values
+    om = OptionManager(
+        version="",
+        plugin_versions="",
+        parents=[],
+        formatter_names=["default"],  # type: ignore
+    )
+    plugin.add_options(om)
+    plugin.parse_options(om.parse_args(args=[""]))
 
     errors = sorted(e for e in plugin.run() if e.code in include)
     expected_ = sorted(expected)
@@ -351,6 +361,26 @@ def test_107_permutations():
             assert errors, "# missing alarm:\n" + function_str
         else:
             assert not errors, "# false alarm:\n" + function_str
+
+
+def test_113_options():
+    # check that no errors are given by default
+    plugin = read_file("trio113.py")
+    om = OptionManager(
+        version="",
+        plugin_versions="",
+        parents=[],
+        formatter_names=["default"],  # type: ignore
+    )
+    plugin.add_options(om)
+    plugin.parse_options(om.parse_args(args=["--startable-in-context-manager=''"]))
+    default = {repr(e) for e in plugin.run() if e.code == "TRIO113"}
+
+    # and that the expected errors are given if we empty it and then extend it
+    arg = "--startable-in-context-manager=custom_startable_function"
+    plugin.parse_options(om.parse_args(args=[arg]))
+    errors = {repr(e) for e in plugin.run() if e.code == "TRIO113"} - default
+    assert errors == {repr(Error("TRIO113", 58, 8))}
 
 
 @pytest.mark.fuzz

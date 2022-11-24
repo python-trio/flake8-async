@@ -29,7 +29,7 @@ from typing import (
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.11.2"
+__version__ = "22.11.3"
 
 
 Error_codes = {
@@ -65,6 +65,7 @@ Error_codes = {
         "Nurseries should generally be the inner-most context manager."
     ),
     "TRIO112": "Redundant nursery {}, consider replacing with directly awaiting the function call",
+    "TRIO113": "Dangerous `.start_soon()`, process might not run before `__aenter__` exits. Consider replacing with `.start()`.",
 }
 
 
@@ -125,6 +126,10 @@ class Error:
 
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, Error) and self.cmp() == other.cmp()
+
+    def __repr__(self) -> str:
+        trailer = "".join(f", {x!r}" for x in self.args)
+        return f"<{self.code} error at {self.line}:{self.col}{trailer}>"
 
 
 checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
@@ -202,8 +207,9 @@ def has_decorator(decorator_list: List[ast.expr], *names: str):
     return False
 
 
-# matches the full decorator name against fnmatch pattern
-def fnmatch_decorator(decorator_list: List[ast.expr], *patterns: str):
+# matches the fully qualified name against fnmatch pattern
+# used to match decorators and methods to user-supplied patterns
+def fnmatch_qualified_name(name_list: List[ast.expr], *patterns: str):
     def construct_name(expr: ast.expr) -> Optional[str]:
         if isinstance(expr, ast.Call):
             expr = expr.func
@@ -216,12 +222,13 @@ def fnmatch_decorator(decorator_list: List[ast.expr], *patterns: str):
         # See https://peps.python.org/pep-0614/ - we don't handle everything
         return None  # pragma: no cover  # impossible on Python 3.8
 
-    for decorator in decorator_list:
-        qualified_decorator_name = construct_name(decorator)
-        if qualified_decorator_name is None:
+    for name in name_list:
+        qualified_name = construct_name(name)
+        if qualified_name is None:
             continue  # pragma: no cover  # impossible on Python 3.8
         for pattern in patterns:
-            if fnmatch(qualified_decorator_name, pattern.lstrip("@")):
+            # strip leading "@"s for when we're working with decorators
+            if fnmatch(qualified_name, pattern.lstrip("@")):
                 return True
     return False
 
@@ -803,6 +810,16 @@ trio_async_funcs = (
 )
 
 
+def is_nursery_call(node: ast.AST, name: str) -> bool:  # pragma: no cover
+    assert name in ("start", "start_soon")
+    if isinstance(node, ast.Attribute):
+        if isinstance(node.value, ast.Name):
+            return node.attr == name and node.value.id.endswith("nursery")
+        if isinstance(node.value, ast.Attribute):
+            return node.attr == name and node.value.attr.endswith("nursery")
+    return False
+
+
 class Visitor105(Flake8TrioVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -820,13 +837,14 @@ class Visitor105(Flake8TrioVisitor):
             and isinstance(node.func.value, ast.Name)
             and (
                 (node.func.value.id == "trio" and node.func.attr in trio_async_funcs)
-                or (node.func.value.id == "nursery" and node.func.attr == "start")
+                or is_nursery_call(node.func, "start")
             )
             and (
                 len(self.node_stack) < 2
                 or not isinstance(self.node_stack[-2], ast.Await)
             )
         ):
+            assert isinstance(node.func, ast.Attribute)
             self.error("TRIO105", node, node.func.attr)
         self.generic_visit(node)
 
@@ -873,7 +891,7 @@ class Visitor107_108(Flake8TrioVisitor):
         self.set_state(self.default, copy=True)
 
         # disable checks in asynccontextmanagers by saying the function isn't async
-        self.async_function = not fnmatch_decorator(
+        self.async_function = not fnmatch_qualified_name(
             node.decorator_list, *self.options.no_checkpoint_warning_decorators
         )
 
@@ -1149,10 +1167,60 @@ class Visitor107_108(Flake8TrioVisitor):
         self.uncheckpointed_statements = worst_case_shortcut
 
 
+def _get_identifier(node: ast.expr) -> str:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return ""  # pragma: no cover
+
+
+STARTABLE_CALLS = (
+    "trio.run_process",
+    "trio.serve_ssl_over_tcp",
+    "trio.serve_tcp",
+    "trio.serve_listeners",
+)
+
+
+class Visitor113(Flake8TrioVisitor):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.async_function = False
+        self.asynccontextmanager = False
+        self.aenter = False
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        outer = self.aenter
+
+        self.aenter = node.name == "__aenter__" or any(
+            _get_identifier(d) == "asynccontextmanager" for d in node.decorator_list
+        )
+
+        self.generic_visit(node)
+        self.aenter = outer
+
+    def visit_Yield(self, node: ast.Yield):
+        self.aenter = False
+
+    def visit_Call(self, node: ast.Call) -> None:
+        if (
+            self.aenter
+            and is_nursery_call(node.func, "start_soon")
+            and len(node.args) > 0
+            and fnmatch_qualified_name(
+                node.args[:1],
+                *STARTABLE_CALLS,
+                *self.options.startable_in_context_manager,
+            )
+        ):
+            self.error("TRIO113", node)
+
+
 class Plugin:
     name = __name__
     version = __version__
-    options: Namespace = Namespace(no_checkpoint_warning_decorators=[])
+    options: Namespace = Namespace()
 
     def __init__(self, tree: ast.AST):
         self._tree = tree
@@ -1181,6 +1249,21 @@ class Plugin:
                 " Decorators can be dotted or not, as well as support * as a wildcard."
                 " For example, ``--no-checkpoint-warning-decorators=app.route,"
                 "mydecorator,mypackage.mydecorators.*``"
+            ),
+        )
+        option_manager.add_option(
+            "--startable-in-context-manager",
+            default="",
+            parse_from_config=True,
+            required=False,
+            comma_separated_list=True,
+            help=(
+                "Comma-separated list of method calls to enable TRIO113"
+                " warnings for."
+                " Use if you want to override the default methods the check is enabled for."
+                " Methods can be dotted or not, as well as support * as a wildcard."
+                " For example, ``--startable-in-context-manager=worker_serve,"
+                "mypackage.sub.*``"
             ),
         )
 

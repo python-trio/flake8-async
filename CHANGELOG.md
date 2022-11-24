@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.11.3
+- Add TRIO113, prefer `await nursery.start(...)` to `nursery.start_soon()` for compatible functions when opening a context manager
+
 ## 22.11.2
 - TRIO105 now also checks that you `await`ed `nursery.start()`.
 
