@@ -159,7 +159,12 @@ def read_file(test_file: str):
 
 def assert_expected_errors(plugin: Plugin, include: Iterable[str], *expected: Error):
     # initialize default option values
-    om = OptionManager(version="", plugin_versions="", parents=[])
+    om = OptionManager(
+        version="",
+        plugin_versions="",
+        parents=[],
+        formatter_names=["default"],  # type: ignore
+    )
     plugin.add_options(om)
     plugin.parse_options(om.parse_args(args=[""]))
 
@@ -361,16 +366,21 @@ def test_107_permutations():
 def test_113_options():
     # check that no errors are given by default
     plugin = read_file("trio113.py")
-    om = OptionManager(version="", plugin_versions="", parents=[])
+    om = OptionManager(
+        version="",
+        plugin_versions="",
+        parents=[],
+        formatter_names=["default"],  # type: ignore
+    )
     plugin.add_options(om)
     plugin.parse_options(om.parse_args(args=["--startable-in-context-manager=''"]))
-    assert not sorted(e for e in plugin.run() if e.code == "TRIO113")
+    default = {repr(e) for e in plugin.run() if e.code == "TRIO113"}
 
     # and that the expected errors are given if we empty it and then extend it
-    arg = "--startable-in-context-manager='custom_startable_function'"
+    arg = "--startable-in-context-manager=custom_startable_function"
     plugin.parse_options(om.parse_args(args=[arg]))
-    errors = sorted(e for e in plugin.run() if e.code == "TRIO113")
-    assert errors == [Error("TRIO113", 58, 8)]
+    errors = {repr(e) for e in plugin.run() if e.code == "TRIO113"} - default
+    assert errors == {repr(Error("TRIO113", 58, 8))}
 
 
 @pytest.mark.fuzz

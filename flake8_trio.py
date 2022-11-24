@@ -127,6 +127,10 @@ class Error:
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, Error) and self.cmp() == other.cmp()
 
+    def __repr__(self) -> str:
+        trailer = "".join(f", {x!r}" for x in self.args)
+        return f"<{self.code} error at {self.line}:{self.col}{trailer}>"
+
 
 checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
 cancel_scope_names = (
@@ -806,12 +810,13 @@ trio_async_funcs = (
 )
 
 
-def is_nursery_call(node: ast.AST, name: str) -> bool:
+def is_nursery_call(node: ast.AST, name: str) -> bool:  # pragma: no cover
     assert name in ("start", "start_soon")
     if isinstance(node, ast.Attribute):
-        if not isinstance(node.value, ast.Name):
-            return is_nursery_call(node.value, name)  # might be self.nursery.start()
-        return node.value.id.endswith("nursery") and node.attr == "start"
+        if isinstance(node.value, ast.Name):
+            return node.attr == name and node.value.id.endswith("nursery")
+        if isinstance(node.value, ast.Attribute):
+            return node.attr == name and node.value.attr.endswith("nursery")
     return False
 
 
@@ -827,8 +832,17 @@ class Visitor105(Flake8TrioVisitor):
         self.node_stack.pop()
 
     def visit_Call(self, node: ast.Call):
-        if is_nursery_call(node.func, "start") and (
-            len(self.node_stack) < 2 or not isinstance(self.node_stack[-2], ast.Await)
+        if (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and (
+                (node.func.value.id == "trio" and node.func.attr in trio_async_funcs)
+                or is_nursery_call(node.func, "start")
+            )
+            and (
+                len(self.node_stack) < 2
+                or not isinstance(self.node_stack[-2], ast.Await)
+            )
         ):
             assert isinstance(node.func, ast.Attribute)
             self.error("TRIO105", node, node.func.attr)
@@ -1179,7 +1193,7 @@ class Visitor113(Flake8TrioVisitor):
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         outer = self.aenter
 
-        self.aenter = (node.name == "__aenter__" and len(node.args.args) == 1) or any(
+        self.aenter = node.name == "__aenter__" or any(
             _get_identifier(d) == "asynccontextmanager" for d in node.decorator_list
         )
 

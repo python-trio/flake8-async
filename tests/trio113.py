@@ -66,6 +66,8 @@ class foo3:
 # might be monkeypatched onto an instance, count this as an error too
 async def __aenter__():
     nursery.start_soon(trio.run_process)  # error: 4
+    nursery.start_soon()  # broken code, but our analysis shouldn't crash
+    nursery.cancel_scope.cancel()
 
 
 # this only takes a single parameter ... right? :P
