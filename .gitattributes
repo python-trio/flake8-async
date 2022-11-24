@@ -1,0 +1,4 @@
+# Set the default behaviour in case people don't have core.autocrlf set
+# Lets the git installation on the users machine keep files with whatever line endings
+# they want, but normalizes them to LF upon being committed.
+* text=auto
