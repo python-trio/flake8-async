@@ -1,3 +1,6 @@
+import functools
+from functools import partial
+
 import trio
 import trio as noterror
 
@@ -41,6 +44,19 @@ with trio.open_nursery() as n:
 
 with trio.open_nursery() as n:
     n.start(foo=tuple(tuple(tuple(tuple(n)))))
+
+# explicitly check for partial usage
+with trio.open_nursery() as n:
+    n.start(partial(tuple, n))
+
+with trio.open_nursery() as n:
+    n.start(partial(n, "foo"))
+
+with trio.open_nursery() as n:
+    n.start(functools.partial(tuple, n))
+
+with trio.open_nursery() as n:
+    n.start(functools.partial(n, "foo"))
 
 # safe if multiple lines
 with trio.open_nursery() as n:

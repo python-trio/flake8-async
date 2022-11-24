@@ -364,7 +364,7 @@ def test_107_permutations():
 
 
 def test_113_options():
-    # check that no errors are given by default
+    # get default errors
     plugin = read_file("trio113.py")
     om = OptionManager(
         version="",
@@ -376,11 +376,11 @@ def test_113_options():
     plugin.parse_options(om.parse_args(args=["--startable-in-context-manager=''"]))
     default = {repr(e) for e in plugin.run() if e.code == "TRIO113"}
 
-    # and that the expected errors are given if we empty it and then extend it
+    # check that our custom_startable_function is detected
     arg = "--startable-in-context-manager=custom_startable_function"
     plugin.parse_options(om.parse_args(args=[arg]))
     errors = {repr(e) for e in plugin.run() if e.code == "TRIO113"} - default
-    assert errors == {repr(Error("TRIO113", 58, 8))}
+    assert errors == {repr(Error("TRIO113", 16, 4))}
 
 
 @pytest.mark.fuzz

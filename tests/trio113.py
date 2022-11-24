@@ -1,9 +1,20 @@
 import contextlib
 import contextlib as arbitrary_import_alias_for_contextlib
+import functools
 import os
 from contextlib import asynccontextmanager
+from functools import partial
 
 import trio
+
+
+# test_113_options in test_flake8_trio.py sets `startable-in-context-manager` to
+# error here using a command-line parameter.
+# Warning: requires manually changing the lineno if it changes
+@asynccontextmanager
+async def custom_startable_externally_tested():
+    nursery.start_soon(custom_startable_function)
+    yield
 
 
 @asynccontextmanager
@@ -36,7 +47,7 @@ class foo:
             yield
 
 
-nursery = anything = custom_startable_function = trio  # type: ignore
+nursery = anything = custom_startable_function = anything_nursery = trio  # type: ignore
 
 
 class foo2:
@@ -54,8 +65,18 @@ class foo2:
         self._nursery.start_soon(trio.serve_tcp)  # error: 8
         self._nursery.start_soon(trio.serve_listeners)  # error: 8
 
-        # We have a test that sets `startable-in-context-manager` to error here
-        nursery.start_soon(custom_startable_function)
+        # triggers on anything whose name ends with nursery
+        anything_nursery.start_soon(trio.run_process)  # error: 8
+        anything.start_soon(trio.run_process)
+
+        # explicitly check partial support
+        nursery.start_soon(partial(trio.run_process))  # error: 8
+        nursery.start_soon(functools.partial(trio.run_process))  # error: 8
+        nursery.start_soon(anything.partial(trio.run_process))  # error: 8
+
+        # trigger when the sensitive methods are anywhere inside the first parameter
+        nursery.start_soon(tuple(tuple(tuple(tuple(trio.run_process)))))  # error: 8
+        nursery.start_soon(None, tuple(tuple(tuple(tuple(trio.run_process)))))
 
 
 class foo3:
@@ -68,12 +89,6 @@ async def __aenter__():
     nursery.start_soon(trio.run_process)  # error: 4
     nursery.start_soon()  # broken code, but our analysis shouldn't crash
     nursery.cancel_scope.cancel()
-
-
-# this only takes a single parameter ... right? :P
-class foo4:
-    async def __aenter__(self, *, args="foo"):
-        nursery.start_soon(trio.run_process)  # error: 8
 
 
 @contextlib.asynccontextmanager
