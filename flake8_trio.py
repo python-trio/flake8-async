@@ -29,7 +29,7 @@ from typing import (
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.11.3"
+__version__ = "22.11.4"
 
 
 Error_codes = {
@@ -66,6 +66,7 @@ Error_codes = {
     ),
     "TRIO112": "Redundant nursery {}, consider replacing with directly awaiting the function call",
     "TRIO113": "Dangerous `.start_soon()`, process might not run before `__aenter__` exits. Consider replacing with `.start()`.",
+    "TRIO114": "Startable function {} not in --startable-in-context-manager parameter list, please add it so TRIO113 can catch errors using it.",
 }
 
 
@@ -77,7 +78,7 @@ class Statement(NamedTuple):
     def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, Statement)
-            and self[:2] == other[:2]
+            and self[:2] == other[:2]  # type: ignore
             and (
                 self.col_offset == other.col_offset
                 or -1 in (self.col_offset, other.col_offset)
@@ -1215,6 +1216,24 @@ class Visitor113(Flake8TrioVisitor):
             )
         ):
             self.error("TRIO113", node)
+
+
+# Checks that all async functions with a "task_status" parameter have a match in
+# --startable-in-context-manager. Will only match against the last part of the option
+# name, so may miss cases where functions are named the same in different modules/classes
+# and option names are specified including the module name.
+class Visitor114(Flake8TrioVisitor):
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        if any(
+            isinstance(n, ast.arg) and n.arg == "task_status"
+            for n in self.walk(
+                *node.args.args, *node.args.posonlyargs, *node.args.kwonlyargs
+            )
+        ) and not any(
+            fnmatch(node.name, cast(str, opt).split(".")[-1])
+            for opt in self.options.startable_in_context_manager
+        ):
+            self.error("TRIO114", node, node.name)
 
 
 class Plugin:

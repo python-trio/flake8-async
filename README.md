@@ -36,6 +36,7 @@ pip install flake8-trio
 - **TRIO111**: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accesed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
 - **TRIO112**: nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.
 - **TRIO113**: using `nursery.start_soon` in `__aenter__` doesn't wait for the task to begin. Consider replacing with `nursery.start`.
+- **TRIO114**: Startable function (i.e. has a `task_status` parameter) not in `--startable-in-context-manager` parameter list, please add it so TRIO113 can catch errors when using it.
 
 
 ## Configuration
