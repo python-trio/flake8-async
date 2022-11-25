@@ -18,11 +18,11 @@ To run our test suite please use tox.
 # Formatting and Linting
 tox -e check
 # Test Running
-tox -e test
-# Run checks and tests against Python 3.8, 3.9 and 3.10
-tox -e ALL
-# Tip: Use -p (run tests in parallel) and --develop (install package with -e) to save time when modifying and rerunning
-tox -e ALL -p --develop
+tox -e py311
+# Run checks and all test environments (tox -a for a complete list)
+tox
+# Tip: Use -p (run tests in parallel), --develop (install package with -e), and -q to save time when modifying and rerunning
+tox -p --develop
 ```
 
 ## Meta-tests

@@ -28,7 +28,7 @@ setuptools.setup(
     license="MIT",
     description="A highly opinionated flake8 plugin for Trio-related problems.",
     zip_safe=False,
-    install_requires=["flake8"],
+    install_requires=["flake8>=5.0"],
     python_requires=">=3.8",
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -40,6 +40,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     long_description=(
         local_file("README.md").open().read()
