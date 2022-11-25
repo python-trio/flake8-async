@@ -1209,7 +1209,7 @@ class Visitor113(Flake8TrioVisitor):
             and is_nursery_call(node.func, "start_soon")
             and len(node.args) > 0
             and fnmatch_qualified_name(
-                node.args[:1],
+                [n for n in self.walk(node.args[0]) if isinstance(n, ast.expr)],
                 *STARTABLE_CALLS,
                 *self.options.startable_in_context_manager,
             )
@@ -1258,9 +1258,8 @@ class Plugin:
             required=False,
             comma_separated_list=True,
             help=(
-                "Comma-separated list of method calls to enable TRIO113"
-                " warnings for."
-                " Use if you want to override the default methods the check is enabled for."
+                "Comma-separated list of method calls to additionally enable TRIO113"
+                " warnings for. Will also check for the pattern inside calls to partial."
                 " Methods can be dotted or not, as well as support * as a wildcard."
                 " For example, ``--startable-in-context-manager=worker_serve,"
                 "mypackage.sub.*``"
