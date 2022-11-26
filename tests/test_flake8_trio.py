@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import DefaultDict, Iterable, List, Sequence, Tuple, Type
 
 import pytest
+from flake8 import __version_info__ as flake8_version_info
 from flake8.options.manager import OptionManager
 
 # import trio  # type: ignore
@@ -30,6 +31,14 @@ test_files: List[Tuple[str, str]] = sorted(
 
 class ParseError(Exception):
     ...
+
+
+# flake8 6 added a required named parameter formatter_names
+def _default_option_manager():
+    kwargs = {}
+    if flake8_version_info[0] >= 6:
+        kwargs["formatter_names"] = ["default"]
+    return OptionManager(version="", plugin_versions="", parents=[], **kwargs)
 
 
 # check for presence of _pyXX, skip if version is later, and prune parameter
@@ -159,12 +168,7 @@ def read_file(test_file: str):
 
 def assert_expected_errors(plugin: Plugin, include: Iterable[str], *expected: Error):
     # initialize default option values
-    om = OptionManager(
-        version="",
-        plugin_versions="",
-        parents=[],
-        formatter_names=["default"],  # type: ignore
-    )
+    om = _default_option_manager()
     plugin.add_options(om)
     plugin.parse_options(om.parse_args(args=[""]))
 
@@ -366,12 +370,7 @@ def test_107_permutations():
 def test_113_options():
     # get default errors
     plugin = read_file("trio113.py")
-    om = OptionManager(
-        version="",
-        plugin_versions="",
-        parents=[],
-        formatter_names=["default"],  # type: ignore
-    )
+    om = _default_option_manager()
     plugin.add_options(om)
     plugin.parse_options(om.parse_args(args=["--startable-in-context-manager=''"]))
     default = {repr(e) for e in plugin.run() if e.code == "TRIO113"}

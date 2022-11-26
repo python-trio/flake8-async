@@ -22,7 +22,7 @@ setuptools.setup(
     name="flake8-trio",
     version=__version__,
     author="Zac Hatfield-Dodds and Contributors",
-    author_email="me@cooperlees.com",
+    author_email="zac@zhd.dev",
     py_modules=["flake8_trio"],
     url="https://github.com/Zac-HD/flake8-trio",
     license="MIT",
@@ -40,6 +40,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     long_description=(
         local_file("README.md").open().read()
