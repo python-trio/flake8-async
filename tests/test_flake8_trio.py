@@ -35,20 +35,10 @@ class ParseError(Exception):
 
 # flake8 6 added a required named parameter formatter_names
 def _default_option_manager():
-    major_flake8_version = flake8_version_info[0]
-    assert major_flake8_version in (5, 6), "New major flake8 release, investigate"
-    if major_flake8_version == 5:
-        return OptionManager(
-            version="",
-            plugin_versions="",
-            parents=[],
-        )
-    return OptionManager(
-        version="",
-        plugin_versions="",
-        parents=[],
-        formatter_names=["default"],  # type: ignore
-    )
+    kwargs = {}
+    if flake8_version_info[0] >= 6:
+        kwargs["formatter_names"] = ["default"]
+    return OptionManager(version="", plugin_versions="", parents=[], **kwargs)
 
 
 # check for presence of _pyXX, skip if version is later, and prune parameter
