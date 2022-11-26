@@ -372,7 +372,6 @@ def test_113_options():
     plugin = read_file("trio113.py")
     om = _default_option_manager()
     plugin.add_options(om)
-    plugin.parse_options(om.parse_args(args=["--startable-in-context-manager=''"]))
     default = {repr(e) for e in plugin.run() if e.code == "TRIO113"}
 
     # check that our custom_startable_function is detected
@@ -380,6 +379,34 @@ def test_113_options():
     plugin.parse_options(om.parse_args(args=[arg]))
     errors = {repr(e) for e in plugin.run() if e.code == "TRIO113"} - default
     assert errors == {repr(Error("TRIO113", 16, 4))}
+
+
+def test_114_options():
+    # get default errors
+    plugin = read_file("trio114.py")
+    om = _default_option_manager()
+    plugin.add_options(om)
+    default = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
+
+    arg = "--startable-in-context-manager=foo"
+    plugin.parse_options(om.parse_args(args=[arg]))
+    errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
+    assert len(errors) == len(default) - 1
+
+    arg = "--startable-in-context-manager=blah.foo"
+    plugin.parse_options(om.parse_args(args=[arg]))
+    errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
+    assert len(errors) == len(default) - 1
+
+    arg = "--startable-in-context-manager=foo*"
+    plugin.parse_options(om.parse_args(args=[arg]))
+    errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
+    assert len(errors) == len(default) - 4
+
+    arg = "--startable-in-context-manager=*"
+    plugin.parse_options(om.parse_args(args=[arg]))
+    errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
+    assert len(errors) == 0
 
 
 @pytest.mark.fuzz
