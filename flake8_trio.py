@@ -29,7 +29,7 @@ from typing import (
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.11.4"
+__version__ = "22.11.5"
 
 
 Error_codes = {
@@ -67,6 +67,7 @@ Error_codes = {
     "TRIO112": "Redundant nursery {}, consider replacing with directly awaiting the function call",
     "TRIO113": "Dangerous `.start_soon()`, process might not run before `__aenter__` exits. Consider replacing with `.start()`.",
     "TRIO114": "Startable function {} not in --startable-in-context-manager parameter list, please add it so TRIO113 can catch errors using it.",
+    "TRIO116": "trio.sleep() with >24 hour interval should usually be `trio.sleep_forever()`",
 }
 
 
@@ -1203,6 +1204,7 @@ class Visitor113(Flake8TrioVisitor):
 
     def visit_Yield(self, node: ast.Yield):
         self.aenter = False
+        self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
         if (
@@ -1216,6 +1218,7 @@ class Visitor113(Flake8TrioVisitor):
             )
         ):
             self.error("TRIO113", node)
+        self.generic_visit(node)
 
 
 # Checks that all async functions with a "task_status" parameter have a match in
@@ -1234,6 +1237,43 @@ class Visitor114(Flake8TrioVisitor):
             for opt in self.options.startable_in_context_manager
         ):
             self.error("TRIO114", node, node.name)
+        self.generic_visit(node)
+
+
+class Visitor116(Flake8TrioVisitor):
+    def visit_Call(self, node: ast.Call):
+        if get_matching_call(node, "sleep") and len(node.args) == 1:
+            arg = node.args[0]
+            if (
+                # trio.sleep(math.inf)
+                (
+                    isinstance(arg, ast.Attribute)
+                    and isinstance(arg.value, ast.Name)
+                    and arg.attr == "inf"
+                    and arg.value.id == "math"
+                )
+                # trio.sleep(inf)
+                or (isinstance(arg, ast.Name) and arg.id == "inf")
+                # trio.sleep(float("inf"))
+                or (
+                    isinstance(arg, ast.Call)
+                    and isinstance(arg.func, ast.Name)
+                    and arg.func.id == "float"
+                    and len(arg.args)
+                    and isinstance(arg.args[0], ast.Constant)
+                    and arg.args[0].value == "inf"
+                )
+                # trio.sleep(1e999) (constant value inf)
+                # trio.sleep(86401)
+                # trio.sleep(86400.1)
+                or (
+                    isinstance(arg, ast.Constant)
+                    and isinstance(arg.value, (int, float))
+                    and arg.value > 86400
+                )
+            ):
+                self.error("TRIO116", node)
+        self.generic_visit(node)
 
 
 class Plugin:

@@ -16,6 +16,7 @@ from typing import (
     Type,
     Union,
 )
+
 from flake8.plugins.finder import Plugins
 
 """Option handling and Option management logic."""
@@ -32,7 +33,7 @@ class _CallbackAction(argparse.Action):
         callback: Callable[..., Any],
         callback_args: Sequence[Any] = ...,
         callback_kwargs: Optional[Dict[str, Any]] = ...,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None: ...
     def __call__(
         self,
@@ -148,7 +149,7 @@ class OptionManager:
         *,
         version: str,
         plugin_versions: str,
-        parents: List[argparse.ArgumentParser]
+        parents: List[argparse.ArgumentParser],
     ) -> None:
         """Initialize an instance of an OptionManager.
 

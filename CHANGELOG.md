@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.11.5
+- Add TRIO116: `trio.sleep()` with >24 hour interval should usually be `trio.sleep_forever()`.
+
 ## 22.11.4
 - Add TRIO114 Startable function not in `--startable-in-context-manager` parameter list.
 
