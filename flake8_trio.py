@@ -9,6 +9,7 @@ It may well be too noisy for anyone with different opinions, that's OK.
 Pairs well with flake8-async and flake8-bugbear.
 """
 
+import argparse
 import ast
 import tokenize
 from argparse import Namespace
@@ -20,6 +21,7 @@ from typing import (
     List,
     NamedTuple,
     Optional,
+    Sequence,
     Set,
     Tuple,
     Union,
@@ -29,7 +31,7 @@ from typing import (
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.11.5"
+__version__ = "22.12.1"
 
 
 Error_codes = {
@@ -1178,10 +1180,11 @@ def _get_identifier(node: ast.expr) -> str:
 
 
 STARTABLE_CALLS = (
-    "trio.run_process",
-    "trio.serve_ssl_over_tcp",
-    "trio.serve_tcp",
-    "trio.serve_listeners",
+    "run_process",
+    "serve_ssl_over_tcp",
+    "serve_tcp",
+    "serve_listeners",
+    "serve",
 )
 
 
@@ -1207,12 +1210,21 @@ class Visitor113(Flake8TrioVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
+        def is_startable(n: ast.expr, *startable_list: str) -> bool:
+            if isinstance(n, ast.Name):
+                return n.id in startable_list
+            if isinstance(n, ast.Attribute):
+                return n.attr in startable_list
+            if isinstance(n, ast.Call):
+                return any(is_startable(nn, *startable_list) for nn in n.args)
+            return False
+
         if (
             self.aenter
             and is_nursery_call(node.func, "start_soon")
             and len(node.args) > 0
-            and fnmatch_qualified_name(
-                [n for n in self.walk(node.args[0]) if isinstance(n, ast.expr)],
+            and is_startable(
+                node.args[0],
                 *STARTABLE_CALLS,
                 *self.options.startable_in_context_manager,
             )
@@ -1233,8 +1245,8 @@ class Visitor114(Flake8TrioVisitor):
                 *node.args.args, *node.args.posonlyargs, *node.args.kwonlyargs
             )
         ) and not any(
-            fnmatch(node.name, cast(str, opt).split(".")[-1])
-            for opt in self.options.startable_in_context_manager
+            node.name == opt
+            for opt in (*self.options.startable_in_context_manager, *STARTABLE_CALLS)
         ):
             self.error("TRIO114", node, node.name)
         self.generic_visit(node)
@@ -1274,6 +1286,22 @@ class Visitor116(Flake8TrioVisitor):
             ):
                 self.error("TRIO116", node)
         self.generic_visit(node)
+
+
+class ListOfIdentifiers(argparse.Action):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: Optional[Sequence[Any]],
+        option_string: Optional[str] = None,
+    ):
+        assert values is not None
+        assert option_string is not None
+        for value in values:
+            if not value.isidentifier():
+                raise argparse.ArgumentError(self, f"{value} is not a valid identifier")
+        setattr(namespace, self.dest, values)
 
 
 class Plugin:
@@ -1316,12 +1344,13 @@ class Plugin:
             parse_from_config=True,
             required=False,
             comma_separated_list=True,
+            action=ListOfIdentifiers,
             help=(
                 "Comma-separated list of method calls to additionally enable TRIO113"
-                " warnings for. Will also check for the pattern inside calls to partial."
-                " Methods can be dotted or not, as well as support * as a wildcard."
+                " warnings for. Will also check for the pattern inside function calls."
+                " Methods must be valid identifiers as per `str.isidientifier()`."
                 " For example, ``--startable-in-context-manager=worker_serve,"
-                "mypackage.sub.*``"
+                "myfunction``"
             ),
         )
 

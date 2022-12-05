@@ -372,6 +372,7 @@ def test_113_options():
     plugin = read_file("trio113.py")
     om = _default_option_manager()
     plugin.add_options(om)
+    plugin.parse_options(om.parse_args(args=[]))
     default = {repr(e) for e in plugin.run() if e.code == "TRIO113"}
 
     # check that our custom_startable_function is detected
@@ -386,6 +387,7 @@ def test_114_options():
     plugin = read_file("trio114.py")
     om = _default_option_manager()
     plugin.add_options(om)
+    plugin.parse_options(om.parse_args(args=[]))
     default = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
 
     arg = "--startable-in-context-manager=foo"
@@ -393,20 +395,12 @@ def test_114_options():
     errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
     assert len(errors) == len(default) - 1
 
-    arg = "--startable-in-context-manager=blah.foo"
-    plugin.parse_options(om.parse_args(args=[arg]))
-    errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
-    assert len(errors) == len(default) - 1
-
-    arg = "--startable-in-context-manager=foo*"
-    plugin.parse_options(om.parse_args(args=[arg]))
-    errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
-    assert len(errors) == len(default) - 4
-
-    arg = "--startable-in-context-manager=*"
-    plugin.parse_options(om.parse_args(args=[arg]))
-    errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
-    assert len(errors) == 0
+    # flake8 will reraise ArgumentError as SystemExit
+    for arg in "blah.foo", "foo*", "*":
+        with pytest.raises(SystemExit):
+            plugin.parse_options(
+                om.parse_args(args=[f"--startable-in-context-manager={arg}"])
+            )
 
 
 @pytest.mark.fuzz

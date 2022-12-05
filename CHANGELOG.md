@@ -1,5 +1,8 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
+## 22.12.1
+- TRIO113 now only supports names that are valid identifiers. I.e. no dots or asterisks anymore.
+- TRIO114 will now trigger on the unqualified name, will now only check the first parameterdirectly, and parameters to function calls inside that.
 
 ## 22.11.5
 - Add TRIO116: `trio.sleep()` with >24 hour interval should usually be `trio.sleep_forever()`.
