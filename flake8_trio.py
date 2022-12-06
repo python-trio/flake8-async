@@ -67,6 +67,7 @@ Error_codes = {
     "TRIO112": "Redundant nursery {}, consider replacing with directly awaiting the function call",
     "TRIO113": "Dangerous `.start_soon()`, process might not run before `__aenter__` exits. Consider replacing with `.start()`.",
     "TRIO114": "Startable function {} not in --startable-in-context-manager parameter list, please add it so TRIO113 can catch errors using it.",
+    "TRIO115": "Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.",
     "TRIO116": "trio.sleep() with >24 hour interval should usually be `trio.sleep_forever()`",
 }
 
@@ -1237,6 +1238,19 @@ class Visitor114(Flake8TrioVisitor):
             for opt in self.options.startable_in_context_manager
         ):
             self.error("TRIO114", node, node.name)
+        self.generic_visit(node)
+
+
+# Suggests replacing all `trio.sleep(0)` with the more suggestive `trio.lowlevel.checkpoint()`
+class Visitor115(Flake8TrioVisitor):
+    def visit_Call(self, node: ast.Call):
+        if (
+            get_matching_call(node, "sleep")
+            and len(node.args) == 1
+            and isinstance(node.args[0], ast.Constant)
+            and node.args[0].value == 0
+        ):
+            self.error("TRIO115", node)
         self.generic_visit(node)
 
 

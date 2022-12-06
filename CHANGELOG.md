@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- Add TRIO115: Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.
+
 ## 22.11.5
 - Add TRIO116: `trio.sleep()` with >24 hour interval should usually be `trio.sleep_forever()`.
 
