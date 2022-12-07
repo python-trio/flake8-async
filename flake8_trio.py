@@ -33,7 +33,7 @@ __version__ = "22.11.5"
 
 
 Error_codes = {
-    "TRIO100": "{} context contains no checkpoints, add `await trio.sleep(0)`",
+    "TRIO100": "{} context contains no checkpoints, add `await trio.lowlevel.checkpoint()`",
     "TRIO101": (
         "yield inside a nursery or cancel scope is only safe when implementing "
         "a context manager - otherwise, it breaks exception handling"
