@@ -1,4 +1,4 @@
-from typing import List
+from __future__ import annotations
 
 import pytest
 
@@ -15,7 +15,7 @@ def pytest_configure(config: pytest.Config):
     )
 
 
-def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item]):
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]):
     if config.getoption("--runfuzz"):
         # --runfuzz given in cli: do not skip fuzz tests
         return
