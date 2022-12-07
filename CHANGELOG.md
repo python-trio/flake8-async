@@ -1,10 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 ## 22.12.1
-- TRIO113 now only supports names that are valid identifiers. I.e. no dots or asterisks anymore.
-- TRIO114 will now trigger on the unqualified name, will now only check the first parameterdirectly, and parameters to function calls inside that.
-
-## Future
+- TRIO114 will now trigger on the unqualified name, will now only check the first parameter
+  directly, and parameters to function calls inside that.
+- TRIO113 now only supports names that are valid identifiers, rather than fnmatch patterns.
 - Add TRIO115: Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.
 
 ## 22.11.5
