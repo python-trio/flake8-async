@@ -9,24 +9,14 @@ It may well be too noisy for anyone with different opinions, that's OK.
 Pairs well with flake8-async and flake8-bugbear.
 """
 
+from __future__ import annotations
+
 import argparse
 import ast
 import tokenize
 from argparse import Namespace
 from fnmatch import fnmatch
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Any, Iterable, NamedTuple, Sequence, Union, cast
 
 from flake8.options.manager import OptionManager
 
@@ -95,7 +85,7 @@ HasLineCol = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
 
 def get_matching_call(
     node: ast.AST, *names: str, base: str = "trio"
-) -> Optional[Tuple[ast.Call, str]]:
+) -> tuple[ast.Call, str] | None:
     if (
         isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
@@ -150,7 +140,7 @@ cancel_scope_names = (
 class Flake8TrioVisitor(ast.NodeVisitor):
     def __init__(self, options: Namespace):
         super().__init__()
-        self._problems: List[Error] = []
+        self._problems: list[Error] = []
         self.suppress_errors = False
         self.options = options
 
@@ -160,9 +150,7 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         visitor.visit(tree)
         yield from visitor._problems
 
-    def visit_nodes(
-        self, *nodes: Union[ast.AST, Iterable[ast.AST]], generic: bool = False
-    ):
+    def visit_nodes(self, *nodes: ast.AST | Iterable[ast.AST], generic: bool = False):
         if generic:
             visit = self.generic_visit
         else:
@@ -178,10 +166,10 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         if not self.suppress_errors:
             self._problems.append(Error(error, node.lineno, node.col_offset, *args))
 
-    def get_state(self, *attrs: str, copy: bool = False) -> Dict[str, Any]:
+    def get_state(self, *attrs: str, copy: bool = False) -> dict[str, Any]:
         if not attrs:
             attrs = tuple(self.__dict__.keys())
-        res: Dict[str, Any] = {}
+        res: dict[str, Any] = {}
         for attr in attrs:
             if attr == "_problems":
                 continue
@@ -191,7 +179,7 @@ class Flake8TrioVisitor(ast.NodeVisitor):
             res[attr] = value
         return res
 
-    def set_state(self, attrs: Dict[str, Any], copy: bool = False):
+    def set_state(self, attrs: dict[str, Any], copy: bool = False):
         for attr, value in attrs.items():
             if copy and hasattr(value, "copy"):
                 value = value.copy()
@@ -203,7 +191,7 @@ class Flake8TrioVisitor(ast.NodeVisitor):
 
 
 # ignores module and only checks the unqualified name of the decorator
-def has_decorator(decorator_list: List[ast.expr], *names: str):
+def has_decorator(decorator_list: list[ast.expr], *names: str):
     for dec in decorator_list:
         if (isinstance(dec, ast.Name) and dec.id in names) or (
             isinstance(dec, ast.Attribute) and dec.attr in names
@@ -214,8 +202,8 @@ def has_decorator(decorator_list: List[ast.expr], *names: str):
 
 # matches the fully qualified name against fnmatch pattern
 # used to match decorators and methods to user-supplied patterns
-def fnmatch_qualified_name(name_list: List[ast.expr], *patterns: str):
-    def construct_name(expr: ast.expr) -> Optional[str]:
+def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str):
+    def construct_name(expr: ast.expr) -> str | None:
         if isinstance(expr, ast.Call):
             expr = expr.func
         if isinstance(expr, ast.Name):
@@ -257,13 +245,13 @@ class VisitorMiscChecks(Flake8TrioVisitor):
         self._safe_decorator = False
 
         # 111
-        self._context_managers: List[VisitorMiscChecks.TrioContextManager] = []
-        self._nursery_call: Optional[VisitorMiscChecks.NurseryCall] = None
+        self._context_managers: list[VisitorMiscChecks.TrioContextManager] = []
+        self._nursery_call: VisitorMiscChecks.NurseryCall | None = None
 
         self.defaults = self.get_state(copy=True)
 
     # ---- 100, 101, 111, 112 ----
-    def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
+    def visit_With(self, node: ast.With | ast.AsyncWith):
         self.check_for_trio100(node)
         self.check_for_trio112(node)
 
@@ -305,7 +293,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     visit_AsyncWith = visit_With
 
     # ---- 100 ----
-    def check_for_trio100(self, node: Union[ast.With, ast.AsyncWith]):
+    def check_for_trio100(self, node: ast.With | ast.AsyncWith):
         # Context manager with no `await trio.X` call within
         for item in (i.context_expr for i in node.items):
             call = get_matching_call(item, *cancel_scope_names)
@@ -316,7 +304,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
                 self.error("TRIO100", item, f"trio.{call[1]}")
 
     # ---- 101 ----
-    def visit_FunctionDef(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
+    def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
         outer = self.get_state()
         self.set_state(self.defaults, copy=True)
 
@@ -433,7 +421,7 @@ class VisitorMiscChecks(Flake8TrioVisitor):
     # if with has a withitem `trio.open_nursery() as <X>`,
     # and the body is only a single expression <X>.start[_soon](),
     # and does not pass <X> as a parameter to the expression
-    def check_for_trio112(self, node: Union[ast.With, ast.AsyncWith]):
+    def check_for_trio112(self, node: ast.With | ast.AsyncWith):
         # body is single expression
         if len(node.body) != 1 or not isinstance(node.body[0], ast.Expr):
             return
@@ -462,8 +450,8 @@ class VisitorMiscChecks(Flake8TrioVisitor):
 
 
 # used in 102, 103 and 104
-def critical_except(node: ast.ExceptHandler) -> Optional[Statement]:
-    def has_exception(node: Optional[ast.expr]) -> str:
+def critical_except(node: ast.ExceptHandler) -> Statement | None:
+    def has_exception(node: ast.expr | None) -> str:
         if isinstance(node, ast.Name) and node.id == "BaseException":
             return "BaseException"
         if (
@@ -496,7 +484,7 @@ class Visitor102(Flake8TrioVisitor):
         def __init__(self, node: ast.Call, funcname: str):
             self.node = node
             self.funcname = funcname
-            self.variable_name: Optional[str] = None
+            self.variable_name: str | None = None
             self.shielded: bool = False
             self.has_timeout: bool = True
 
@@ -514,14 +502,14 @@ class Visitor102(Flake8TrioVisitor):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._critical_scope: Optional[Statement] = None
-        self._trio_context_managers: List[Visitor102.TrioScope] = []
+        self._critical_scope: Statement | None = None
+        self._trio_context_managers: list[Visitor102.TrioScope] = []
 
     # if we're inside a finally, and we're not inside a scope that doesn't have
     # both a timeout and shield
     def visit_Await(
         self,
-        node: Union[ast.Await, ast.AsyncFor, ast.AsyncWith],
+        node: ast.Await | ast.AsyncFor | ast.AsyncWith,
         visit_children: bool = True,
     ):
         if self._critical_scope is not None and not any(
@@ -533,7 +521,7 @@ class Visitor102(Flake8TrioVisitor):
 
     visit_AsyncFor = visit_Await
 
-    def visit_With(self, node: Union[ast.With, ast.AsyncWith]):
+    def visit_With(self, node: ast.With | ast.AsyncWith):
         has_context_manager = False
 
         # Check for a `with trio.<scope_creater>`
@@ -564,7 +552,7 @@ class Visitor102(Flake8TrioVisitor):
 
     def critical_visit(
         self,
-        node: Union[ast.ExceptHandler, Iterable[ast.AST]],
+        node: ast.ExceptHandler | Iterable[ast.AST],
         block: Statement,
         generic: bool = False,
     ):
@@ -612,7 +600,7 @@ class Visitor102(Flake8TrioVisitor):
 class Visitor103_104(Flake8TrioVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self.except_name: Optional[str] = ""
+        self.except_name: str | None = ""
         self.unraised: bool = False
         self.unraised_break: bool = False
         self.unraised_continue: bool = False
@@ -659,7 +647,7 @@ class Visitor103_104(Flake8TrioVisitor):
 
         self.generic_visit(node)
 
-    def visit_Return(self, node: Union[ast.Return, ast.Yield]):
+    def visit_Return(self, node: ast.Return | ast.Yield):
         if self.unraised:
             # Error: must re-raise
             self.error("TRIO104", node)
@@ -709,7 +697,7 @@ class Visitor103_104(Flake8TrioVisitor):
     #   else always raises, and
     #   always raise before break
     # or body always raises (before break) and is guaranteed to run at least once
-    def visit_For(self, node: Union[ast.For, ast.While]):
+    def visit_For(self, node: ast.For | ast.While):
         if not self.unraised:
             self.generic_visit(node)
             return
@@ -829,7 +817,7 @@ class Visitor105(Flake8TrioVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         # keep a node stack so we can check whether calls are awaited
-        self.node_stack: List[ast.AST] = []
+        self.node_stack: list[ast.AST] = []
 
     def visit(self, node: ast.AST):
         self.node_stack.append(node)
@@ -854,7 +842,7 @@ class Visitor105(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
-def empty_body(body: List[ast.stmt]) -> bool:
+def empty_body(body: list[ast.stmt]) -> bool:
     # Does the function body consist solely of `pass`, `...`, and (doc)string literals?
     return all(
         isinstance(stmt, ast.Pass)
@@ -874,9 +862,9 @@ class Visitor107_108(Flake8TrioVisitor):
         self.safe_decorator = False
         self.async_function = False
 
-        self.uncheckpointed_statements: Set[Statement] = set()
-        self.uncheckpointed_before_continue: Set[Statement] = set()
-        self.uncheckpointed_before_break: Set[Statement] = set()
+        self.uncheckpointed_statements: set[Statement] = set()
+        self.uncheckpointed_before_continue: set[Statement] = set()
+        self.uncheckpointed_before_break: set[Statement] = set()
 
         self.default = self.get_state()
 
@@ -913,7 +901,7 @@ class Visitor107_108(Flake8TrioVisitor):
         self.set_state(outer)
 
     # error if function exits or returns with uncheckpointed statements
-    def check_function_exit(self, node: Union[ast.Return, ast.AsyncFunctionDef]):
+    def check_function_exit(self, node: ast.Return | ast.AsyncFunctionDef):
         for statement in self.uncheckpointed_statements:
             self.error(
                 "TRIO108" if self.has_yield else "TRIO107",
@@ -937,7 +925,7 @@ class Visitor107_108(Flake8TrioVisitor):
         self.set_state(outer)
 
     # checkpoint functions
-    def visit_Await(self, node: Union[ast.Await, ast.Raise]):
+    def visit_Await(self, node: ast.Await | ast.Raise):
         # the expression being awaited is not checkpointed
         # so only set checkpoint after the await node
         self.generic_visit(node)
@@ -994,7 +982,7 @@ class Visitor107_108(Flake8TrioVisitor):
         try_checkpoint = self.uncheckpointed_statements
 
         # check that all except handlers checkpoint (await or most likely raise)
-        except_uncheckpointed_statements: Set[Statement] = set()
+        except_uncheckpointed_statements: set[Statement] = set()
 
         for handler in node.handlers:
             # enter with worst case of try
@@ -1032,7 +1020,7 @@ class Visitor107_108(Flake8TrioVisitor):
             self.uncheckpointed_statements.difference_update(added)
 
     # valid checkpoint if both body and orelse checkpoint
-    def visit_If(self, node: Union[ast.If, ast.IfExp]):
+    def visit_If(self, node: ast.If | ast.IfExp):
         # visit condition
         self.visit_nodes(node.test)
         outer = self.uncheckpointed_statements.copy()
@@ -1055,7 +1043,7 @@ class Visitor107_108(Flake8TrioVisitor):
     # after completing all of loop body, and after any continues.
     # yield in else have same requirement
     # state after the loop same as above, and in addition the state at any break
-    def visit_loop(self, node: Union[ast.While, ast.For, ast.AsyncFor]):
+    def visit_loop(self, node: ast.While | ast.For | ast.AsyncFor):
         # visit condition
         infinite_loop = False
         if isinstance(node, ast.While):
@@ -1307,8 +1295,8 @@ class ListOfIdentifiers(argparse.Action):
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values: Optional[Sequence[Any]],
-        option_string: Optional[str] = None,
+        values: Sequence[Any] | None,
+        option_string: str | None = None,
     ):
         assert values is not None
         assert option_string is not None
@@ -1327,7 +1315,7 @@ class Plugin:
         self._tree = tree
 
     @classmethod
-    def from_filename(cls, filename: str) -> "Plugin":
+    def from_filename(cls, filename: str) -> Plugin:
         with tokenize.open(filename) as f:
             source = f.read()
         return cls(ast.parse(source))

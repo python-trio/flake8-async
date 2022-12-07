@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 import copy
 import itertools
@@ -8,7 +10,7 @@ import sys
 import tokenize
 import unittest
 from pathlib import Path
-from typing import DefaultDict, Iterable, List, Sequence, Tuple, Type
+from typing import DefaultDict, Iterable, Sequence
 
 import pytest
 from flake8 import __version_info__ as flake8_version_info
@@ -22,7 +24,7 @@ from flake8_trio import Error, Error_codes, Plugin, Statement
 
 trio_test_files_regex = re.compile(r"trio\d\d\d(_py.*)?.py")
 
-test_files: List[Tuple[str, str]] = sorted(
+test_files: list[tuple[str, str]] = sorted(
     (os.path.splitext(f)[0].upper(), f)
     for f in os.listdir("tests")
     if re.match(trio_test_files_regex, f)
@@ -62,7 +64,7 @@ def test_eval(test: str, path: str):
     assert test in Error_codes.keys(), "error code not defined in flake8_trio.py"
 
     include = [test]
-    expected: List[Error] = []
+    expected: list[Error] = []
     with open(os.path.join("tests", path), encoding="utf-8") as file:
         lines = file.readlines()
 
@@ -134,7 +136,7 @@ class SyncTransformer(ast.NodeTransformer):
         newnode = self.generic_visit(node.value)
         return newnode
 
-    def replace_async(self, node: ast.AST, target: Type[ast.AST]) -> ast.AST:
+    def replace_async(self, node: ast.AST, target: type[ast.AST]) -> ast.AST:
         node = self.generic_visit(node)
         newnode = target()
         newnode.__dict__ = node.__dict__
@@ -188,8 +190,8 @@ def assert_expected_errors(plugin: Plugin, include: Iterable[str], *expected: Er
 
 
 def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
-    first_error_line: List[Error] = []
-    first_expected_line: List[Error] = []
+    first_error_line: list[Error] = []
+    first_expected_line: list[Error] = []
     for err, exp in zip(errors, expected):
         if err == exp:
             continue

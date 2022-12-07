@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import ast
 import sys
 from argparse import Namespace
-from typing import Tuple
 
 import pytest
 from flake8.main.application import Application
@@ -18,7 +19,7 @@ def dec_list(*decorators: str) -> ast.Module:
     return tree
 
 
-def wrap(decorators: Tuple[str, ...], decs2: str) -> bool:
+def wrap(decorators: tuple[str, ...], decs2: str) -> bool:
     tree = dec_list(*decorators)
     assert isinstance(tree.body[0], ast.AsyncFunctionDef)
     return fnmatch_qualified_name(tree.body[0].decorator_list, decs2)
