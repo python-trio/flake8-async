@@ -74,9 +74,23 @@ class foo2:
         nursery.start_soon(functools.partial(trio.run_process))  # error: 8
         nursery.start_soon(anything.partial(trio.run_process))  # error: 8
 
-        # trigger when the sensitive methods are anywhere inside the first parameter
+        # trigger when the sensitive methods are inside a call
         nursery.start_soon(tuple(tuple(tuple(tuple(trio.run_process)))))  # error: 8
         nursery.start_soon(None, tuple(tuple(tuple(tuple(trio.run_process)))))
+        nursery.start_soon(partial(print, 5))
+        nursery.start_soon(partial(print, trio.run_process))  # error: 8
+
+        serve = run_process = myfun = anything
+        # error if name shared with trio
+        nursery.start_soon(serve)  # error: 8
+        nursery.start_soon(run_process)  # error: 8
+        # don't error if a startable name is a parameter or module
+        nursery.start_soon(myfun(serve=None))
+        nursery.start_soon(serve.myfun)
+
+        # doesn't support more esoteric ways of baking in the name
+        nursery.start_soon(lambda x: serve(x))
+        nursery.start_soon([serve])
 
 
 class foo3:
