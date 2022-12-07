@@ -125,8 +125,25 @@ def test_eval(test: str, path: str):
     assert_expected_errors(plugin, include, *expected)
 
 
-# codes that should never error when run on sync code
-sync_errors = ["TRIO102", "TRIO107", "TRIO108", "TRIO109", "TRIO110"]
+# Codes that are supposed to also raise errors when run on sync code, and should
+# be excluded from the SyncTransformer check.
+# Expand this list when adding a new check if it does not care about whether the code
+# is asynchronous or not.
+error_codes_ignored_when_checking_transformed_sync_code = {
+    "TRIO100",
+    "TRIO101",
+    "TRIO103",
+    "TRIO104",
+    "TRIO105",
+    "TRIO106",
+    "TRIO111",
+    "TRIO112",
+    "TRIO115",
+    "TRIO116",
+}
+sync_errors = (
+    set(Error_codes.keys()) - error_codes_ignored_when_checking_transformed_sync_code
+)
 
 
 class SyncTransformer(ast.NodeTransformer):
