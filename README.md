@@ -39,6 +39,7 @@ pip install flake8-trio
 - **TRIO114**: Startable function (i.e. has a `task_status` parameter) not in `--startable-in-context-manager` parameter list, please add it so TRIO113 can catch errors when using it.
 - **TRIO115**: Replace `trio.sleep(0)` with the more suggestive `trio.lowlevel.checkpoint()`.
 - **TRIO116**: `trio.sleep()` with >24 hour interval should usually be`trio.sleep_forever()`.
+- **TRIO200**: foofoo
 
 
 ## Configuration

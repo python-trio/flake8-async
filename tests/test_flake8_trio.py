@@ -64,17 +64,26 @@ def test_eval(test: str, path: str):
     assert test in Error_codes.keys(), "error code not defined in flake8_trio.py"
 
     include = [test]
+    parsed_args = [""]
     expected: list[Error] = []
+
     with open(os.path.join("tests", path), encoding="utf-8") as file:
         lines = file.readlines()
 
     for lineno, line in enumerate(lines, start=1):
         line = line.strip()
 
+        # add other error codes to check if #INCLUDE is specified
         if reg_match := re.search(r"(?<=INCLUDE).*", line):
             for other_code in reg_match.group().split(" "):
                 if other_code.strip():
                     include.append(other_code.strip())
+
+        # add command-line args if specified with #ARGS
+        elif reg_match := re.search(r"(?<=ARGS).*", line):
+            for arg in reg_match.group().split(" "):
+                if arg.strip():
+                    parsed_args.append(arg.strip())
 
         # skip commented out lines
         if not line or line[0] == "#":
@@ -124,7 +133,7 @@ def test_eval(test: str, path: str):
     assert expected, f"failed to parse any errors in file {path}"
 
     plugin = read_file(path)
-    assert_expected_errors(plugin, include, *expected)
+    assert_expected_errors(plugin, include, *expected, args=parsed_args)
 
 
 # codes that should never error when run on sync code
@@ -168,11 +177,16 @@ def read_file(test_file: str):
     return Plugin.from_filename(str(filename))
 
 
-def assert_expected_errors(plugin: Plugin, include: Iterable[str], *expected: Error):
+def assert_expected_errors(
+    plugin: Plugin,
+    include: Iterable[str],
+    *expected: Error,
+    args: list[str] | None = None,
+):
     # initialize default option values
     om = _default_option_manager()
     plugin.add_options(om)
-    plugin.parse_options(om.parse_args(args=[""]))
+    plugin.parse_options(om.parse_args(args=(args if args else [""])))
 
     errors = sorted(e for e in plugin.run() if e.code in include)
     expected_ = sorted(expected)
@@ -384,7 +398,7 @@ def test_113_options():
     assert errors == {repr(Error("TRIO113", 16, 4))}
 
 
-def test_114_options():
+def test_114_options(capsys: pytest.CaptureFixture[str]):
     # get default errors
     plugin = read_file("trio114.py")
     om = _default_option_manager()
@@ -403,6 +417,23 @@ def test_114_options():
             plugin.parse_options(
                 om.parse_args(args=[f"--startable-in-context-manager={arg}"])
             )
+        out, err = capsys.readouterr()
+        assert not out
+        assert f"{arg!r} is not a valid identifier" in err
+
+
+def test_200_options(capsys: pytest.CaptureFixture[str]):
+    plugin = Plugin(ast.AST())
+    om = _default_option_manager()
+    plugin.add_options(om)
+    for i, arg in (0, "foo"), (2, "foo->->bar"), (2, "foo->bar->fee"):
+        with pytest.raises(SystemExit):
+            plugin.parse_options(
+                om.parse_args(args=[f"--trio200-blocking-calls={arg}"])
+            )
+        out, err = capsys.readouterr()
+        assert not out
+        assert all(word in err for word in (str(i), arg, "->"))
 
 
 @pytest.mark.fuzz

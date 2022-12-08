@@ -61,6 +61,7 @@ Error_codes = {
     "TRIO114": "Startable function {} not in --startable-in-context-manager parameter list, please add it so TRIO113 can catch errors using it.",
     "TRIO115": "Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.",
     "TRIO116": "trio.sleep() with >24 hour interval should usually be `trio.sleep_forever()`",
+    "TRIO200": "Blocking sync call {0} in async function, consider replacing with {1}.",
 }
 
 
@@ -202,7 +203,7 @@ def has_decorator(decorator_list: list[ast.expr], *names: str):
 
 # matches the fully qualified name against fnmatch pattern
 # used to match decorators and methods to user-supplied patterns
-def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str):
+def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | None:
     def construct_name(expr: ast.expr) -> str | None:
         if isinstance(expr, ast.Call):
             expr = expr.func
@@ -212,8 +213,8 @@ def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str):
             attr = construct_name(expr.value)
             assert attr is not None
             return attr + "." + expr.attr
-        # See https://peps.python.org/pep-0614/ - we don't handle everything
-        return None  # pragma: no cover  # impossible on Python 3.8
+
+        return expr.__class__.__name__
 
     for name in name_list:
         qualified_name = construct_name(name)
@@ -222,8 +223,8 @@ def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str):
         for pattern in patterns:
             # strip leading "@"s for when we're working with decorators
             if fnmatch(qualified_name, pattern.lstrip("@")):
-                return True
-    return False
+                return pattern
+    return None
 
 
 # handles 100, 101, 106, 109, 110, 111, 112
@@ -1290,20 +1291,73 @@ class Visitor116(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
+class Visitor200(Flake8TrioVisitor):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.async_function = False
+
+    def visit_AsyncFunctionDef(
+        self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
+    ):
+        outer = self.get_state("async_function")
+        self.async_function = isinstance(node, ast.AsyncFunctionDef)
+        self.generic_visit(node)
+        self.set_state(outer)
+
+    visit_FunctionDef = visit_AsyncFunctionDef
+    visit_Lambda = visit_AsyncFunctionDef
+
+    def visit_Call(self, node: ast.Call):
+        if self.async_function and (
+            key := fnmatch_qualified_name(
+                [node.func], *self.options.trio200_blocking_calls.keys()
+            )
+        ):
+            self.error("TRIO200", node, key, self.options.trio200_blocking_calls[key])
+        self.generic_visit(node)
+
+
 class ListOfIdentifiers(argparse.Action):
     def __call__(
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values: Sequence[Any] | None,
+        values: Sequence[str] | None,
         option_string: str | None = None,
     ):
         assert values is not None
         assert option_string is not None
         for value in values:
             if not value.isidentifier():
-                raise argparse.ArgumentError(self, f"{value} is not a valid identifier")
+                raise argparse.ArgumentError(
+                    self, f"{value!r} is not a valid identifier"
+                )
         setattr(namespace, self.dest, values)
+
+
+class ParseDict(argparse.Action):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: Sequence[str] | None,
+        option_string: str | None = None,
+    ):
+        res: dict[str, str] = {}
+        splitter = "->"
+        assert values is not None
+        assert option_string is not None
+        for value in values:
+            split_values = list(map(str.strip, value.split(splitter)))
+            if len(split_values) != 2:
+                raise argparse.ArgumentError(
+                    self,
+                    f"Invalid number ({len(split_values)-1}) of splitter "
+                    f"tokens {splitter!r} in {value!r}",
+                )
+            res[split_values[0]] = split_values[1]
+
+        setattr(namespace, self.dest, res)
 
 
 class Plugin:
@@ -1353,6 +1407,17 @@ class Plugin:
                 " Methods must be valid identifiers as per `str.isidientifier()`."
                 " For example, ``--startable-in-context-manager=worker_serve,"
                 "myfunction``"
+            ),
+        )
+        option_manager.add_option(
+            "--trio200-blocking-calls",
+            default={},
+            parse_from_config=True,
+            required=False,
+            comma_separated_list=True,
+            action=ParseDict,
+            help=(
+                "Comma-separated list of key:value pairs, where key is a [dotted] function that if found inside an async function will raise TRIO200, suggesting it be replaced with {value}"
             ),
         )
 
