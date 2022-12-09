@@ -31,10 +31,15 @@ To check that all codes are tested and documented there's a test that error code
 ## Test generator
 Tests are automatically generated for files named `trio*.py` in the `tests/` directory, with the code that it's testing interpreted from the file name. The file extension is split off, if there's a match for for `_py\d*` it strips that off and uses it to determine if there's a minimum python version for which the test should only run.
 
+### `error:`
 Lines containing `error:` are parsed as expecting an error of the code matching the file name, with everything on the line after the colon `eval`'d and passed as arguments to `flake8_trio.Error_codes[<error_code>].str_format`. The `globals` argument to `eval` contains a `lineno` variable assigned the current line number, and the `flake8_trio.Statement` namedtuple. The first element after `error:` *must* be an integer containing the column where the error on that line originates.
+#### `TRIOxxx:`
+You can instead of `error` specify the error code.
 
-Test files by default filter out all errors not matching the file name, but if there's a line `#INCLUDE TRIO\d\d\d TRIO\d\d\d` those additional error codes are not filtered out and will be an error if encountered.
-
+### `# INCLUDE`
+Test files by default filter out all errors not matching the file name, but if there's a line `# INCLUDE TRIO\d\d\d TRIO\d\d\d` those additional error codes are not filtered out and will be an error if encountered.
+### `# ARGS`
+With a line `# ARGS` you can also specify command-line arguments that should be passed to the plugin when parsing a file. Can be specified multiple times for several different arguments.
 
 ## Style Guide
 

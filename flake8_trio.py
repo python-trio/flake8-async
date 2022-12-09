@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import sys
 import tokenize
 from argparse import Namespace
 from fnmatch import fnmatch
@@ -61,7 +62,7 @@ Error_codes = {
     "TRIO114": "Startable function {} not in --startable-in-context-manager parameter list, please add it so TRIO113 can catch errors using it.",
     "TRIO115": "Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.",
     "TRIO116": "trio.sleep() with >24 hour interval should usually be `trio.sleep_forever()`",
-    "TRIO200": "Blocking sync call {0} in async function, consider replacing with {1}.",
+    "TRIO200": "User-configured blocking sync call {0} in async function, consider replacing with {1}.",
 }
 
 
@@ -204,20 +205,13 @@ def has_decorator(decorator_list: list[ast.expr], *names: str):
 # matches the fully qualified name against fnmatch pattern
 # used to match decorators and methods to user-supplied patterns
 def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | None:
-    def construct_name(expr: ast.expr) -> str | None:
-        if isinstance(expr, ast.Call):
-            expr = expr.func
-        if isinstance(expr, ast.Name):
-            return expr.id
-        elif isinstance(expr, ast.Attribute):
-            attr = construct_name(expr.value)
-            assert attr is not None
-            return attr + "." + expr.attr
-
-        return expr.__class__.__name__
-
+    if sys.version_info[:2] < (3, 9):
+        return None  # pragma: no cover
     for name in name_list:
-        qualified_name = construct_name(name)
+        if isinstance(name, ast.Call):
+            name = name.func
+        qualified_name = ast.unparse(name)
+
         if qualified_name is None:
             continue  # pragma: no cover  # impossible on Python 3.8
         for pattern in patterns:

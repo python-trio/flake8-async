@@ -39,12 +39,12 @@ pip install flake8-trio
 - **TRIO114**: Startable function (i.e. has a `task_status` parameter) not in `--startable-in-context-manager` parameter list, please add it so TRIO113 can catch errors when using it.
 - **TRIO115**: Replace `trio.sleep(0)` with the more suggestive `trio.lowlevel.checkpoint()`.
 - **TRIO116**: `trio.sleep()` with >24 hour interval should usually be`trio.sleep_forever()`.
-- **TRIO200**: foofoo
+- **TRIO200**: User-configured error for blocking sync calls in async functions. Does nothing by default, see [`trio200-blocking-calls`](#trio200-blocking-calls) for how to configure it.
 
 
 ## Configuration
 [You can configure `flake8` with command-line options](https://flake8.pycqa.org/en/latest/user/configuration.html),
-but we prefer using a config file.
+but we prefer using a config file. The file needs to start with a section marker `[flake8]` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.
 
 ### `no-checkpoint-warning-decorators`
 Specify a list of decorators to disable checkpointing checks for, turning off TRIO107 and TRIO108 warnings for functions decorated with any decorator matching any in the list. Matching is done with [fnmatch](https://docs.python.org/3/library/fnmatch.html). Defaults to disabling for `asynccontextmanager`.
@@ -53,7 +53,6 @@ Decorators-to-match must be identifiers or dotted names only (not PEP-614 expres
 
 For example:
 ```
-[flake8]
 no-checkpoint-warning-decorators =
   mydecorator,
   mydecoratorpackage.checkpointing_decorators.*,
@@ -67,8 +66,36 @@ Comma-separated list of methods which should be used with `.start()` when openin
 in addition to the default `trio.run_process`, `trio.serve_tcp`, `trio.serve_ssl_over_tcp`, and
 `trio.serve_listeners`.  Names must be valid identifiers as per `str.isidentifier()`. For example:
 ```
-[flake8]
 startable-methods-in-context-manager =
   myfun,
   myfun2,
+```
+
+### `trio200-blocking-calls`
+Comma-separated list of pairs of values separated by `->` (optional whitespace stripped), where the first is a pattern for a call that should raise an error if found inside an async function, and the second is what should be suggested to use instead. It uses fnmatch as per [`no-checkpoint-warning-decorators`](#no-checkpoint-warning-decorators) for matching. The part after `->` is not used by the checker other than when printing the error, so you could add extra info there if you want.
+
+The format of the error message is `User-configured blocking sync call {0} in async function, consider replacing with {1}.`, where `{0}` is the pattern the call matches and `{1}` is the suggested replacement.
+
+Example:
+```
+trio200-blocking-calls =
+  my_blocking_call -> async.alternative
+  module.block_call -> other_function_to_use
+  common_error_call -> alternative(), but sometimes you should use other_function(), ask joe if you're unsure which one
+  dangerous_module.* -> corresponding function in safe_module
+  *.dangerous_call -> .safe_call()
+```
+Specified patterns must not have parantheses, and will only match when the pattern is the name of a call, so given the above configuration
+```python
+async def my_function():
+    my_blocking_call()  # this would raise an error
+    x = my_blocking_call(a, b, c)  # as would this
+    y = my_blocking_call  # but not this
+    y()  # or this
+    [my_blocking_call][0]()  # nor this
+
+    def my_blocking_call():  # it's also safe to use the name in other contexts
+        ...
+
+    arbitrary_other_function(my_blocking_call=None)
 ```
