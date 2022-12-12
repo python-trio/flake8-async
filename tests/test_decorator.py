@@ -1,16 +1,11 @@
 from __future__ import annotations
 
 import ast
-import sys
 
-import pytest
 from flake8.main.application import Application
 from test_flake8_trio import _default_option_manager
 
 from flake8_trio import Error_codes, Plugin, Statement, fnmatch_qualified_name
-
-if sys.version_info[:2] < (3, 9):
-    pytest.skip(allow_module_level=True)
 
 
 def dec_list(*decorators: str) -> ast.Module:
@@ -82,7 +77,6 @@ def test_calls():
     assert wrap(("foo.bar(1, 2, *x, **y)",), "@foo.bar")
 
 
-@pytest.mark.skipif(sys.version_info[:2] < (3, 9), reason="not yet supported")
 def test_pep614():
     # Just don't crash and we'll be good.
     assert not wrap(("(any, expression, we, like)",), "no match here")

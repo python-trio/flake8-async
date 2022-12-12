@@ -68,6 +68,7 @@ class foo2:
         # triggers on anything whose name ends with nursery
         anything_nursery.start_soon(trio.run_process)  # error: 8
         anything.start_soon(trio.run_process)
+        None.start_soon(trio.run_process)
 
         # explicitly check partial support
         nursery.start_soon(partial(trio.run_process))  # error: 8
@@ -115,3 +116,9 @@ async def contextlib_acm():
 async def contextlib_import_alias_acm():
     nursery.start_soon(trio.run_process)  # error: 4
     yield
+
+
+# code coverage for non-name, non-attribute decorator
+@None
+async def foo4():
+    ...

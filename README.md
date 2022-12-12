@@ -77,12 +77,12 @@ Comma-separated list of pairs of values separated by `->` (optional whitespace s
 The format of the error message is `User-configured blocking sync call {0} in async function, consider replacing with {1}.`, where `{0}` is the pattern the call matches and `{1}` is the suggested replacement.
 
 Example:
-```
+```ini
 trio200-blocking-calls =
-  my_blocking_call -> async.alternative
-  module.block_call -> other_function_to_use
-  common_error_call -> alternative(), but sometimes you should use other_function(), ask joe if you're unsure which one
-  dangerous_module.* -> corresponding function in safe_module
+  my_blocking_call -> async.alternative,
+  module.block_call -> other_function_to_use,
+  common_error_call -> alternative(). But sometimes you should use other_function(). Ask joe if you're unsure which one,
+  dangerous_module.* -> corresponding function in safe_module,
   *.dangerous_call -> .safe_call()
 ```
 Specified patterns must not have parantheses, and will only match when the pattern is the name of a call, so given the above configuration

@@ -55,5 +55,6 @@ async def foo():
     await nursery.start_foo()
 
     nursery.start()  # error: 4, "start"
+    None.start()
     nursery.start_soon()
     nursery.start_foo()

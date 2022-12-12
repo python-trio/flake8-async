@@ -4,8 +4,9 @@ from __future__ import annotations
 import os
 import re
 import unittest
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, NamedTuple
+from typing import NamedTuple
 
 from test_flake8_trio import trio_test_files_regex
 

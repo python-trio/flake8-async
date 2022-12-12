@@ -6,12 +6,8 @@ Generated for flake8 5, so OptionManager signature is incorrect for flake8 6
 from __future__ import annotations
 
 import argparse
-from typing import (
-    Any,
-    Callable,
-    Mapping,
-    Sequence,
-)
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable
 
 from flake8.plugins.finder import Plugins
 

@@ -9,8 +9,9 @@ import site
 import sys
 import tokenize
 import unittest
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import DefaultDict, Iterable, Sequence
+from typing import DefaultDict
 
 import pytest
 from flake8 import __version_info__ as flake8_version_info
@@ -127,7 +128,10 @@ def test_eval(test: str, path: str):
                     err_code = test
                 expected.append(Error(err_code, lineno, int(col), *args))
             except AttributeError as e:
-                msg = f'Line {lineno}: Failed to format\n "{Error_codes[test]}"\nwith\n{args}'
+                msg = (
+                    f"Line {lineno}: Failed to format\n {Error_codes[test]!r}\n"
+                    f'"with\n{args}'
+                )
                 raise ParseError(msg) from e
 
     assert expected, f"failed to parse any errors in file {path}"
@@ -419,7 +423,7 @@ def test_114_options(capsys: pytest.CaptureFixture[str]):
             )
         out, err = capsys.readouterr()
         assert not out
-        assert f"{arg!r} is not a valid identifier" in err
+        assert f"{arg!r} is not a valid method identifier" in err
 
 
 def test_200_options(capsys: pytest.CaptureFixture[str]):
