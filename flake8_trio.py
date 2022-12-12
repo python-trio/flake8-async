@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import argparse
 import ast
+import keyword
 import tokenize
 from argparse import Namespace
+from collections.abc import Iterable, Sequence
 from fnmatch import fnmatch
-from typing import Any, Iterable, NamedTuple, Sequence, Union, cast
+from typing import Any, NamedTuple, Union, cast
 
 from flake8.options.manager import OptionManager
 
@@ -25,7 +27,9 @@ __version__ = "22.12.1"
 
 
 Error_codes = {
-    "TRIO100": "{} context contains no checkpoints, add `await trio.lowlevel.checkpoint()`",
+    "TRIO100": (
+        "{} context contains no checkpoints, add `await trio.lowlevel.checkpoint()`"
+    ),
     "TRIO101": (
         "yield inside a nursery or cancel scope is only safe when implementing "
         "a context manager - otherwise, it breaks exception handling"
@@ -50,17 +54,34 @@ Error_codes = {
         "Async function definition with a `timeout` parameter - use "
         "`trio.[fail/move_on]_[after/at]` instead"
     ),
-    "TRIO110": "`while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.",
+    "TRIO110": (
+        "`while <condition>: await trio.sleep()` should be replaced by "
+        "a `trio.Event`."
+    ),
     "TRIO111": (
         "variable {2} is usable within the context manager on line {0}, but that "
         "will close before nursery opened on line {1} - this is usually a bug.  "
         "Nurseries should generally be the inner-most context manager."
     ),
-    "TRIO112": "Redundant nursery {}, consider replacing with directly awaiting the function call",
-    "TRIO113": "Dangerous `.start_soon()`, process might not run before `__aenter__` exits. Consider replacing with `.start()`.",
-    "TRIO114": "Startable function {} not in --startable-in-context-manager parameter list, please add it so TRIO113 can catch errors using it.",
+    "TRIO112": (
+        "Redundant nursery {}, consider replacing with directly awaiting "
+        "the function call"
+    ),
+    "TRIO113": (
+        "Dangerous `.start_soon()`, process might not run before `__aenter__` "
+        "exits. Consider replacing with `.start()`."
+    ),
+    "TRIO114": (
+        "Startable function {} not in --startable-in-context-manager parameter "
+        "list, please add it so TRIO113 can catch errors using it."
+    ),
     "TRIO115": "Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.",
-    "TRIO116": "trio.sleep() with >24 hour interval should usually be `trio.sleep_forever()`",
+    "TRIO116": (
+        "trio.sleep() with >24 hour interval should usually be "
+        "`trio.sleep_forever()`"
+    ),
+    "TRIO200": "User-configured blocking sync call {0} in async function, consider "
+    "replacing with {1}.",
 }
 
 
@@ -202,28 +223,17 @@ def has_decorator(decorator_list: list[ast.expr], *names: str):
 
 # matches the fully qualified name against fnmatch pattern
 # used to match decorators and methods to user-supplied patterns
-def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str):
-    def construct_name(expr: ast.expr) -> str | None:
-        if isinstance(expr, ast.Call):
-            expr = expr.func
-        if isinstance(expr, ast.Name):
-            return expr.id
-        elif isinstance(expr, ast.Attribute):
-            attr = construct_name(expr.value)
-            assert attr is not None
-            return attr + "." + expr.attr
-        # See https://peps.python.org/pep-0614/ - we don't handle everything
-        return None  # pragma: no cover  # impossible on Python 3.8
-
+def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | None:
     for name in name_list:
-        qualified_name = construct_name(name)
-        if qualified_name is None:
-            continue  # pragma: no cover  # impossible on Python 3.8
+        if isinstance(name, ast.Call):
+            name = name.func
+        qualified_name = ast.unparse(name)
+
         for pattern in patterns:
             # strip leading "@"s for when we're working with decorators
             if fnmatch(qualified_name, pattern.lstrip("@")):
-                return True
-    return False
+                return pattern
+    return None
 
 
 # handles 100, 101, 106, 109, 110, 111, 112
@@ -803,7 +813,7 @@ trio_async_funcs = (
 )
 
 
-def is_nursery_call(node: ast.AST, name: str) -> bool:  # pragma: no cover
+def is_nursery_call(node: ast.AST, name: str) -> bool:
     assert name in ("start", "start_soon")
     if isinstance(node, ast.Attribute):
         if isinstance(node.value, ast.Name):
@@ -1165,7 +1175,7 @@ def _get_identifier(node: ast.expr) -> str:
         return node.id
     if isinstance(node, ast.Attribute):
         return node.attr
-    return ""  # pragma: no cover
+    return ""
 
 
 STARTABLE_CALLS = (
@@ -1241,7 +1251,8 @@ class Visitor114(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
-# Suggests replacing all `trio.sleep(0)` with the more suggestive `trio.lowlevel.checkpoint()`
+# Suggests replacing all `trio.sleep(0)` with the more suggestive
+# `trio.lowlevel.checkpoint()`
 class Visitor115(Flake8TrioVisitor):
     def visit_Call(self, node: ast.Call):
         if (
@@ -1290,20 +1301,73 @@ class Visitor116(Flake8TrioVisitor):
         self.generic_visit(node)
 
 
+class Visitor200(Flake8TrioVisitor):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.async_function = False
+
+    def visit_AsyncFunctionDef(
+        self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
+    ):
+        outer = self.get_state("async_function")
+        self.async_function = isinstance(node, ast.AsyncFunctionDef)
+        self.generic_visit(node)
+        self.set_state(outer)
+
+    visit_FunctionDef = visit_AsyncFunctionDef
+    visit_Lambda = visit_AsyncFunctionDef
+
+    def visit_Call(self, node: ast.Call):
+        if self.async_function and (
+            key := fnmatch_qualified_name(
+                [node.func], *self.options.trio200_blocking_calls.keys()
+            )
+        ):
+            self.error("TRIO200", node, key, self.options.trio200_blocking_calls[key])
+        self.generic_visit(node)
+
+
 class ListOfIdentifiers(argparse.Action):
     def __call__(
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values: Sequence[Any] | None,
+        values: Sequence[str] | None,
         option_string: str | None = None,
     ):
         assert values is not None
         assert option_string is not None
         for value in values:
-            if not value.isidentifier():
-                raise argparse.ArgumentError(self, f"{value} is not a valid identifier")
+            if keyword.iskeyword(value) or not value.isidentifier():
+                raise argparse.ArgumentError(
+                    self, f"{value!r} is not a valid method identifier"
+                )
         setattr(namespace, self.dest, values)
+
+
+class ParseDict(argparse.Action):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: Sequence[str] | None,
+        option_string: str | None = None,
+    ):
+        res: dict[str, str] = {}
+        splitter = "->"  # avoid ":" because it's part of .ini file syntax
+        assert values is not None
+        assert option_string is not None
+        for value in values:
+            split_values = list(map(str.strip, value.split(splitter)))
+            if len(split_values) != 2:
+                raise argparse.ArgumentError(
+                    self,
+                    f"Invalid number ({len(split_values)-1}) of splitter "
+                    f"tokens {splitter!r} in {value!r}",
+                )
+            res[split_values[0]] = split_values[1]
+
+        setattr(namespace, self.dest, res)
 
 
 class Plugin:
@@ -1333,10 +1397,10 @@ class Plugin:
             required=False,
             comma_separated_list=True,
             help=(
-                "Comma-separated list of decorators to disable TRIO107 & TRIO108"
-                " checkpoint warnings for."
-                " Decorators can be dotted or not, as well as support * as a wildcard."
-                " For example, ``--no-checkpoint-warning-decorators=app.route,"
+                "Comma-separated list of decorators to disable TRIO107 & TRIO108 "
+                "checkpoint warnings for. "
+                "Decorators can be dotted or not, as well as support * as a wildcard. "
+                "For example, ``--no-checkpoint-warning-decorators=app.route,"
                 "mydecorator,mypackage.mydecorators.*``"
             ),
         )
@@ -1348,11 +1412,25 @@ class Plugin:
             comma_separated_list=True,
             action=ListOfIdentifiers,
             help=(
-                "Comma-separated list of method calls to additionally enable TRIO113"
-                " warnings for. Will also check for the pattern inside function calls."
-                " Methods must be valid identifiers as per `str.isidientifier()`."
-                " For example, ``--startable-in-context-manager=worker_serve,"
+                "Comma-separated list of method calls to additionally enable TRIO113 "
+                "warnings for. Will also check for the pattern inside function calls. "
+                "Methods must be valid identifiers as per `str.isidientifier()` and "
+                "not reserved keywords. "
+                "For example, ``--startable-in-context-manager=worker_serve,"
                 "myfunction``"
+            ),
+        )
+        option_manager.add_option(
+            "--trio200-blocking-calls",
+            default={},
+            parse_from_config=True,
+            required=False,
+            comma_separated_list=True,
+            action=ParseDict,
+            help=(
+                "Comma-separated list of key:value pairs, where key is a [dotted] "
+                "function that if found inside an async function will raise TRIO200, "
+                "suggesting it be replaced with {value}"
             ),
         )
 

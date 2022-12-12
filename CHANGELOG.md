@@ -1,5 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
+
+## Future
+- Add TRIO200: User-configured blocking sync call  in async function
+
 ## 22.12.1
 - TRIO114 will now trigger on the unqualified name, will now only check the first parameter
   directly, and parameters to function calls inside that.

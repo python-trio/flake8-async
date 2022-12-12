@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import ast
-import sys
-from argparse import Namespace
 
-import pytest
 from flake8.main.application import Application
+from test_flake8_trio import _default_option_manager
 
 from flake8_trio import Error_codes, Plugin, Statement, fnmatch_qualified_name
 
@@ -19,7 +17,7 @@ def dec_list(*decorators: str) -> ast.Module:
     return tree
 
 
-def wrap(decorators: tuple[str, ...], decs2: str) -> bool:
+def wrap(decorators: tuple[str, ...], decs2: str) -> str | None:
     tree = dec_list(*decorators)
     assert isinstance(tree.body[0], ast.AsyncFunctionDef)
     return fnmatch_qualified_name(tree.body[0].decorator_list, decs2)
@@ -79,7 +77,6 @@ def test_calls():
     assert wrap(("foo.bar(1, 2, *x, **y)",), "@foo.bar")
 
 
-@pytest.mark.skipif(sys.version_info[:2] < (3, 9), reason="not yet supported")
 def test_pep614():
     # Just don't crash and we'll be good.
     assert not wrap(("(any, expression, we, like)",), "no match here")
@@ -88,10 +85,16 @@ def test_pep614():
 def test_plugin():
     tree = dec_list("app.route")
     plugin = Plugin(tree)
-    plugin.options = Namespace(no_checkpoint_warning_decorators=[])
+
+    om = _default_option_manager()
+    plugin.add_options(om)
+
+    plugin.parse_options(om.parse_args(args=[]))
     assert tuple(plugin.run())
 
-    plugin.options = Namespace(no_checkpoint_warning_decorators=["app.route"])
+    arg = "--no-checkpoint-warning-decorators=app.route"
+    plugin.parse_options(om.parse_args(args=[arg]))
+
     assert not tuple(plugin.run())
 
 

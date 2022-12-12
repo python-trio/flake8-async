@@ -1,5 +1,5 @@
 import typing
-from typing import Any, Union, overload
+from typing import Any, overload
 
 import trio
 
@@ -120,7 +120,7 @@ async def foo_overload_1(_: str):
     ...
 
 
-async def foo_overload_1(_: Union[bytes, str]):
+async def foo_overload_1(_: bytes | str):
     await foo()
 
 
