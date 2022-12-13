@@ -23,7 +23,7 @@ from typing import Any, NamedTuple, Union, cast
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.12.1"
+__version__ = "22.12.2"
 
 
 Error_codes = {

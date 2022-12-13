@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 22.12.2
 - Add TRIO200: User-configured blocking sync call  in async function
 
 ## 22.12.1
