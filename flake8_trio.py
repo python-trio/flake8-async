@@ -104,6 +104,7 @@ class Statement(NamedTuple):
 HasLineCol = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
 
 
+# convenience function used in a lot of visitors
 def get_matching_call(
     node: ast.AST, *names: str, base: str = "trio"
 ) -> tuple[ast.Call, str] | None:
@@ -146,16 +147,6 @@ class Error:
     def __repr__(self) -> str:
         trailer = "".join(f", {x!r}" for x in self.args)
         return f"<{self.code} error at {self.line}:{self.col}{trailer}>"
-
-
-checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
-cancel_scope_names = (
-    "fail_after",
-    "fail_at",
-    "move_on_after",
-    "move_on_at",
-    "CancelScope",
-)
 
 
 class Flake8TrioRunner(ast.NodeVisitor):
@@ -226,27 +217,26 @@ class Flake8TrioVisitor(ast.NodeVisitor):
 
     def visit(self, node: ast.AST):
         """Visit a node."""
-        # construct method name for this class
-        method = "visit_" + node.__class__.__name__
+        # construct visitor for this node type
+        visitor = getattr(self, "visit_" + node.__class__.__name__, None)
 
         # if we have a visitor for it, visit it
         # it will set self.novisit if it manually visits children
-        if hasattr(self, method):
-            self.novisit = False
-            getattr(self, method)(node)
+        self.novisit = False
 
-            # if it doesn't set novisit, let the regular NodeVisitor iterate through
-            # subfields
-            if not self.novisit:
-                super().generic_visit(node)
+        if visitor is not None:
+            visitor(node)
 
-        else:
-            self.generic_visit(node)
-
-        self.novisit = True
+        # if it doesn't set novisit, let the regular NodeVisitor iterate through
+        # subfields
+        if not self.novisit:
+            super().generic_visit(node)
 
         # if an outer state was saved in this node restore it after visiting children
         self.set_state(self.outer.pop(node, {}))
+
+        # set novisit so external runner doesn't visit this node with this class
+        self.novisit = True
 
     def visit_nodes(self, *nodes: ast.AST | Iterable[ast.AST]):
         for arg in nodes:
@@ -291,6 +281,7 @@ class Flake8TrioVisitor(ast.NodeVisitor):
 
 
 # ignores module and only checks the unqualified name of the decorator
+# used in 101 and 107/108
 def has_decorator(decorator_list: list[ast.expr], *names: str):
     for dec in decorator_list:
         if (isinstance(dec, ast.Name) and dec.id in names) or (
@@ -302,6 +293,7 @@ def has_decorator(decorator_list: list[ast.expr], *names: str):
 
 # matches the fully qualified name against fnmatch pattern
 # used to match decorators and methods to user-supplied patterns
+# used in 107/108 and 200
 def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | None:
     for name in name_list:
         if isinstance(name, ast.Call):
@@ -315,39 +307,41 @@ def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | N
     return None
 
 
-# handles 100, 101, 106, 109, 110, 111, 112
-class VisitorMiscChecks(Flake8TrioVisitor):
-    class NurseryCall(NamedTuple):
-        stack_index: int
-        name: str
+# used in 100
+checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
+# used in 100, 101 and 102
+cancel_scope_names = (
+    "fail_after",
+    "fail_at",
+    "move_on_after",
+    "move_on_at",
+    "CancelScope",
+)
 
-    class TrioContextManager(NamedTuple):
-        lineno: int
-        name: str
-        is_nursery: bool
 
+class Visitor100(Flake8TrioVisitor):
+    def visit_With(self, node: ast.With | ast.AsyncWith):
+        # Context manager with no `await trio.X` call within
+        for item in (i.context_expr for i in node.items):
+            call = get_matching_call(item, *cancel_scope_names)
+            if call and not any(
+                isinstance(x, checkpoint_node_types) and x != node
+                for x in ast.walk(node)
+            ):
+                self.error("TRIO100", item, f"trio.{call[1]}")
+
+    visit_AsyncWith = visit_With
+
+
+class Visitor101(Flake8TrioVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-
-        # 101
         self._yield_is_error = False
         self._safe_decorator = False
 
-        # 111
-        self._context_managers: list[VisitorMiscChecks.TrioContextManager] = []
-        self._nursery_call: VisitorMiscChecks.NurseryCall | None = None
-
-        self.defaults = self.get_state(copy=True)
-
-    # ---- 100, 101, 111, 112 ----
     def visit_With(self, node: ast.With | ast.AsyncWith):
-        self.check_for_trio100(node)
-        self.check_for_trio112(node)
-
-        self.save_state(node, "_yield_is_error", "_context_managers", copy=True)
-
+        self.save_state(node, "_yield_is_error", copy=True)
         for item in node.items:
-            # 101
             # if there's no safe decorator,
             # and it's not yet been determined that yield is error
             # and this withitem opens a cancelscope:
@@ -362,162 +356,19 @@ class VisitorMiscChecks(Flake8TrioVisitor):
             ):
                 self._yield_is_error = True
 
-            # 111
-            # if a withitem is saved in a variable,
-            # push its line, variable, and whether it's a trio nursery
-            # to the _context_managers stack,
-            if isinstance(item.optional_vars, ast.Name):
-                self._context_managers.append(
-                    self.TrioContextManager(
-                        item.context_expr.lineno,
-                        item.optional_vars.id,
-                        get_matching_call(item.context_expr, "open_nursery")
-                        is not None,
-                    )
-                )
-
-    visit_AsyncWith = visit_With
-
-    # ---- 100 ----
-    def check_for_trio100(self, node: ast.With | ast.AsyncWith):
-        # Context manager with no `await trio.X` call within
-        for item in (i.context_expr for i in node.items):
-            call = get_matching_call(item, *cancel_scope_names)
-            if call and not any(
-                isinstance(x, checkpoint_node_types) and x != node
-                for x in ast.walk(node)
-            ):
-                self.error("TRIO100", item, f"trio.{call[1]}")
-
-    # ---- 101 ----
     def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
         self.save_state(node)
-        self.set_state(self.defaults, copy=True)
+        self._yield_is_error = False
+        self._safe_decorator = has_decorator(
+            node.decorator_list, "contextmanager", "asynccontextmanager"
+        )
 
-        if has_decorator(node.decorator_list, "contextmanager", "asynccontextmanager"):
-            self._safe_decorator = True
+    visit_AsyncWith = visit_With
+    visit_AsyncFunctionDef = visit_FunctionDef
 
-    # ---- 101, 109 ----
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        self.check_for_trio109(node)
-        self.visit_FunctionDef(node)
-
-    def visit_Lambda(self, node: ast.Lambda):
-        self.save_state(node)
-        self.set_state(self.defaults, copy=True)
-
-    # ---- 101 ----
     def visit_Yield(self, node: ast.Yield):
         if self._yield_is_error:
             self.error("TRIO101", node)
-
-    # ---- 109 ----
-    def check_for_trio109(self, node: ast.AsyncFunctionDef):
-        # pending configuration or a more sophisticated check, ignore
-        # all functions with a decorator
-        if node.decorator_list:
-            return
-
-        args = node.args
-        for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
-            if arg.arg == "timeout":
-                self.error("TRIO109", arg)
-
-    # ---- 106 ----
-    def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node.module == "trio":
-            self.error("TRIO106", node)
-
-    def visit_Import(self, node: ast.Import):
-        for name in node.names:
-            if name.name == "trio" and name.asname is not None:
-                self.error("TRIO106", node)
-
-    # ---- 110 ----
-    def visit_While(self, node: ast.While):
-        self.check_for_trio110(node)
-
-    def check_for_trio110(self, node: ast.While):
-        if (
-            len(node.body) == 1
-            and isinstance(node.body[0], ast.Expr)
-            and isinstance(node.body[0].value, ast.Await)
-            and get_matching_call(node.body[0].value.value, "sleep", "sleep_until")
-        ):
-            self.error("TRIO110", node)
-
-    # ---- 111 ----
-    # if it's a <X>.start[_soon] call
-    # and <X> is a nursery listed in self._context_managers:
-    # Save <X>'s index in self._context_managers to guard against cm's higher in the
-    # stack being passed as parameters to it. (and save <X> for the error message)
-    def visit_Call(self, node: ast.Call):
-        self.save_state(node, "_nursery_call")
-
-        if (
-            isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and node.func.attr in ("start", "start_soon")
-        ):
-            self._nursery_call = None
-            for i, cm in enumerate(self._context_managers):
-                if node.func.value.id == cm.name:
-                    # don't break upon finding a nursery in case there's multiple cm's
-                    # on the stack with the same name
-                    if cm.is_nursery:
-                        self._nursery_call = self.NurseryCall(i, node.func.attr)
-                    else:
-                        self._nursery_call = None
-
-    # If we're inside a <X>.start[_soon] call (where <X> is a nursery),
-    # and we're accessing a variable cm that's on the self._context_managers stack,
-    # with a higher index than <X>:
-    #   Raise error since the scope of cm may close before the function passed to the
-    # nursery finishes.
-    def visit_Name(self, node: ast.Name):
-        if self._nursery_call is None:
-            return
-
-        for i, cm in enumerate(self._context_managers):
-            if cm.name == node.id and i > self._nursery_call.stack_index:
-                self.error(
-                    "TRIO111",
-                    node,
-                    cm.lineno,
-                    self._context_managers[self._nursery_call.stack_index].lineno,
-                    node.id,
-                    self._nursery_call.name,
-                )
-
-    # if with has a withitem `trio.open_nursery() as <X>`,
-    # and the body is only a single expression <X>.start[_soon](),
-    # and does not pass <X> as a parameter to the expression
-    def check_for_trio112(self, node: ast.With | ast.AsyncWith):
-        # body is single expression
-        if len(node.body) != 1 or not isinstance(node.body[0], ast.Expr):
-            return
-        for item in node.items:
-            # get variable name <X>
-            if not isinstance(item.optional_vars, ast.Name):
-                continue
-            var_name = item.optional_vars.id
-
-            # check for trio.open_nursery
-            nursery = get_matching_call(item.context_expr, "open_nursery")
-
-            # isinstance(..., ast.Call) is done in get_matching_call
-            body_call = cast(ast.Call, node.body[0].value)
-
-            if (
-                nursery is not None
-                and get_matching_call(body_call, "start", "start_soon", base=var_name)
-                # check for presence of <X> as parameter
-                and not any(
-                    (isinstance(n, ast.Name) and n.id == var_name)
-                    for n in self.walk(*body_call.args, *body_call.keywords)
-                )
-            ):
-                self.error("TRIO112", item.context_expr, var_name)
 
 
 # used in 102, 103 and 104
@@ -783,6 +634,7 @@ class Visitor103_104(Flake8TrioVisitor):
         self.unraised_continue |= self.unraised
 
 
+# used in 103/104 and 107/108
 def iter_guaranteed_once(iterable: ast.expr) -> bool:
     # static container with an "elts" attribute
     if hasattr(iterable, "elts"):
@@ -822,6 +674,7 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
     return False
 
 
+# used in 105
 trio_async_funcs = (
     "aclose_forcefully",
     "open_file",
@@ -840,6 +693,7 @@ trio_async_funcs = (
 )
 
 
+# used in 105 and 113
 def is_nursery_call(node: ast.AST, name: str) -> bool:
     assert name in ("start", "start_soon")
     if isinstance(node, ast.Attribute):
@@ -874,6 +728,18 @@ class Visitor105(Flake8TrioVisitor):
             self.error("TRIO105", node, node.func.attr)
 
 
+class Visitor106(Flake8TrioVisitor):
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if node.module == "trio":
+            self.error("TRIO106", node)
+
+    def visit_Import(self, node: ast.Import):
+        for name in node.names:
+            if name.name == "trio" and name.asname is not None:
+                self.error("TRIO106", node)
+
+
+# used in 107/108
 def empty_body(body: list[ast.stmt]) -> bool:
     # Does the function body consist solely of `pass`, `...`, and (doc)string literals?
     return all(
@@ -1197,6 +1063,152 @@ class Visitor107_108(Flake8TrioVisitor):
         self.uncheckpointed_statements = worst_case_shortcut
 
 
+class Visitor109(Flake8TrioVisitor):
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        # pending configuration or a more sophisticated check, ignore
+        # all functions with a decorator
+        if node.decorator_list:
+            return
+
+        args = node.args
+        for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
+            if arg.arg == "timeout":
+                self.error("TRIO109", arg)
+
+
+class Visitor110(Flake8TrioVisitor):
+    def visit_While(self, node: ast.While):
+        if (
+            len(node.body) == 1
+            and isinstance(node.body[0], ast.Expr)
+            and isinstance(node.body[0].value, ast.Await)
+            and get_matching_call(node.body[0].value.value, "sleep", "sleep_until")
+        ):
+            self.error("TRIO110", node)
+
+
+class Visitor111(Flake8TrioVisitor):
+    class NurseryCall(NamedTuple):
+        stack_index: int
+        name: str
+
+    class TrioContextManager(NamedTuple):
+        lineno: int
+        name: str
+        is_nursery: bool
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._context_managers: list[Visitor111.TrioContextManager] = []
+        self._nursery_call: Visitor111.NurseryCall | None = None
+
+    def visit_With(self, node: ast.With | ast.AsyncWith):
+        self.save_state(node, "_context_managers", copy=True)
+        for item in node.items:
+            # 111
+            # if a withitem is saved in a variable,
+            # push its line, variable, and whether it's a trio nursery
+            # to the _context_managers stack,
+            if isinstance(item.optional_vars, ast.Name):
+                self._context_managers.append(
+                    self.TrioContextManager(
+                        item.context_expr.lineno,
+                        item.optional_vars.id,
+                        get_matching_call(item.context_expr, "open_nursery")
+                        is not None,
+                    )
+                )
+
+    visit_AsyncWith = visit_With
+
+    def visit_FunctionDef(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda
+    ):
+        self.save_state(node)
+        self._context_managers = []
+        self._nursery_call = None
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+    visit_Lambda = visit_FunctionDef
+
+    # if it's a <X>.start[_soon] call
+    # and <X> is a nursery listed in self._context_managers:
+    # Save <X>'s index in self._context_managers to guard against cm's higher in the
+    # stack being passed as parameters to it. (and save <X> for the error message)
+    def visit_Call(self, node: ast.Call):
+        self.save_state(node, "_nursery_call")
+
+        if (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.attr in ("start", "start_soon")
+        ):
+            self._nursery_call = None
+            for i, cm in enumerate(self._context_managers):
+                if node.func.value.id == cm.name:
+                    # don't break upon finding a nursery in case there's multiple cm's
+                    # on the stack with the same name
+                    if cm.is_nursery:
+                        self._nursery_call = self.NurseryCall(i, node.func.attr)
+                    else:
+                        self._nursery_call = None
+
+    # If we're inside a <X>.start[_soon] call (where <X> is a nursery),
+    # and we're accessing a variable cm that's on the self._context_managers stack,
+    # with a higher index than <X>:
+    #   Raise error since the scope of cm may close before the function passed to the
+    # nursery finishes.
+    def visit_Name(self, node: ast.Name):
+        if self._nursery_call is None:
+            return
+
+        for i, cm in enumerate(self._context_managers):
+            if cm.name == node.id and i > self._nursery_call.stack_index:
+                self.error(
+                    "TRIO111",
+                    node,
+                    cm.lineno,
+                    self._context_managers[self._nursery_call.stack_index].lineno,
+                    node.id,
+                    self._nursery_call.name,
+                )
+
+
+class Visitor112(Flake8TrioVisitor):
+    # if with has a withitem `trio.open_nursery() as <X>`,
+    # and the body is only a single expression <X>.start[_soon](),
+    # and does not pass <X> as a parameter to the expression
+    def visit_With(self, node: ast.With | ast.AsyncWith):
+        # body is single expression
+        if len(node.body) != 1 or not isinstance(node.body[0], ast.Expr):
+            return
+        for item in node.items:
+            # get variable name <X>
+            if not isinstance(item.optional_vars, ast.Name):
+                continue
+            var_name = item.optional_vars.id
+
+            # check for trio.open_nursery
+            nursery = get_matching_call(item.context_expr, "open_nursery")
+
+            # isinstance(..., ast.Call) is done in get_matching_call
+            body_call = cast(ast.Call, node.body[0].value)
+
+            if (
+                nursery is not None
+                and get_matching_call(body_call, "start", "start_soon", base=var_name)
+                # check for presence of <X> as parameter
+                and not any(
+                    (isinstance(n, ast.Name) and n.id == var_name)
+                    for n in self.walk(*body_call.args, *body_call.keywords)
+                )
+            ):
+                self.error("TRIO112", item.context_expr, var_name)
+
+    visit_AsyncWith = visit_With
+
+
+# used in 113
 def _get_identifier(node: ast.expr) -> str:
     if isinstance(node, ast.Name):
         return node.id
@@ -1205,6 +1217,7 @@ def _get_identifier(node: ast.expr) -> str:
     return ""
 
 
+# used in 113 and 114
 STARTABLE_CALLS = (
     "run_process",
     "serve_ssl_over_tcp",
