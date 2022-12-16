@@ -7,13 +7,12 @@ from functools import partial
 
 import trio
 
+# ARGS --startable-in-context-manager=custom_startable_function
 
-# test_113_options in test_flake8_trio.py sets `startable-in-context-manager` to
-# error here using a command-line parameter.
-# Warning: requires manually changing the lineno if it changes
+
 @asynccontextmanager
 async def custom_startable_externally_tested():
-    nursery.start_soon(custom_startable_function)
+    nursery.start_soon(custom_startable_function)  # error: 4
     yield
 
 

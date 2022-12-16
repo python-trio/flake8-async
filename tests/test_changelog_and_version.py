@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import NamedTuple
 
-from test_flake8_trio import trio_test_files_regex
+from test_flake8_trio import ERROR_CODES, trio_test_files_regex
 
 import flake8_trio
 
@@ -66,7 +66,7 @@ class test_messages_documented(unittest.TestCase):
                 for error_msg in re.findall(r"TRIO\d\d\d", line):
                     documented_errors[filename].add(error_msg)
 
-        documented_errors["flake8_trio.py"] = set(flake8_trio.Error_codes.keys())
+        documented_errors["flake8_trio.py"] = set(ERROR_CODES)
 
         documented_errors["tests/trio*.py"] = {
             os.path.splitext(f)[0].upper().split("_")[0]

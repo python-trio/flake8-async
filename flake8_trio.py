@@ -26,65 +26,6 @@ from flake8.options.manager import OptionManager
 __version__ = "22.12.2"
 
 
-Error_codes = {
-    "TRIO100": (
-        "{} context contains no checkpoints, add `await trio.lowlevel.checkpoint()`"
-    ),
-    "TRIO101": (
-        "yield inside a nursery or cancel scope is only safe when implementing "
-        "a context manager - otherwise, it breaks exception handling"
-    ),
-    "TRIO102": (
-        "await inside {0.name} on line {0.lineno} must have shielded cancel "
-        "scope with a timeout"
-    ),
-    "TRIO103": "{} block with a code path that doesn't re-raise the error",
-    "TRIO104": "Cancelled (and therefore BaseException) must be re-raised",
-    "TRIO105": "trio async function {} must be immediately awaited",
-    "TRIO106": "trio must be imported with `import trio` for the linter to work",
-    "TRIO107": (
-        "{0} from async function with no guaranteed checkpoint or exception "
-        "since function definition on line {1.lineno}"
-    ),
-    "TRIO108": (
-        "{0} from async iterable with no guaranteed checkpoint since {1.name} "
-        "on line {1.lineno}"
-    ),
-    "TRIO109": (
-        "Async function definition with a `timeout` parameter - use "
-        "`trio.[fail/move_on]_[after/at]` instead"
-    ),
-    "TRIO110": (
-        "`while <condition>: await trio.sleep()` should be replaced by "
-        "a `trio.Event`."
-    ),
-    "TRIO111": (
-        "variable {2} is usable within the context manager on line {0}, but that "
-        "will close before nursery opened on line {1} - this is usually a bug.  "
-        "Nurseries should generally be the inner-most context manager."
-    ),
-    "TRIO112": (
-        "Redundant nursery {}, consider replacing with directly awaiting "
-        "the function call"
-    ),
-    "TRIO113": (
-        "Dangerous `.start_soon()`, process might not run before `__aenter__` "
-        "exits. Consider replacing with `.start()`."
-    ),
-    "TRIO114": (
-        "Startable function {} not in --startable-in-context-manager parameter "
-        "list, please add it so TRIO113 can catch errors using it."
-    ),
-    "TRIO115": "Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.",
-    "TRIO116": (
-        "trio.sleep() with >24 hour interval should usually be "
-        "`trio.sleep_forever()`"
-    ),
-    "TRIO200": "User-configured blocking sync call {0} in async function, consider "
-    "replacing with {1}.",
-}
-
-
 class Statement(NamedTuple):
     name: str
     lineno: int
@@ -120,17 +61,20 @@ def get_matching_call(
 
 
 class Error:
-    def __init__(self, error_code: str, lineno: int, col: int, *args: object):
+    def __init__(
+        self, error_code: str, lineno: int, col: int, message: str, *args: object
+    ):
         self.line = lineno
         self.col = col
         self.code = error_code
+        self.message = message
         self.args = args
 
     # for yielding to flake8
     def __iter__(self):
         yield self.line
         yield self.col
-        yield f"{self.code}: " + Error_codes[self.code].format(*self.args)
+        yield f"{self.code}: " + self.message.format(*self.args)
         yield type(Plugin)
 
     def cmp(self):
@@ -144,7 +88,7 @@ class Error:
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, Error) and self.cmp() == other.cmp()
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         trailer = "".join(f", {x!r}" for x in self.args)
         return f"<{self.code} error at {self.line}:{self.col}{trailer}>"
 
@@ -207,8 +151,12 @@ class Flake8TrioRunner(ast.NodeVisitor):
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
+    # abstract attribute by not providing a value
+    error_codes: dict[str, str]
+
     def __init__(self, options: Namespace, _problems: list[Error]):
         super().__init__()
+        assert self.error_codes, "subclass must define error_codes"
         self._problems = _problems
         self.suppress_errors = False
         self.options = options
@@ -246,16 +194,33 @@ class Flake8TrioVisitor(ast.NodeVisitor):
                 for node in arg:
                     self.visit(node)
 
-    def error(self, error: str, node: HasLineCol, *args: object):
+    def error(
+        self,
+        node: HasLineCol,
+        *args: str | Statement | int,
+        error_code: str | None = None,
+    ):
+        if error_code is None:
+            assert len(self.error_codes) == 1
+            error_code = next(iter(self.error_codes))
+
         if not self.suppress_errors:
-            self._problems.append(Error(error, node.lineno, node.col_offset, *args))
+            self._problems.append(
+                Error(
+                    error_code,
+                    node.lineno,
+                    node.col_offset,
+                    self.error_codes[error_code],
+                    *args,
+                )
+            )
 
     def get_state(self, *attrs: str, copy: bool = False) -> dict[str, Any]:
         if not attrs:
             attrs = cast(
                 tuple[str, ...],
                 set(self.__dict__.keys())
-                - {"_problems", "options", "outer", "novisit"},
+                - {"_problems", "options", "outer", "novisit", "error_codes"},
                 # TODO: write something clean so don't need to hardcode
             )
         res: dict[str, Any] = {}
@@ -320,20 +285,32 @@ cancel_scope_names = (
 
 
 class Visitor100(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO100": (
+            "{} context contains no checkpoints, add `await trio.lowlevel.checkpoint()`"
+        ),
+    }
+
     def visit_With(self, node: ast.With | ast.AsyncWith):
-        # Context manager with no `await trio.X` call within
         for item in (i.context_expr for i in node.items):
             call = get_matching_call(item, *cancel_scope_names)
             if call and not any(
                 isinstance(x, checkpoint_node_types) and x != node
                 for x in ast.walk(node)
             ):
-                self.error("TRIO100", item, f"trio.{call[1]}")
+                self.error(item, f"trio.{call[1]}")
 
     visit_AsyncWith = visit_With
 
 
 class Visitor101(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO101": (
+            "yield inside a nursery or cancel scope is only safe when implementing "
+            "a context manager - otherwise, it breaks exception handling"
+        ),
+    }
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._yield_is_error = False
@@ -368,7 +345,7 @@ class Visitor101(Flake8TrioVisitor):
 
     def visit_Yield(self, node: ast.Yield):
         if self._yield_is_error:
-            self.error("TRIO101", node)
+            self.error(node)
 
 
 # used in 102, 103 and 104
@@ -402,6 +379,13 @@ def critical_except(node: ast.ExceptHandler) -> Statement | None:
 
 
 class Visitor102(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO102": (
+            "await inside {0.name} on line {0.lineno} must have shielded cancel "
+            "scope with a timeout"
+        ),
+    }
+
     class TrioScope:
         def __init__(self, node: ast.Call, funcname: str):
             self.node = node
@@ -433,7 +417,7 @@ class Visitor102(Flake8TrioVisitor):
         if self._critical_scope is not None and not any(
             cm.has_timeout and cm.shielded for cm in self._trio_context_managers
         ):
-            self.error("TRIO102", node, self._critical_scope)
+            self.error(node, self._critical_scope)
 
     visit_AsyncFor = visit_Await
 
@@ -497,6 +481,11 @@ class Visitor102(Flake8TrioVisitor):
 # Never have an except Cancelled or except BaseException block with a code path that
 # doesn't re-raise the error
 class Visitor103_104(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO103": "{} block with a code path that doesn't re-raise the error",
+        "TRIO104": "Cancelled (and therefore BaseException) must be re-raised",
+    }
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.except_name: str | None = ""
@@ -527,7 +516,11 @@ class Visitor103_104(Flake8TrioVisitor):
         self.generic_visit(node)
 
         if self.unraised and marker is not None:
-            self.error("TRIO103", marker, marker.name)
+            self.error(
+                marker,
+                marker.name,
+                error_code="TRIO103",
+            )
 
     def visit_Raise(self, node: ast.Raise):
         # if there's an unraised critical exception, the raise isn't bare,
@@ -537,7 +530,7 @@ class Visitor103_104(Flake8TrioVisitor):
             and node.exc is not None
             and not (isinstance(node.exc, ast.Name) and node.exc.id == self.except_name)
         ):
-            self.error("TRIO104", node)
+            self.error(node, error_code="TRIO104")
 
         # treat it as safe regardless, to avoid unnecessary error messages.
         self.unraised = False
@@ -545,7 +538,7 @@ class Visitor103_104(Flake8TrioVisitor):
     def visit_Return(self, node: ast.Return | ast.Yield):
         if self.unraised:
             # Error: must re-raise
-            self.error("TRIO104", node)
+            self.error(node, error_code="TRIO104")
 
     visit_Yield = visit_Return
 
@@ -625,12 +618,12 @@ class Visitor103_104(Flake8TrioVisitor):
 
     def visit_Break(self, node: ast.Break):
         if self.unraised and self.loop_depth == 0:
-            self.error("TRIO104", node)
+            self.error(node, error_code="TRIO104")
         self.unraised_break |= self.unraised
 
     def visit_Continue(self, node: ast.Continue):
         if self.unraised and self.loop_depth == 0:
-            self.error("TRIO104", node)
+            self.error(node, error_code="TRIO104")
         self.unraised_continue |= self.unraised
 
 
@@ -705,6 +698,10 @@ def is_nursery_call(node: ast.AST, name: str) -> bool:
 
 
 class Visitor105(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO105": "trio async function {} must be immediately awaited",
+    }
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.awaited_calls: set[ast.Call] = set()
@@ -725,18 +722,22 @@ class Visitor105(Flake8TrioVisitor):
                 or is_nursery_call(node.func, "start")
             )
         ):
-            self.error("TRIO105", node, node.func.attr)
+            self.error(node, node.func.attr)
 
 
 class Visitor106(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO106": "trio must be imported with `import trio` for the linter to work",
+    }
+
     def visit_ImportFrom(self, node: ast.ImportFrom):
         if node.module == "trio":
-            self.error("TRIO106", node)
+            self.error(node)
 
     def visit_Import(self, node: ast.Import):
         for name in node.names:
             if name.name == "trio" and name.asname is not None:
-                self.error("TRIO106", node)
+                self.error(node)
 
 
 # used in 107/108
@@ -754,6 +755,17 @@ def empty_body(body: list[ast.stmt]) -> bool:
 
 
 class Visitor107_108(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO107": (
+            "{0} from async function with no guaranteed checkpoint or exception "
+            "since function definition on line {1.lineno}"
+        ),
+        "TRIO108": (
+            "{0} from async iterable with no guaranteed checkpoint since {1.name} "
+            "on line {1.lineno}"
+        ),
+    }
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.has_yield = False
@@ -793,10 +805,10 @@ class Visitor107_108(Flake8TrioVisitor):
     def check_function_exit(self, node: ast.Return | ast.AsyncFunctionDef):
         for statement in self.uncheckpointed_statements:
             self.error(
-                "TRIO108" if self.has_yield else "TRIO107",
                 node,
                 "return" if isinstance(node, ast.Return) else "exit",
                 statement,
+                error_code="TRIO108" if self.has_yield else "TRIO107",
             )
 
     def visit_Return(self, node: ast.Return):
@@ -843,7 +855,12 @@ class Visitor107_108(Flake8TrioVisitor):
         self.has_yield = True
         self.generic_visit(node)
         for statement in self.uncheckpointed_statements:
-            self.error("TRIO108", node, "yield", statement)
+            self.error(
+                node,
+                "yield",
+                statement,
+                error_code="TRIO108",
+            )
 
         # mark as requiring checkpoint after
         self.uncheckpointed_statements = {
@@ -1064,6 +1081,13 @@ class Visitor107_108(Flake8TrioVisitor):
 
 
 class Visitor109(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO109": (
+            "Async function definition with a `timeout` parameter - use "
+            "`trio.[fail/move_on]_[after/at]` instead"
+        ),
+    }
+
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         # pending configuration or a more sophisticated check, ignore
         # all functions with a decorator
@@ -1073,10 +1097,17 @@ class Visitor109(Flake8TrioVisitor):
         args = node.args
         for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
             if arg.arg == "timeout":
-                self.error("TRIO109", arg)
+                self.error(arg)
 
 
 class Visitor110(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO110": (
+            "`while <condition>: await trio.sleep()` should be replaced by "
+            "a `trio.Event`."
+        ),
+    }
+
     def visit_While(self, node: ast.While):
         if (
             len(node.body) == 1
@@ -1084,10 +1115,18 @@ class Visitor110(Flake8TrioVisitor):
             and isinstance(node.body[0].value, ast.Await)
             and get_matching_call(node.body[0].value.value, "sleep", "sleep_until")
         ):
-            self.error("TRIO110", node)
+            self.error(node)
 
 
 class Visitor111(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO111": (
+            "variable {2} is usable within the context manager on line {0}, but that "
+            "will close before nursery opened on line {1} - this is usually a bug.  "
+            "Nurseries should generally be the inner-most context manager."
+        ),
+    }
+
     class NurseryCall(NamedTuple):
         stack_index: int
         name: str
@@ -1165,7 +1204,6 @@ class Visitor111(Flake8TrioVisitor):
         for i, cm in enumerate(self._context_managers):
             if cm.name == node.id and i > self._nursery_call.stack_index:
                 self.error(
-                    "TRIO111",
                     node,
                     cm.lineno,
                     self._context_managers[self._nursery_call.stack_index].lineno,
@@ -1175,6 +1213,13 @@ class Visitor111(Flake8TrioVisitor):
 
 
 class Visitor112(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO112": (
+            "Redundant nursery {}, consider replacing with directly awaiting "
+            "the function call"
+        ),
+    }
+
     # if with has a withitem `trio.open_nursery() as <X>`,
     # and the body is only a single expression <X>.start[_soon](),
     # and does not pass <X> as a parameter to the expression
@@ -1203,7 +1248,7 @@ class Visitor112(Flake8TrioVisitor):
                     for n in self.walk(*body_call.args, *body_call.keywords)
                 )
             ):
-                self.error("TRIO112", item.context_expr, var_name)
+                self.error(item.context_expr, var_name)
 
     visit_AsyncWith = visit_With
 
@@ -1228,6 +1273,13 @@ STARTABLE_CALLS = (
 
 
 class Visitor113(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO113": (
+            "Dangerous `.start_soon()`, process might not run before `__aenter__` "
+            "exits. Consider replacing with `.start()`."
+        ),
+    }
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.async_function = False
@@ -1264,7 +1316,7 @@ class Visitor113(Flake8TrioVisitor):
                 *self.options.startable_in_context_manager,
             )
         ):
-            self.error("TRIO113", node)
+            self.error(node)
 
 
 # Checks that all async functions with a "task_status" parameter have a match in
@@ -1272,6 +1324,13 @@ class Visitor113(Flake8TrioVisitor):
 # name, so may miss cases where functions are named the same in different modules/classes
 # and option names are specified including the module name.
 class Visitor114(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO114": (
+            "Startable function {} not in --startable-in-context-manager parameter "
+            "list, please add it so TRIO113 can catch errors using it."
+        ),
+    }
+
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         if any(
             isinstance(n, ast.arg) and n.arg == "task_status"
@@ -1282,12 +1341,16 @@ class Visitor114(Flake8TrioVisitor):
             node.name == opt
             for opt in (*self.options.startable_in_context_manager, *STARTABLE_CALLS)
         ):
-            self.error("TRIO114", node, node.name)
+            self.error(node, node.name)
 
 
 # Suggests replacing all `trio.sleep(0)` with the more suggestive
 # `trio.lowlevel.checkpoint()`
 class Visitor115(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO115": "Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.",
+    }
+
     def visit_Call(self, node: ast.Call):
         if (
             get_matching_call(node, "sleep")
@@ -1295,10 +1358,17 @@ class Visitor115(Flake8TrioVisitor):
             and isinstance(node.args[0], ast.Constant)
             and node.args[0].value == 0
         ):
-            self.error("TRIO115", node)
+            self.error(node)
 
 
 class Visitor116(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO116": (
+            "trio.sleep() with >24 hour interval should usually be "
+            "`trio.sleep_forever()`"
+        ),
+    }
+
     def visit_Call(self, node: ast.Call):
         if get_matching_call(node, "sleep") and len(node.args) == 1:
             arg = node.args[0]
@@ -1330,10 +1400,15 @@ class Visitor116(Flake8TrioVisitor):
                     and arg.value > 86400
                 )
             ):
-                self.error("TRIO116", node)
+                self.error(node)
 
 
 class Visitor200(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO200": "User-configured blocking sync call {0} in async function, consider "
+        "replacing with {1}.",
+    }
+
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.async_function = False
@@ -1353,7 +1428,7 @@ class Visitor200(Flake8TrioVisitor):
                 [node.func], *self.options.trio200_blocking_calls.keys()
             )
         ):
-            self.error("TRIO200", node, key, self.options.trio200_blocking_calls[key])
+            self.error(node, key, self.options.trio200_blocking_calls[key])
 
 
 class ListOfIdentifiers(argparse.Action):
