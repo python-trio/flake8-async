@@ -6,6 +6,7 @@ import itertools
 import os
 import re
 import site
+import subprocess
 import sys
 import tokenize
 import unittest
@@ -455,6 +456,26 @@ def test_200_options(capsys: pytest.CaptureFixture[str]):
         out, err = capsys.readouterr()
         assert not out
         assert all(word in err for word in (str(i), arg, "->"))
+
+
+def test_from_config_file(tmp_path: Path):
+    tmp_path.joinpath("flake8.ini").write_text(
+        """
+[flake8]
+trio200-blocking-calls =
+  sync_fns.* -> the async equivalent,
+"""
+    )
+    tmp_path.joinpath("example.py").write_text(
+        """
+import sync_fns
+
+async def foo():
+    sync_fns.takes_a_long_time()
+"""
+    )
+    res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True)
+    print(res, res.stdout, res.stderr)
 
 
 @pytest.mark.fuzz
