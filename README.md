@@ -66,7 +66,7 @@ Comma-separated list of methods which should be used with `.start()` when openin
 in addition to the default `trio.run_process`, `trio.serve_tcp`, `trio.serve_ssl_over_tcp`, and
 `trio.serve_listeners`.  Names must be valid identifiers as per `str.isidentifier()`. For example:
 ```
-startable-methods-in-context-manager =
+startable-in-context-manager =
   myfun,
   myfun2,
 ```

@@ -459,11 +459,12 @@ def test_200_options(capsys: pytest.CaptureFixture[str]):
 
 
 def test_from_config_file(tmp_path: Path):
-    tmp_path.joinpath("flake8.ini").write_text(
+    tmp_path.joinpath(".flake8").write_text(
         """
 [flake8]
 trio200-blocking-calls =
-  sync_fns.* -> the async equivalent,
+  sync_fns.*->the_async_equivalent,
+select = TRIO200
 """
     )
     tmp_path.joinpath("example.py").write_text(
@@ -475,7 +476,11 @@ async def foo():
 """
     )
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True)
-    print(res, res.stdout, res.stderr)
+    assert not res.stderr
+    assert res.stdout == (
+        b"./example.py:5:5: TRIO200: User-configured blocking sync call sync_fns.* "
+        b"in async function, consider replacing with the_async_equivalent.\n"
+    )
 
 
 @pytest.mark.fuzz
