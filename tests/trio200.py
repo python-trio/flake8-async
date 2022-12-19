@@ -4,6 +4,7 @@
 # don't error in sync function
 def foo():
     bar()
+    bee.bonnet()
 
 
 async def afoo():
@@ -38,4 +39,23 @@ async def afoo():
         async def bar():
             bar()  # TRIO200: 12, "bar", "BAR"
 
+    bar()  # TRIO200: 4, "bar", "BAR"
+
+    # don't error on directly awaited expressions
+    # https://github.com/Zac-HD/flake8-trio/issues/85
+    await bar()
+    print(await bar())
+
+    # error on not directly awaited expressions
+    await print(bar())  # TRIO200: 16, "bar", "BAR"
+    await (foo() if bar() else foo())  # TRIO200: 20, "bar", "BAR"
+    await bee.bonnet(bar())  # TRIO200: 21, "bar", "BAR"
+
+    # known false alarms
+    await (x := bar())  # TRIO200: 16, "bar", "BAR"
+    await (bar() if True else foo())  # TRIO200: 11, "bar", "BAR"
+    await (await bee.bonnet() or bar())  # TRIO200: 33, "bar", "BAR"
+    await ((lambda: bee.bonnet()) and bar())  # TRIO200: 38, "bar", "BAR"
+
+    # check that errors are enabled again
     bar()  # TRIO200: 4, "bar", "BAR"

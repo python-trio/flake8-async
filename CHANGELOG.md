@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.12.4
+- TRIO200 no longer warns on directly awaited calls
+
 ## 22.12.3
 - Worked around configuration-parsing bug for TRIO200 warning (more to come)
 

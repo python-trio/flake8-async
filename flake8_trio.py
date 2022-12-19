@@ -23,7 +23,7 @@ from typing import Any, NamedTuple, Union, cast
 from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.12.3"
+__version__ = "22.12.4"
 
 
 class Statement(NamedTuple):
@@ -117,6 +117,9 @@ class Flake8TrioRunner(ast.NodeVisitor):
 
         method = "visit_" + node.__class__.__name__
 
+        if m := getattr(self, method, None):
+            m(node)
+
         for subclass in self.visitors:
             # check if subclass has defined a visitor for this type
             class_method = getattr(subclass, method, None)
@@ -148,6 +151,11 @@ class Flake8TrioRunner(ast.NodeVisitor):
         # restore any outer state that was saved in the visitor method
         for subclass in self.visitors:
             subclass.set_state(subclass.outer.pop(node, {}))
+
+    def visit_Await(self, node: ast.Await):
+        if isinstance(node.value, ast.Call):
+            # add attribute to indicate it's awaited
+            setattr(node.value, "awaited", True)  # noqa: B010
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
@@ -702,20 +710,10 @@ class Visitor105(Flake8TrioVisitor):
         "TRIO105": "trio async function {} must be immediately awaited",
     }
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        self.awaited_calls: set[ast.Call] = set()
-
-    def visit_Await(self, node: ast.Await):
-        if isinstance(node.value, ast.Call):
-            self.awaited_calls.add(node.value)
-
     def visit_Call(self, node: ast.Call):
-        if node in self.awaited_calls:
-            self.awaited_calls.remove(node)
-            return
         if (
-            isinstance(node.func, ast.Attribute)
+            not getattr(node, "awaited", False)
+            and isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
             and (
                 (node.func.value.id == "trio" and node.func.attr in trio_async_funcs)
@@ -1423,9 +1421,13 @@ class Visitor200(Flake8TrioVisitor):
     visit_Lambda = visit_AsyncFunctionDef
 
     def visit_Call(self, node: ast.Call):
-        if self.async_function and (
-            key := fnmatch_qualified_name(
-                [node.func], *self.options.trio200_blocking_calls.keys()
+        if (
+            self.async_function
+            and not getattr(node, "awaited", False)
+            and (
+                key := fnmatch_qualified_name(
+                    [node.func], *self.options.trio200_blocking_calls.keys()
+                )
             )
         ):
             self.error(node, key, self.options.trio200_blocking_calls[key])
