@@ -21,7 +21,7 @@ from flake8.options.manager import OptionManager
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import Error, Error_codes, Plugin, Statement
+from flake8_trio import Error, Flake8TrioVisitor, Plugin, Statement
 
 trio_test_files_regex = re.compile(r"trio\d\d\d(_py.*)?.py")
 
@@ -57,12 +57,19 @@ def check_version(test: str) -> str:
     return test
 
 
+ERROR_CODES = {
+    err_code: err_class
+    for err_class in Flake8TrioVisitor.__subclasses__()
+    for err_code in err_class.error_codes.keys()
+}
+
+
 @pytest.mark.parametrize("test, path", test_files)
 def test_eval(test: str, path: str):
     # version check
     test = check_version(test)
 
-    assert test in Error_codes.keys(), "error code not defined in flake8_trio.py"
+    assert test in ERROR_CODES, "error code not defined in flake8_trio.py"
 
     include = [test]
     parsed_args = [""]
@@ -123,14 +130,15 @@ def test_eval(test: str, path: str):
             ), f'invalid column "{col}" @L{lineno}, in "{line}"'
 
             # assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
+            if err_code == "error":
+                err_code = test
+            error_class = ERROR_CODES[err_code]
+            message = error_class.error_codes[err_code]
             try:
-                if err_code == "error":
-                    err_code = test
-                expected.append(Error(err_code, lineno, int(col), *args))
+                expected.append(Error(err_code, lineno, int(col), message, *args))
             except AttributeError as e:
                 msg = (
-                    f"Line {lineno}: Failed to format\n {Error_codes[test]!r}\n"
-                    f'"with\n{args}'
+                    f"Line {lineno}: Failed to format\n {message!r}\n" f'"with\n{args}'
                 )
                 raise ParseError(msg) from e
 
@@ -156,9 +164,6 @@ error_codes_ignored_when_checking_transformed_sync_code = {
     "TRIO115",
     "TRIO116",
 }
-sync_errors = (
-    set(Error_codes.keys()) - error_codes_ignored_when_checking_transformed_sync_code
-)
 
 
 class SyncTransformer(ast.NodeTransformer):
@@ -184,13 +189,17 @@ class SyncTransformer(ast.NodeTransformer):
 
 @pytest.mark.parametrize("test, path", test_files)
 def test_noerror_on_sync_code(test: str, path: str):
-    if all(e not in test for e in sync_errors):
+    if any(e in test for e in error_codes_ignored_when_checking_transformed_sync_code):
         return
     with tokenize.open(f"tests/{path}") as f:
         source = f.read()
     tree = SyncTransformer().visit(ast.parse(source))
 
-    assert_expected_errors(Plugin(tree), sync_errors)
+    assert_expected_errors(
+        Plugin(tree),
+        include=error_codes_ignored_when_checking_transformed_sync_code,
+        invert_include=True,
+    )
 
 
 def read_file(test_file: str):
@@ -203,13 +212,18 @@ def assert_expected_errors(
     include: Iterable[str],
     *expected: Error,
     args: list[str] | None = None,
+    invert_include: bool = False,
 ):
     # initialize default option values
     om = _default_option_manager()
     plugin.add_options(om)
     plugin.parse_options(om.parse_args(args=(args if args else [""])))
 
-    errors = sorted(e for e in plugin.run() if e.code in include)
+    errors = sorted(
+        e
+        for e in plugin.run()
+        if (e.code in include if not invert_include else e.code not in include)
+    )
     expected_ = sorted(expected)
 
     print_first_diff(errors, expected_)
@@ -336,7 +350,7 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
                 f"col: {error.col}",
                 f"code: {error.code}",
                 f"args: {error.args}",
-                f'format string: "{Error_codes[error.code]}"',
+                f'format string: "{ERROR_CODES[error.code].error_codes[error.code]}"',
                 sep="\n    ",
                 file=sys.stderr,
             )
@@ -404,34 +418,10 @@ def test_107_permutations():
             assert not errors, "# false alarm:\n" + function_str
 
 
-def test_113_options():
-    # get default errors
-    plugin = read_file("trio113.py")
+def test_114_raises_on_invalid_parameter(capsys: pytest.CaptureFixture[str]):
+    plugin = Plugin(ast.AST())
     om = _default_option_manager()
     plugin.add_options(om)
-    plugin.parse_options(om.parse_args(args=[]))
-    default = {repr(e) for e in plugin.run() if e.code == "TRIO113"}
-
-    # check that our custom_startable_function is detected
-    arg = "--startable-in-context-manager=custom_startable_function"
-    plugin.parse_options(om.parse_args(args=[arg]))
-    errors = {repr(e) for e in plugin.run() if e.code == "TRIO113"} - default
-    assert errors == {repr(Error("TRIO113", 16, 4))}
-
-
-def test_114_options(capsys: pytest.CaptureFixture[str]):
-    # get default errors
-    plugin = read_file("trio114.py")
-    om = _default_option_manager()
-    plugin.add_options(om)
-    plugin.parse_options(om.parse_args(args=[]))
-    default = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
-
-    arg = "--startable-in-context-manager=foo"
-    plugin.parse_options(om.parse_args(args=[arg]))
-    errors = {repr(e) for e in plugin.run() if e.code == "TRIO114"}
-    assert len(errors) == len(default) - 1
-
     # flake8 will reraise ArgumentError as SystemExit
     for arg in "blah.foo", "foo*", "*":
         with pytest.raises(SystemExit):

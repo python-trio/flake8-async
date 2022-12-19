@@ -1,7 +1,9 @@
 import trio
 
+# ARGS --startable-in-context-manager=foo
 
-async def foo(task_status):  # error: 0, "foo"
+
+async def foo(task_status):
     ...
 
 

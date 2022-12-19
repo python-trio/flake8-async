@@ -5,7 +5,7 @@ import ast
 from flake8.main.application import Application
 from test_flake8_trio import _default_option_manager
 
-from flake8_trio import Error_codes, Plugin, Statement, fnmatch_qualified_name
+from flake8_trio import Plugin, Statement, Visitor107_108, fnmatch_qualified_name
 
 
 def dec_list(*decorators: str) -> ast.Module:
@@ -107,9 +107,16 @@ def test_command_line_1(capfd):
     assert not out and not err
 
 
+# expected_out = (
+#    "tests/trio_options.py:2:1: TRIO107: "
+#    + Error_codes["TRIO107"].format("exit", Statement("function definition", 2))
+#    + "\n"
+# )
 expected_out = (
     "tests/trio_options.py:2:1: TRIO107: "
-    + Error_codes["TRIO107"].format("exit", Statement("function definition", 2))
+    + Visitor107_108.error_codes["TRIO107"].format(
+        "exit", Statement("function definition", 2)
+    )
     + "\n"
 )
 
