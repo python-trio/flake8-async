@@ -6,7 +6,7 @@ import itertools
 import os
 import re
 import site
-import subprocess
+import subprocess  # noqa: S404
 import sys
 import tokenize
 import unittest
@@ -54,7 +54,7 @@ def check_version(test: str):
         major, minor = version_str[0], version_str[1:]
         v_i = sys.version_info
         if (v_i.major, v_i.minor) < (int(major), int(minor)):
-            raise unittest.SkipTest("v_i, major, minor")
+            pytest.skip(f"python version {v_i} smaller than {major}, {minor}")
 
 
 ERROR_CODES = {
@@ -64,7 +64,7 @@ ERROR_CODES = {
 }
 
 
-@pytest.mark.parametrize("test, path", test_files)
+@pytest.mark.parametrize(("test", "path"), test_files)
 def test_eval(test: str, path: str):
     # version check
     check_version(test)
@@ -104,7 +104,7 @@ def test_eval(test: str, path: str):
                 # Append a bunch of empty strings so string formatting gives garbage
                 # instead of throwing an exception
                 try:
-                    args = eval(
+                    args = eval(  # noqa: S307
                         f"[{err_args}]",
                         {
                             "lineno": lineno,
@@ -167,8 +167,7 @@ error_codes_ignored_when_checking_transformed_sync_code = {
 
 class SyncTransformer(ast.NodeTransformer):
     def visit_Await(self, node: ast.Await):
-        newnode = self.generic_visit(node.value)
-        return newnode
+        return self.generic_visit(node.value)
 
     def replace_async(self, node: ast.AST, target: type[ast.AST]) -> ast.AST:
         node = self.generic_visit(node)
@@ -186,7 +185,7 @@ class SyncTransformer(ast.NodeTransformer):
         return self.replace_async(node, ast.For)
 
 
-@pytest.mark.parametrize("test, path", test_files)
+@pytest.mark.parametrize(("test", "path"), test_files)
 def test_noerror_on_sync_code(test: str, path: str):
     if any(e in test for e in error_codes_ignored_when_checking_transformed_sync_code):
         return
@@ -233,7 +232,7 @@ def assert_expected_errors(
     assert_correct_args(errors, expected_)
 
     # full check
-    unittest.TestCase().assertEqual(errors, expected_)
+    assert errors == expected_
 
     # test tuple conversion and iter types
     assert_tuple_and_types(errors, expected_)
@@ -365,22 +364,48 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
 
 
 def test_107_permutations():
-    # since each test is so fast, and there's so many permutations, manually doing
-    # the permutations in a single test is much faster than the permutations from using
-    # pytest parametrization - and does not clutter up the output massively.
+    """
+    since each test is so fast, and there's so many permutations, manually doing
+    the permutations in a single test is much faster than the permutations from using
+    pytest parametrization - and does not clutter up the output massively.
+
+    generates code that looks like this, where a block content of `None` means the
+    block is excluded:
+
+    async def foo():
+        try:
+            await foo() | ...
+        except ValueError:
+            await foo() | ... | raise | return | None
+        except SyntaxError:
+            await foo() | ... | raise | return | None
+        except:
+            await foo() | ... | raise | return | None
+        else:
+            await foo() | ... | return | None
+        finally:
+            await foo() | ... | return | None
+    """
     plugin = Plugin(ast.AST())
     initialize_options(plugin, args=["--enable-visitor-codes-regex=TRIO107"])
 
     check = "await foo()"
+
+    # loop over all the possible content of the different blocks
     for try_, exc1, exc2, bare_exc, else_, finally_ in itertools.product(
-        (check, "..."),
-        (check, "...", "raise", "return", None),
-        (check, "...", "raise", "return", None),
-        (check, "...", "raise", "return", None),
-        (check, "...", "return", None),
-        (check, "...", "return", None),
+        (check, "..."),  # try_
+        (check, "...", "raise", "return", None),  # exc1
+        (check, "...", "raise", "return", None),  # exc2
+        (check, "...", "raise", "return", None),  # bare_exc
+        (check, "...", "return", None),  # else_
+        (check, "...", "return", None),  # finally_
     ):
+        # exclude duplicate tests where there's a second exception block but no first
         if exc1 is None and exc2 is not None:
+            continue
+
+        # syntax error if there's no exception block but there's finally and/or else
+        if exc1 is exc2 is bare_exc is None and (finally_ is None or else_ is not None):
             continue
 
         function_str = f"async def foo():\n  try:\n    {try_}\n"
@@ -395,13 +420,7 @@ def test_107_permutations():
             if val is not None:
                 function_str += f"  {arg}:\n    {val}\n"
 
-        try:
-            tree = ast.parse(function_str)
-        except Exception:
-            assert exc1 is exc2 is bare_exc is None and (
-                finally_ is None or else_ is not None
-            )
-            return
+        tree = ast.parse(function_str)
 
         # not a type error per se, but it's pyright warning about assigning to a
         # protected class member - hence we silence it with a `type: ignore`.
@@ -497,7 +516,9 @@ def test_200_from_config_flake8_internals(
 
 def test_200_from_config_subprocess(tmp_path: Path):
     err_msg = _test_trio200_from_config_common(tmp_path)
-    res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True)
+    res = subprocess.run(  # noqa: S603,S607
+        ["flake8"], cwd=tmp_path, capture_output=True
+    )
     assert not res.stderr
     assert res.stdout == err_msg.encode("ascii")
 
@@ -507,7 +528,7 @@ def consume(iterator: Iterable[Any]):
     deque(iterator, maxlen=0)
 
 
-@pytest.mark.fuzz
+@pytest.mark.fuzz()
 class TestFuzz(unittest.TestCase):
     @settings(max_examples=1_000, suppress_health_check=[HealthCheck.too_slow])
     @given((from_grammar() | from_node()).map(ast.parse))
@@ -540,7 +561,7 @@ def _iter_python_files():
                     yield Path(dirname) / f
 
 
-@pytest.mark.fuzz
+@pytest.mark.fuzz()
 def test_does_not_crash_on_site_code(enable_visitor_codes_regex: str):
     for path in _iter_python_files():
         try:

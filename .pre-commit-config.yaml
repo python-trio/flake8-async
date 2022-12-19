@@ -1,0 +1,67 @@
+ci:
+  skip: [pyright]
+
+repos:
+-   repo: https://github.com/Zac-HD/shed
+    rev: 0.10.8
+    hooks:
+    -   id: shed
+        args: ['--py39-plus']
+
+-   repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.286
+    hooks:
+    -   id: pyright
+        entry: env PYRIGHT_PYTHON_FORCE_VERSION=latest pyright
+        args: ['--pythonversion=3.11', '--warnings']
+        additional_dependencies:
+          # Required for pyright strict mode
+          - hypothesis
+          - hypothesmith
+          - pytest
+          - flake8
+
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    -   id: trailing-whitespace
+        args: ['--markdown-linebreak-ext=md,markdown']
+    -   id: end-of-file-fixer
+    -   id: fix-encoding-pragma
+        args: [--remove]
+    -   id: check-yaml
+    -   id: debug-statements
+        language_version: python3
+
+-   repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0
+    hooks:
+    -   id: flake8
+        args: ["--exclude", ".*,tests/trio*.py"]
+        language_version: python3
+        additional_dependencies:
+          - flake8-builtins
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-2020
+          - flake8-bandit
+          - flake8-builtins
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-datetimez
+         #- flake8-docstrings
+          - flake8-mutable
+          - flake8-noqa
+          - flake8-pie
+          - flake8-pytest-style
+          - flake8-return
+          - flake8-simplify
+
+-   repo: https://github.com/PyCQA/flake8
+    rev: 5.0.4
+    hooks:
+    -   id: flake8
+        args: ["--exclude", ".*,tests/trio*.py", "--select=E800"]
+        language_version: python3
+        additional_dependencies:
+          - flake8-eradicate

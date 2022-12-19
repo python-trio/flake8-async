@@ -30,6 +30,6 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
             item.add_marker(skip_fuzz)
 
 
-@pytest.fixture
+@pytest.fixture()
 def enable_visitor_codes_regex(request: pytest.FixtureRequest):
     return request.config.getoption("--enable-visitor-codes-regex")
