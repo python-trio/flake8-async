@@ -1460,7 +1460,6 @@ class ParseDict(argparse.Action):
         res: dict[str, str] = {}
         splitter = "->"  # avoid ":" because it's part of .ini file syntax
         assert values is not None
-        assert option_string is not None
         for value in values:
             split_values = list(map(str.strip, value.split(splitter)))
             if len(split_values) != 2:
@@ -1489,6 +1488,15 @@ class Plugin:
         return cls(ast.parse(source))
 
     def run(self) -> Iterable[Error]:
+        # temporary workaround, since the Action does not seem to be called properly
+        # by flake8 when parsing from config
+        if isinstance(self.options.trio200_blocking_calls, list):
+            ParseDict([""], dest="trio200_blocking_calls")(
+                None,  # type: ignore
+                self.options,
+                self.options.trio200_blocking_calls,  # type: ignore
+                None,
+            )
         yield from Flake8TrioRunner.run(self._tree, self.options)
 
     @staticmethod
