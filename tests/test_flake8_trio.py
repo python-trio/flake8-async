@@ -122,6 +122,7 @@ def test_eval(test: str, path: str):
             except Exception as e:
                 print(f"lineno: {lineno}, line: {line}", file=sys.stderr)
                 raise e
+
             if args:
                 col, *args = args
             else:
@@ -130,7 +131,6 @@ def test_eval(test: str, path: str):
                 col, int
             ), f'invalid column "{col}" @L{lineno}, in "{line}"'
 
-            # assert col.isdigit(), f'invalid column "{col}" @L{lineno}, in "{line}"'
             if err_code == "error":
                 err_code = test
             error_class = ERROR_CODES[err_code]
