@@ -1236,7 +1236,7 @@ class Visitor112(Flake8TrioVisitor):
             # check for trio.open_nursery
             nursery = get_matching_call(item.context_expr, "open_nursery")
 
-            # isinstance(..., ast.Call) is done in get_matching_call
+            # `isinstance(..., ast.Call)` is done in get_matching_call
             body_call = cast(ast.Call, node.body[0].value)
 
             if (
@@ -1373,16 +1373,16 @@ class Visitor116(Flake8TrioVisitor):
         if get_matching_call(node, "sleep") and len(node.args) == 1:
             arg = node.args[0]
             if (
-                # trio.sleep(math.inf)
+                # `trio.sleep(math.inf)`
                 (
                     isinstance(arg, ast.Attribute)
                     and isinstance(arg.value, ast.Name)
                     and arg.attr == "inf"
                     and arg.value.id == "math"
                 )
-                # trio.sleep(inf)
+                # `trio.sleep(inf)`
                 or (isinstance(arg, ast.Name) and arg.id == "inf")
-                # trio.sleep(float("inf"))
+                # `trio.sleep(float("inf"))`
                 or (
                     isinstance(arg, ast.Call)
                     and isinstance(arg.func, ast.Name)
@@ -1391,9 +1391,9 @@ class Visitor116(Flake8TrioVisitor):
                     and isinstance(arg.args[0], ast.Constant)
                     and arg.args[0].value == "inf"
                 )
-                # trio.sleep(1e999) (constant value inf)
-                # trio.sleep(86401)
-                # trio.sleep(86400.1)
+                # `trio.sleep(1e999)` (constant value inf)
+                # `trio.sleep(86401)`
+                # `trio.sleep(86400.1)`
                 or (
                     isinstance(arg, ast.Constant)
                     and isinstance(arg.value, (int, float))
