@@ -1421,16 +1421,10 @@ class Visitor200(Flake8TrioVisitor):
     visit_Lambda = visit_AsyncFunctionDef
 
     def visit_Call(self, node: ast.Call):
-        if (
-            self.async_function
-            and not getattr(node, "awaited", False)
-            and (
-                key := fnmatch_qualified_name(
-                    [node.func], *self.options.trio200_blocking_calls.keys()
-                )
-            )
-        ):
-            self.error(node, key, self.options.trio200_blocking_calls[key])
+        if self.async_function and not getattr(node, "awaited", False):
+            blocking_calls = self.options.trio200_blocking_calls
+            if key := fnmatch_qualified_name([node.func], *blocking_calls):
+                self.error(node, key, blocking_calls[key])
 
 
 class ListOfIdentifiers(argparse.Action):
