@@ -476,3 +476,22 @@ async def f2():
     while True:
         await trio.sleep(0)
         return
+
+
+# code coverage
+def foo_sync():
+    # try in sync function
+    try:
+        pass
+    except:
+        pass
+
+    # continue/break in sync function
+    while True:
+        if ...:
+            continue
+        if ...:
+            break
+
+    # boolop in sync function
+    True and True

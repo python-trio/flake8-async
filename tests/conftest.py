@@ -7,6 +7,9 @@ def pytest_addoption(parser: pytest.Parser):
     parser.addoption(
         "--runfuzz", action="store_true", default=False, help="run fuzz tests"
     )
+    parser.addoption(
+        "--select", default="TRIO", help="select error codes whose visitors to run."
+    )
 
 
 def pytest_configure(config: pytest.Config):
@@ -23,3 +26,8 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     for item in items:
         if "fuzz" in item.keywords:
             item.add_marker(skip_fuzz)
+
+
+@pytest.fixture
+def select(request: pytest.FixtureRequest):
+    return request.config.getoption("--select")

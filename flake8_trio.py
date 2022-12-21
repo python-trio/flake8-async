@@ -20,6 +20,7 @@ from fnmatch import fnmatch
 from typing import Any, NamedTuple, Union, cast
 
 from flake8.options.manager import OptionManager
+from flake8.style_guide import Decision, DecisionEngine
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.12.5"
@@ -96,11 +97,23 @@ class Flake8TrioRunner(ast.NodeVisitor):
     def __init__(self, options: Namespace):
         super().__init__()
         self._problems: list[Error] = []
+        self.decision_engine: DecisionEngine = DecisionEngine(options)
+
         self.visitors = {
             v(options, self._problems)
             for v in Flake8TrioVisitor.__subclasses__()
-            # TODO: could here refrain from including subclasses for disabled checks
+            if self.selected(v.error_codes)
         }
+
+    # Use flake8's internal decision engine to check if codes are included or not
+    # to ease debugging and speed up plugin time
+    # This isn't officially documented or supported afaik, but should be easily
+    # removed upon any breaking changes.
+    def selected(self, error_codes: dict[str, str]) -> bool:
+        return any(
+            self.decision_engine.decision_for(code) == Decision.Selected
+            for code in error_codes
+        )
 
     @classmethod
     def run(cls, tree: ast.AST, options: Namespace) -> Iterable[Error]:

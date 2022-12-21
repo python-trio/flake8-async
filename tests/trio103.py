@@ -1,3 +1,5 @@
+# ARG --select=TRIO103,TRIO104
+
 from typing import Any
 
 import trio
@@ -91,7 +93,7 @@ except BaseException as e:  # error: 7, "BaseException"
     except ValueError:
         raise e
     except:
-        raise e  # though sometimes okay, TRIO104
+        raise e  # TRIO104: 8
 except BaseException:  # safe
     try:
         pass
@@ -116,7 +118,7 @@ except trio.Cancelled as e:
     try:
         pass
     except ValueError as g:
-        raise g  # TRIO104
+        raise g  # TRIO104: 8
     except BaseException as h:
         raise h  # error? currently treated as safe
     raise e

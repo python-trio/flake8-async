@@ -1,3 +1,5 @@
+# ARG --select=TRIO103,TRIO104
+
 import trio
 
 try:
@@ -15,7 +17,7 @@ except trio.Cancelled as e:
 # nested try
 # in theory safe if the try, and all excepts raises - and there's a bare except.
 # But is a very weird pattern that we don't handle.
-except BaseException as e:  # TRIO103
+except BaseException as e:  # TRIO103: 7, "BaseException"
     try:
         raise e
     except ValueError:
@@ -67,11 +69,11 @@ def foo():
 
     try:
         pass
-    except BaseException:  # TRIO103
+    except BaseException:  # TRIO103: 11, "BaseException"
         return  # error: 8
 
     # check that we properly iterate over all nodes in try
-    except BaseException:  # TRIO103
+    except BaseException:  # TRIO103: 11, "BaseException"
         try:
             return  # error: 12
         except ValueError:

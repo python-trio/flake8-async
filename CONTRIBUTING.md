@@ -36,10 +36,9 @@ Lines containing `error:` are parsed as expecting an error of the code matching 
 #### `TRIOxxx:`
 You can instead of `error` specify the error code.
 
-### `# INCLUDE`
-Test files by default filter out all errors not matching the file name, but if there's a line `# INCLUDE TRIO\d\d\d TRIO\d\d\d` those additional error codes are not filtered out and will be an error if encountered.
-### `# ARGS`
-With a line `# ARGS` you can also specify command-line arguments that should be passed to the plugin when parsing a file. Can be specified multiple times for several different arguments.
+### `# ARG`
+With `# ARG` lines you can also specify command-line arguments that should be passed to the plugin when parsing a file. Can be specified multiple times for several different arguments.  
+Generated tests will by default `--select` the error code of the file, which will enable any visitors that can generate that code (and if those visitors can raise other codes they might be raised too). This can be overriden by adding an `# ARG --select=...` line.
 
 ## Style Guide
 
