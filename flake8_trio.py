@@ -74,7 +74,7 @@ class Error:
     def __iter__(self):
         yield self.line
         yield self.col
-        yield f"{self.code}: " + self.message.format(*self.args)
+        yield f"{self.code} " + self.message.format(*self.args)
         yield type(Plugin)
 
     def cmp(self):

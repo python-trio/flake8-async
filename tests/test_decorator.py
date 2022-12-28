@@ -108,7 +108,7 @@ def test_command_line_1(capfd):
 
 
 expected_out = (
-    "tests/trio_options.py:2:1: TRIO107: "
+    "tests/trio_options.py:2:1: TRIO107 "
     + Visitor107_108.error_codes["TRIO107"].format(
         "exit", Statement("function definition", 2)
     )
