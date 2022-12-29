@@ -80,6 +80,9 @@ def test_eval(test: str, path: str):
         lines = file.readlines()
 
     for lineno, line in enumerate(lines, start=1):
+        # interpret '\n' in comments as actual newlines
+        line = line.replace("\\n", "\n")
+
         line = line.strip()
 
         # add other error codes to check if #INCLUDE is specified
@@ -90,9 +93,7 @@ def test_eval(test: str, path: str):
 
         # add command-line args if specified with #ARGS
         elif reg_match := re.search(r"(?<=ARGS).*", line):
-            for arg in reg_match.group().split(" "):
-                if arg.strip():
-                    parsed_args.append(arg.strip())
+            parsed_args.append(reg_match.group().strip())
 
         # skip commented out lines
         if not line or line[0] == "#":
@@ -444,16 +445,17 @@ def test_200_options(capsys: pytest.CaptureFixture[str]):
                 om.parse_args(args=[f"--trio200-blocking-calls={arg}"])
             )
         out, err = capsys.readouterr()
-        assert not out
+        assert not out, out
         assert all(word in err for word in (str(i), arg, "->"))
 
 
-def test_from_config_file(tmp_path: Path):
+def _test_trio200_from_config_common(tmp_path: Path) -> str:
     tmp_path.joinpath(".flake8").write_text(
         """
 [flake8]
 trio200-blocking-calls =
-  sync_fns.*->the_async_equivalent,
+  other -> async,
+  sync_fns.* -> the_async_equivalent,
 select = TRIO200
 """
     )
@@ -465,12 +467,42 @@ async def foo():
     sync_fns.takes_a_long_time()
 """
     )
+    return (
+        "./example.py:5:5: TRIO200: User-configured blocking sync call sync_fns.* "
+        "in async function, consider replacing with the_async_equivalent.\n"
+    )
+
+
+def test_200_from_config_flake8_internals(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    # abuse flake8 internals to avoid having to use subprocess
+    # which breaks breakpoints and hinders debugging
+    # TODO: fixture (?) to change working directory
+
+    err_msg = _test_trio200_from_config_common(tmp_path)
+    # replace ./ with tmp_path/
+    err_msg = str(tmp_path) + err_msg[1:]
+
+    from flake8.main.cli import main
+
+    main(
+        argv=[
+            str(tmp_path / "example.py"),
+            "--append-config",
+            str(tmp_path / ".flake8"),
+        ]
+    )
+    out, err = capsys.readouterr()
+    assert not err
+    assert err_msg == out
+
+
+def test_200_from_config_subprocess(tmp_path: Path):
+    err_msg = _test_trio200_from_config_common(tmp_path)
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True)
     assert not res.stderr
-    assert res.stdout == (
-        b"./example.py:5:5: TRIO200: User-configured blocking sync call sync_fns.* "
-        b"in async function, consider replacing with the_async_equivalent.\n"
-    )
+    assert res.stdout == bytes(err_msg, "ascii")
 
 
 @pytest.mark.fuzz

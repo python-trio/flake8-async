@@ -11,12 +11,11 @@ Pairs well with flake8-async and flake8-bugbear.
 
 from __future__ import annotations
 
-import argparse
 import ast
 import keyword
 import tokenize
-from argparse import Namespace
-from collections.abc import Iterable, Sequence
+from argparse import ArgumentTypeError, Namespace
+from collections.abc import Iterable
 from fnmatch import fnmatch
 from typing import Any, NamedTuple, Union, cast
 
@@ -1427,46 +1426,33 @@ class Visitor200(Flake8TrioVisitor):
                 self.error(node, key, blocking_calls[key])
 
 
-class ListOfIdentifiers(argparse.Action):
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: Sequence[str] | None,
-        option_string: str | None = None,
-    ):
-        assert values is not None
-        assert option_string is not None
-        for value in values:
-            if keyword.iskeyword(value) or not value.isidentifier():
-                raise argparse.ArgumentError(
-                    self, f"{value!r} is not a valid method identifier"
-                )
-        setattr(namespace, self.dest, values)
+# flake8 ignores type parameters if using comma_separated_list
+# so we need to reimplement that ourselves if we want to use "type"
+# to check values
+def parse_trio114_identifiers(raw_value: str) -> list[str]:
+    values = [s.strip() for s in raw_value.split(",") if s.strip()]
+    for value in values:
+        if keyword.iskeyword(value) or not value.isidentifier():
+            raise ArgumentTypeError(f"{value!r} is not a valid method identifier")
+    return values
 
 
-class ParseDict(argparse.Action):
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: Sequence[str] | None,
-        option_string: str | None = None,
-    ):
-        res: dict[str, str] = {}
-        splitter = "->"  # avoid ":" because it's part of .ini file syntax
-        assert values is not None
-        for value in values:
-            split_values = list(map(str.strip, value.split(splitter)))
-            if len(split_values) != 2:
-                raise argparse.ArgumentError(
-                    self,
-                    f"Invalid number ({len(split_values)-1}) of splitter "
-                    f"tokens {splitter!r} in {value!r}",
-                )
-            res[split_values[0]] = split_values[1]
+def parse_trio200_dict(raw_value: str) -> dict[str, str]:
+    res: dict[str, str] = {}
+    splitter = "->"  # avoid ":" because it's part of .ini file syntax
+    values = [s.strip() for s in raw_value.split(",") if s.strip()]
 
-        setattr(namespace, self.dest, res)
+    for value in values:
+        split_values = list(map(str.strip, value.split(splitter)))
+        if len(split_values) != 2:
+            # argparse will eat this error message and spit out it's own
+            # if we raise it as ValueError
+            raise ArgumentTypeError(
+                f"Invalid number ({len(split_values)-1}) of splitter "
+                f"tokens {splitter!r} in {value!r}",
+            )
+        res[split_values[0]] = split_values[1]
+    return res
 
 
 class Plugin:
@@ -1484,15 +1470,6 @@ class Plugin:
         return cls(ast.parse(source))
 
     def run(self) -> Iterable[Error]:
-        # temporary workaround, since the Action does not seem to be called properly
-        # by flake8 when parsing from config
-        if isinstance(self.options.trio200_blocking_calls, list):
-            ParseDict([""], dest="trio200_blocking_calls")(
-                None,  # type: ignore
-                self.options,
-                self.options.trio200_blocking_calls,  # type: ignore
-                None,
-            )
         yield from Flake8TrioRunner.run(self._tree, self.options)
 
     @staticmethod
@@ -1513,11 +1490,10 @@ class Plugin:
         )
         option_manager.add_option(
             "--startable-in-context-manager",
+            type=parse_trio114_identifiers,
             default="",
             parse_from_config=True,
             required=False,
-            comma_separated_list=True,
-            action=ListOfIdentifiers,
             help=(
                 "Comma-separated list of method calls to additionally enable TRIO113 "
                 "warnings for. Will also check for the pattern inside function calls. "
@@ -1529,11 +1505,10 @@ class Plugin:
         )
         option_manager.add_option(
             "--trio200-blocking-calls",
+            type=parse_trio200_dict,
             default={},
             parse_from_config=True,
             required=False,
-            comma_separated_list=True,
-            action=ParseDict,
             help=(
                 "Comma-separated list of key:value pairs, where key is a [dotted] "
                 "function that if found inside an async function will raise TRIO200, "

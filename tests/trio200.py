@@ -1,5 +1,7 @@
 # specify command-line arguments to be used when testing this file.
-# ARGS --trio200-blocking-calls=bar->BAR,bee->SHOULD_NOT_BE_PRINTED,bonnet->SHOULD_NOT_BE_PRINTED,bee.bonnet->BEEBONNET,*.postwild->POSTWILD,prewild.*->PREWILD,*.*.*->TRIPLEDOT
+# Test spaces in options, and trailing comma
+# Cannot test newlines, since argparse splits on those if passed on the CLI
+# ARGS --trio200-blocking-calls=bar -> BAR, bee-> SHOULD_NOT_BE_PRINTED,bonnet ->SHOULD_NOT_BE_PRINTED,bee.bonnet->BEEBONNET,*.postwild->POSTWILD,prewild.*->PREWILD,*.*.*->TRIPLEDOT,
 
 # don't error in sync function
 def foo():
