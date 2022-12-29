@@ -1,5 +1,4 @@
-# ARG --enable-visitor-codes-regex=(TRIO103)|(TRIO104)
-
+# check that partly disabling a visitor works
 from typing import Any
 
 import trio
@@ -93,7 +92,7 @@ except BaseException as e:  # error: 7, "BaseException"
     except ValueError:
         raise e
     except:
-        raise e  # TRIO104: 8
+        raise e  # disabled TRIO104 error
 except BaseException:  # safe
     try:
         pass
@@ -118,7 +117,7 @@ except trio.Cancelled as e:
     try:
         pass
     except ValueError as g:
-        raise g  # TRIO104: 8
+        raise g  # disabled TRIO104 error
     except BaseException as h:
         raise h  # error? currently treated as safe
     raise e

@@ -13,14 +13,16 @@ from __future__ import annotations
 
 import ast
 import keyword
+import re
 import tokenize
 from argparse import ArgumentTypeError, Namespace
 from collections.abc import Iterable
 from fnmatch import fnmatch
-from typing import Any, NamedTuple, Union, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, Union, cast
 
-from flake8.options.manager import OptionManager
-from flake8.style_guide import Decision, DecisionEngine
+# guard against internal flake8 changes
+if TYPE_CHECKING:
+    from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
 __version__ = "22.12.5"
@@ -97,7 +99,7 @@ class Flake8TrioRunner(ast.NodeVisitor):
     def __init__(self, options: Namespace):
         super().__init__()
         self._problems: list[Error] = []
-        self.decision_engine: DecisionEngine = DecisionEngine(options)
+        self.options = options
 
         self.visitors = {
             v(options, self._problems)
@@ -105,13 +107,9 @@ class Flake8TrioRunner(ast.NodeVisitor):
             if self.selected(v.error_codes)
         }
 
-    # Use flake8's internal decision engine to check if codes are included or not
-    # to ease debugging and speed up plugin time
-    # This isn't officially documented or supported afaik, but should be easily
-    # removed upon any breaking changes.
     def selected(self, error_codes: dict[str, str]) -> bool:
         return any(
-            self.decision_engine.decision_for(code) == Decision.Selected
+            re.match(self.options.enable_visitor_codes_regex, code)
             for code in error_codes
         )
 
@@ -123,6 +121,11 @@ class Flake8TrioRunner(ast.NodeVisitor):
 
     def visit(self, node: ast.AST):
         """Visit a node."""
+        # don't bother visiting if no visitors are enabled, or all enabled visitors
+        # in parent nodes have marked novisit
+        if not self.visitors:
+            return
+
         # tracks the subclasses that, from this node on, iterated through it's subfields
         # we need to remember it so we can restore it at the end of the function.
         novisit: set[Flake8TrioVisitor] = set()
@@ -223,6 +226,9 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         if error_code is None:
             assert len(self.error_codes) == 1
             error_code = next(iter(self.error_codes))
+        # don't emit an error if this code is disabled in a multi-code visitor
+        elif not re.match(self.options.enable_visitor_codes_regex, error_code):
+            return
 
         if not self.suppress_errors:
             self._problems.append(
@@ -1526,6 +1532,20 @@ class Plugin:
                 "Comma-separated list of key:value pairs, where key is a [dotted] "
                 "function that if found inside an async function will raise TRIO200, "
                 "suggesting it be replaced with {value}"
+            ),
+        )
+        option_manager.add_option(
+            "--enable-visitor-codes-regex",
+            type=re.compile,
+            default=".*",
+            parse_from_config=True,
+            required=False,
+            help=(
+                "Regex string of visitors to enable. Can be used to disable broken "
+                "visitors, or instead of --select/--disable to select error codes "
+                "in a way that is more performant. If a visitor raises multiple codes "
+                "it will not be disabled unless all codes are disabled, but it will "
+                "not report codes matching this regex."
             ),
         )
 

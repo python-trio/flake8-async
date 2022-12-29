@@ -8,7 +8,9 @@ def pytest_addoption(parser: pytest.Parser):
         "--runfuzz", action="store_true", default=False, help="run fuzz tests"
     )
     parser.addoption(
-        "--select", default="TRIO", help="select error codes whose visitors to run."
+        "--enable-visitor-codes-regex",
+        default=".*",
+        help="select error codes whose visitors to run.",
     )
 
 
@@ -29,5 +31,5 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
 
 @pytest.fixture
-def select(request: pytest.FixtureRequest):
-    return request.config.getoption("--select")
+def enable_visitor_codes_regex(request: pytest.FixtureRequest):
+    return request.config.getoption("--enable-visitor-codes-regex")

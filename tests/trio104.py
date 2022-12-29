@@ -1,4 +1,4 @@
-# ARG --select=TRIO103,TRIO104
+# ARG --enable-visitor-codes-regex=(TRIO103)|(TRIO104)
 
 import trio
 

@@ -17,7 +17,6 @@ from typing import Any, DefaultDict
 
 import pytest
 from flake8 import __version_info__ as flake8_version_info
-from flake8.main.options import register_default_options
 from flake8.options.manager import OptionManager
 
 # import trio  # type: ignore
@@ -26,7 +25,7 @@ from hypothesmith import from_grammar, from_node
 
 from flake8_trio import Error, Flake8TrioVisitor, Plugin, Statement
 
-trio_test_files_regex = re.compile(r"trio\d\d\d(_py.*)?.py")
+trio_test_files_regex = re.compile(r"trio\d\d\d(_.*)?.py")
 
 test_files: list[tuple[str, str]] = sorted(
     (os.path.splitext(f)[0].upper(), f)
@@ -44,17 +43,11 @@ def _default_option_manager():
     kwargs = {}
     if flake8_version_info[0] >= 6:
         kwargs["formatter_names"] = ["default"]
-    option_manager = OptionManager(version="", plugin_versions="", parents=[], **kwargs)
-
-    # register `--select`,`--ignore`,etc needed for the DecisionManager
-    # and to be able to selectively enable/disable visitors
-    register_default_options(option_manager)
-
-    return option_manager
+    return OptionManager(version="", plugin_versions="", parents=[], **kwargs)
 
 
 # check for presence of _pyXX, skip if version is later, and prune parameter
-def check_version(test: str) -> str:
+def check_version(test: str):
     python_version = re.search(r"(?<=_PY)\d*", test)
     if python_version:
         version_str = python_version.group()
@@ -62,8 +55,6 @@ def check_version(test: str) -> str:
         v_i = sys.version_info
         if (v_i.major, v_i.minor) < (int(major), int(minor)):
             raise unittest.SkipTest("v_i, major, minor")
-        return test.split("_")[0]
-    return test
 
 
 ERROR_CODES = {
@@ -74,18 +65,17 @@ ERROR_CODES = {
 
 
 @pytest.mark.parametrize("test, path", test_files)
-def test_eval(test: str, path: str, select: str):
+def test_eval(test: str, path: str):
     # version check
-    test = check_version(test)
+    check_version(test)
+    test = test.split("_")[0]
 
     assert test in ERROR_CODES, "error code not defined in flake8_trio.py"
 
-    parsed_args = []
-
-    if select in test or test in select:
-        # `select` this error code to enable the visitor for it, if the test file
-        # specifies `# ARG --select=...` that will take precedence.
-        parsed_args = [f"--select={test}"]
+    # only enable the tested visitor to save performance and ease debugging
+    # if a test requires enabling multiple visitors they specify a
+    # `# ARG --enable-vis...` that comes later in the arg list, overriding this
+    parsed_args = [f"--enable-visitor-codes-regex={test}"]
 
     expected: list[Error] = []
 
@@ -152,8 +142,6 @@ def test_eval(test: str, path: str, select: str):
                 raise ParseError(msg) from e
 
     assert expected, f"failed to parse any errors in file {path}"
-    if not any("--select" in arg for arg in parsed_args):
-        pytest.skip("no `--select`ed visitors")
 
     plugin = read_file(path)
     assert_expected_errors(plugin, *expected, args=parsed_args)
@@ -199,19 +187,21 @@ class SyncTransformer(ast.NodeTransformer):
 
 
 @pytest.mark.parametrize("test, path", test_files)
-def test_noerror_on_sync_code(test: str, path: str, select: str):
+def test_noerror_on_sync_code(test: str, path: str):
     if any(e in test for e in error_codes_ignored_when_checking_transformed_sync_code):
         return
     with tokenize.open(f"tests/{path}") as f:
         source = f.read()
     tree = SyncTransformer().visit(ast.parse(source))
 
-    ignored_codes_string = ",".join(
-        error_codes_ignored_when_checking_transformed_sync_code
+    ignored_codes_regex = (
+        "(?!("
+        + "|".join(error_codes_ignored_when_checking_transformed_sync_code)
+        + "))"
     )
     assert_expected_errors(
         Plugin(tree),
-        args=[f"--select={select}", f"--ignore={ignored_codes_string}"],
+        args=[f"--enable-visitor-codes-regex={ignored_codes_regex}"],
     )
 
 
@@ -224,11 +214,6 @@ def initialize_options(plugin: Plugin, args: list[str] | None = None):
     om = _default_option_manager()
     plugin.add_options(om)
     plugin.parse_options(om.parse_args(args=(args if args else [])))
-
-    # these are not registered like flake8's normal options so we need
-    # to manually initialize them for DecisionEngine to work.
-    plugin.options.extended_default_select = []
-    plugin.options.extended_default_ignore = []
 
 
 def assert_expected_errors(
@@ -384,7 +369,7 @@ def test_107_permutations():
     # the permutations in a single test is much faster than the permutations from using
     # pytest parametrization - and does not clutter up the output massively.
     plugin = Plugin(ast.AST())
-    initialize_options(plugin, args=["--select=TRIO107"])
+    initialize_options(plugin, args=["--enable-visitor-codes-regex=TRIO107"])
 
     check = "await foo()"
     for try_, exc1, exc2, bare_exc, else_, finally_ in itertools.product(
@@ -421,7 +406,7 @@ def test_107_permutations():
         # not a type error per se, but it's pyright warning about assigning to a
         # protected class member - hence we silence it with a `type: ignore`.
         plugin._tree = tree  # type: ignore
-        errors = [e for e in plugin.run() if e.code == "TRIO107"]
+        errors = list(plugin.run())
 
         if (
             # return in exception
@@ -528,16 +513,18 @@ class TestFuzz(unittest.TestCase):
     @given((from_grammar() | from_node()).map(ast.parse))
     def test_does_not_crash_on_any_valid_code(self, syntax_tree: ast.AST):
         # TODO: figure out how to get unittest to play along with pytest options
-        # so `--select` can be passed through
-        # though I barely notice a difference manually changing this value, or even
+        # so `--enable-visitor-codes-regex` can be passed through.
+        # Though I barely notice a difference manually changing this value, or even
         # not running the plugin at all, so overhead looks to be vast majority of runtime
-        select = "TRIO"
+        enable_visitor_codes_regex = ".*"
 
         # Given any syntatically-valid source code, the checker should
         # not crash.  This tests doesn't check that we do the *right* thing,
         # just that we don't crash on valid-if-poorly-styled code!
         plugin = Plugin(syntax_tree)
-        initialize_options(plugin, [f"--select={select}"])
+        initialize_options(
+            plugin, [f"--enable-visitor-codes-regex={enable_visitor_codes_regex}"]
+        )
 
         consume(plugin.run())
 
@@ -554,11 +541,13 @@ def _iter_python_files():
 
 
 @pytest.mark.fuzz
-def test_does_not_crash_on_site_code(select: str):
+def test_does_not_crash_on_site_code(enable_visitor_codes_regex: str):
     for path in _iter_python_files():
         try:
             plugin = Plugin.from_filename(str(path))
-            initialize_options(plugin, [f"--select={select}"])
+            initialize_options(
+                plugin, [f"--enable-visitor-codes-regex={enable_visitor_codes_regex}"]
+            )
             consume(plugin.run())
         except Exception as err:
             raise AssertionError(f"Failed on {path}") from err
