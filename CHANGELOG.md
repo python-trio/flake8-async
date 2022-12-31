@@ -1,6 +1,10 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 23.1.1
+- Add TRIO210, TRIO211 - blocking sync call in async function, using network packages (requests, httpx, urllib3)
+- Add TRIO220, TRIO221 - blocking sync call in async function, using subprocess or os.
+
 ## 22.12.5
 - The `--startable-in-context-manager` and `--trio200-blocking-calls` options now handle spaces and newlines.
 - Now compatible with  [flake8-noqa](https://pypi.org/project/flake8-noqa/)'s NQA102 and NQA103 checks.

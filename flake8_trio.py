@@ -18,14 +18,14 @@ import tokenize
 from argparse import ArgumentTypeError, Namespace
 from collections.abc import Iterable
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, Any, NamedTuple, Union, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar, Union, cast
 
 # guard against internal flake8 changes
 if TYPE_CHECKING:
     from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "22.12.5"
+__version__ = "23.1.1"
 
 
 class Statement(NamedTuple):
@@ -103,7 +103,7 @@ class Flake8TrioRunner(ast.NodeVisitor):
 
         self.visitors = {
             v(options, self._problems)
-            for v in Flake8TrioVisitor.__subclasses__()
+            for v in ERROR_CLASSES
             if self.selected(v.error_codes)
         }
 
@@ -271,6 +271,16 @@ class Flake8TrioVisitor(ast.NodeVisitor):
             yield from ast.walk(b)
 
 
+ERROR_CLASSES: set[type[Flake8TrioVisitor]] = set()
+
+T = TypeVar("T", bound=Flake8TrioVisitor)
+
+
+def error_class(error_class: type[T]) -> type[T]:
+    ERROR_CLASSES.add(error_class)
+    return error_class
+
+
 # ignores module and only checks the unqualified name of the decorator
 # used in 101 and 107/108
 def has_decorator(decorator_list: list[ast.expr], *names: str):
@@ -309,6 +319,7 @@ cancel_scope_names = (
 )
 
 
+@error_class
 class Visitor100(Flake8TrioVisitor):
     error_codes = {
         "TRIO100": (
@@ -328,6 +339,7 @@ class Visitor100(Flake8TrioVisitor):
     visit_AsyncWith = visit_With
 
 
+@error_class
 class Visitor101(Flake8TrioVisitor):
     error_codes = {
         "TRIO101": (
@@ -403,6 +415,7 @@ def critical_except(node: ast.ExceptHandler) -> Statement | None:
     return None
 
 
+@error_class
 class Visitor102(Flake8TrioVisitor):
     error_codes = {
         "TRIO102": (
@@ -505,6 +518,7 @@ class Visitor102(Flake8TrioVisitor):
 
 # Never have an except Cancelled or except BaseException block with a code path that
 # doesn't re-raise the error
+@error_class
 class Visitor103_104(Flake8TrioVisitor):
     error_codes = {
         "TRIO103": "{} block with a code path that doesn't re-raise the error",
@@ -722,6 +736,7 @@ def is_nursery_call(node: ast.AST, name: str) -> bool:
     return False
 
 
+@error_class
 class Visitor105(Flake8TrioVisitor):
     error_codes = {
         "TRIO105": "trio async function {} must be immediately awaited",
@@ -740,6 +755,7 @@ class Visitor105(Flake8TrioVisitor):
             self.error(node, node.func.attr)
 
 
+@error_class
 class Visitor106(Flake8TrioVisitor):
     error_codes = {
         "TRIO106": "trio must be imported with `import trio` for the linter to work",
@@ -769,6 +785,7 @@ def empty_body(body: list[ast.stmt]) -> bool:
     )
 
 
+@error_class
 class Visitor107_108(Flake8TrioVisitor):
     error_codes = {
         "TRIO107": (
@@ -1097,6 +1114,7 @@ class Visitor107_108(Flake8TrioVisitor):
         self.uncheckpointed_statements = worst_case_shortcut
 
 
+@error_class
 class Visitor109(Flake8TrioVisitor):
     error_codes = {
         "TRIO109": (
@@ -1117,6 +1135,7 @@ class Visitor109(Flake8TrioVisitor):
                 self.error(arg)
 
 
+@error_class
 class Visitor110(Flake8TrioVisitor):
     error_codes = {
         "TRIO110": (
@@ -1135,6 +1154,7 @@ class Visitor110(Flake8TrioVisitor):
             self.error(node)
 
 
+@error_class
 class Visitor111(Flake8TrioVisitor):
     error_codes = {
         "TRIO111": (
@@ -1229,6 +1249,7 @@ class Visitor111(Flake8TrioVisitor):
                 )
 
 
+@error_class
 class Visitor112(Flake8TrioVisitor):
     error_codes = {
         "TRIO112": (
@@ -1289,6 +1310,7 @@ STARTABLE_CALLS = (
 )
 
 
+@error_class
 class Visitor113(Flake8TrioVisitor):
     error_codes = {
         "TRIO113": (
@@ -1340,6 +1362,7 @@ class Visitor113(Flake8TrioVisitor):
 # --startable-in-context-manager. Will only match against the last part of the option
 # name, so may miss cases where functions are named the same in different modules/classes
 # and option names are specified including the module name.
+@error_class
 class Visitor114(Flake8TrioVisitor):
     error_codes = {
         "TRIO114": (
@@ -1363,6 +1386,7 @@ class Visitor114(Flake8TrioVisitor):
 
 # Suggests replacing all `trio.sleep(0)` with the more suggestive
 # `trio.lowlevel.checkpoint()`
+@error_class
 class Visitor115(Flake8TrioVisitor):
     error_codes = {
         "TRIO115": "Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.",
@@ -1378,6 +1402,7 @@ class Visitor115(Flake8TrioVisitor):
             self.error(node)
 
 
+@error_class
 class Visitor116(Flake8TrioVisitor):
     error_codes = {
         "TRIO116": (
@@ -1420,6 +1445,7 @@ class Visitor116(Flake8TrioVisitor):
                 self.error(node)
 
 
+@error_class
 class Visitor200(Flake8TrioVisitor):
     error_codes = {
         "TRIO200": "User-configured blocking sync call {0} in async function, consider "
@@ -1441,9 +1467,127 @@ class Visitor200(Flake8TrioVisitor):
 
     def visit_Call(self, node: ast.Call):
         if self.async_function and not getattr(node, "awaited", False):
-            blocking_calls = self.options.trio200_blocking_calls
-            if key := fnmatch_qualified_name([node.func], *blocking_calls):
-                self.error(node, key, blocking_calls[key])
+            self.visit_blocking_call(node)
+
+    def visit_blocking_call(self, node: ast.Call):
+        blocking_calls = self.options.trio200_blocking_calls
+        if key := fnmatch_qualified_name([node.func], *blocking_calls):
+            self.error(node, key, blocking_calls[key])
+
+
+@error_class
+class Visitor21X(Visitor200):
+    error_codes = {
+        "TRIO210": "Sync HTTP call {} in async function, use httpx.AsyncClient",
+        "TRIO211": (
+            "Likely sync HTTP call {} in async function, use httpx.AsyncClient"
+        ),
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.imports: set[str] = set()
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if node.module == "urllib3":
+            self.imports.add(node.module)
+
+    def visit_Import(self, node: ast.Import):
+        for name in node.names:
+            if name.name == "urllib3":
+                # Could also save the name.asname for matching
+                self.imports.add(name.name)
+
+    def visit_blocking_call(self, node: ast.Call):
+        http_methods = {
+            "get",
+            "options",
+            "head",
+            "post",
+            "put",
+            "patch",
+            "delete",
+        }
+        func_name = ast.unparse(node.func)
+        for http_package in "requests", "httpx":
+            if get_matching_call(node, *http_methods | {"request"}, base=http_package):
+                self.error(node, func_name, error_code="TRIO210")
+                return
+
+        if func_name in (
+            "urllib3.request",
+            "urllib.request.urlopen",
+            "request.urlopen",
+            "urlopen",
+        ):
+            self.error(node, func_name, error_code="TRIO210")
+
+        elif (
+            "urllib3" in self.imports
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "request"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)
+            and node.args[0].value.lower() in http_methods | {"trace", "connect"}
+        ):
+            self.error(node, func_name, error_code="TRIO211")
+
+
+# Process invocations 202
+@error_class
+class Visitor22X(Visitor200):
+    error_codes = {
+        "TRIO220": (
+            "Sync call {} in async function, use "
+            "`await nursery.start(trio.run_process, ...)`"
+        ),
+        "TRIO221": "Sync call {} in async function, use `await trio.run_process(...)`",
+    }
+
+    def visit_blocking_call(self, node: ast.Call):
+        def is_p_wait(arg: ast.expr) -> bool:
+            return (isinstance(arg, ast.Attribute) and arg.attr == "P_WAIT") or (
+                isinstance(arg, ast.Name) and arg.id == "P_WAIT"
+            )
+
+        subprocess_calls = {
+            "run",
+            "call",
+            "check_call",
+            "check_output",
+            "getoutput",
+            "getstatusoutput",
+        }
+
+        func_name = ast.unparse(node.func)
+        if func_name in ("subprocess.Popen", "os.popen"):
+            self.error(node, func_name, error_code="TRIO220")
+            return
+
+        if func_name == "os.system" or get_matching_call(
+            node, *subprocess_calls, base="subprocess"
+        ):
+            self.error(node, func_name, error_code="TRIO221")
+            return
+
+        if re.match("os.spawn[vl]p?e?", func_name):
+            # if mode= is given and not [os.]P_WAIT: TRIO220
+            # 1. as a positional parameter
+            if node.args:
+                arg = node.args[0]
+                if not is_p_wait(arg):
+                    self.error(node, func_name, error_code="TRIO220")
+                    return
+            # 2. as a keyword parameter
+            for kw in node.keywords:
+                if kw.arg == "mode" and not is_p_wait(kw.value):
+                    self.error(node, func_name, error_code="TRIO220")
+                    return
+
+            # otherwise, TRIO221
+            self.error(node, func_name, error_code="TRIO221")
+            return
 
 
 # flake8 ignores type parameters if using comma_separated_list
