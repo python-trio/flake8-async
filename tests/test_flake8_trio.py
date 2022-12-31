@@ -468,7 +468,7 @@ async def foo():
 """
     )
     return (
-        "./example.py:5:5: TRIO200: User-configured blocking sync call sync_fns.* "
+        "./example.py:5:5: TRIO200 User-configured blocking sync call sync_fns.* "
         "in async function, consider replacing with the_async_equivalent.\n"
     )
 
