@@ -468,7 +468,7 @@ async def foo():
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True)
     assert not res.stderr
     assert res.stdout == (
-        b"./example.py:5:5: TRIO200: User-configured blocking sync call sync_fns.* "
+        b"./example.py:5:5: TRIO200 User-configured blocking sync call sync_fns.* "
         b"in async function, consider replacing with the_async_equivalent.\n"
     )
 
