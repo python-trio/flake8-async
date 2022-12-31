@@ -1,6 +1,10 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 22.12.5
+- The `--startable-in-context-manager` and `--trio200-blocking-calls` options now handle spaces and newlines.
+- Now compatible with  [flake8-noqa](https://pypi.org/project/flake8-noqa/)'s NQA102 and NQA103 checks.
+
 ## 22.12.4
 - TRIO200 no longer warns on directly awaited calls
 
