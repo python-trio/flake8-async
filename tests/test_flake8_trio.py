@@ -502,7 +502,7 @@ def test_200_from_config_subprocess(tmp_path: Path):
     err_msg = _test_trio200_from_config_common(tmp_path)
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True)
     assert not res.stderr
-    assert res.stdout == bytes(err_msg, "ascii")
+    assert res.stdout == err_msg.encode("ascii")
 
 
 @pytest.mark.fuzz
