@@ -2,6 +2,7 @@ import importlib
 
 import trio
 import trio as foo  # error: 0
+from foo import blah
 from trio import *  # type: ignore # noqa # error: 0
 from trio import blah, open_file as foo  # noqa # error: 0
 

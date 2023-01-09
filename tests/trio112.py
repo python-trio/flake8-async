@@ -102,3 +102,7 @@ with trio.open_nursery() as n:
 # redundant nursery, not handled
 with trio.open_nursery():
     pass
+
+# code coverage: no variable name and body is an expression
+with trio.open_nursery():
+    print()

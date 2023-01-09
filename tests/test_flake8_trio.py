@@ -10,9 +10,10 @@ import subprocess
 import sys
 import tokenize
 import unittest
+from collections import deque
 from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import DefaultDict
+from typing import Any, DefaultDict
 
 import pytest
 from flake8 import __version_info__ as flake8_version_info
@@ -24,7 +25,7 @@ from hypothesmith import from_grammar, from_node
 
 from flake8_trio import Error, Flake8TrioVisitor, Plugin, Statement
 
-trio_test_files_regex = re.compile(r"trio\d\d\d(_py.*)?.py")
+trio_test_files_regex = re.compile(r"trio\d\d\d(_.*)?.py")
 
 test_files: list[tuple[str, str]] = sorted(
     (os.path.splitext(f)[0].upper(), f)
@@ -46,7 +47,7 @@ def _default_option_manager():
 
 
 # check for presence of _pyXX, skip if version is later, and prune parameter
-def check_version(test: str) -> str:
+def check_version(test: str):
     python_version = re.search(r"(?<=_PY)\d*", test)
     if python_version:
         version_str = python_version.group()
@@ -54,8 +55,6 @@ def check_version(test: str) -> str:
         v_i = sys.version_info
         if (v_i.major, v_i.minor) < (int(major), int(minor)):
             raise unittest.SkipTest("v_i, major, minor")
-        return test.split("_")[0]
-    return test
 
 
 ERROR_CODES = {
@@ -68,12 +67,16 @@ ERROR_CODES = {
 @pytest.mark.parametrize("test, path", test_files)
 def test_eval(test: str, path: str):
     # version check
-    test = check_version(test)
+    check_version(test)
+    test = test.split("_")[0]
 
     assert test in ERROR_CODES, "error code not defined in flake8_trio.py"
 
-    include = [test]
-    parsed_args = [""]
+    # only enable the tested visitor to save performance and ease debugging
+    # if a test requires enabling multiple visitors they specify a
+    # `# ARG --enable-vis...` that comes later in the arg list, overriding this
+    parsed_args = [f"--enable-visitor-codes-regex={test}"]
+
     expected: list[Error] = []
 
     with open(os.path.join("tests", path), encoding="utf-8") as file:
@@ -85,14 +88,8 @@ def test_eval(test: str, path: str):
 
         line = line.strip()
 
-        # add other error codes to check if #INCLUDE is specified
-        if reg_match := re.search(r"(?<=INCLUDE).*", line):
-            for other_code in reg_match.group().split(" "):
-                if other_code.strip():
-                    include.append(other_code.strip())
-
-        # add command-line args if specified with #ARGS
-        elif reg_match := re.search(r"(?<=ARGS).*", line):
+        # add command-line args if specified with #ARG
+        if reg_match := re.search(r"(?<=ARG ).*", line):
             parsed_args.append(reg_match.group().strip())
 
         # skip commented out lines
@@ -147,7 +144,7 @@ def test_eval(test: str, path: str):
     assert expected, f"failed to parse any errors in file {path}"
 
     plugin = read_file(path)
-    assert_expected_errors(plugin, include, *expected, args=parsed_args)
+    assert_expected_errors(plugin, *expected, args=parsed_args)
 
 
 # Codes that are supposed to also raise errors when run on sync code, and should
@@ -197,10 +194,14 @@ def test_noerror_on_sync_code(test: str, path: str):
         source = f.read()
     tree = SyncTransformer().visit(ast.parse(source))
 
+    ignored_codes_regex = (
+        "(?!("
+        + "|".join(error_codes_ignored_when_checking_transformed_sync_code)
+        + "))"
+    )
     assert_expected_errors(
         Plugin(tree),
-        include=error_codes_ignored_when_checking_transformed_sync_code,
-        invert_include=True,
+        args=[f"--enable-visitor-codes-regex={ignored_codes_regex}"],
     )
 
 
@@ -209,23 +210,21 @@ def read_file(test_file: str):
     return Plugin.from_filename(str(filename))
 
 
-def assert_expected_errors(
-    plugin: Plugin,
-    include: Iterable[str],
-    *expected: Error,
-    args: list[str] | None = None,
-    invert_include: bool = False,
-):
-    # initialize default option values
+def initialize_options(plugin: Plugin, args: list[str] | None = None):
     om = _default_option_manager()
     plugin.add_options(om)
-    plugin.parse_options(om.parse_args(args=(args if args else [""])))
+    plugin.parse_options(om.parse_args(args=(args if args else [])))
 
-    errors = sorted(
-        e
-        for e in plugin.run()
-        if (e.code in include if not invert_include else e.code not in include)
-    )
+
+def assert_expected_errors(
+    plugin: Plugin,
+    *expected: Error,
+    args: list[str] | None = None,
+):
+    # initialize default option values
+    initialize_options(plugin, args)
+
+    errors = sorted(e for e in plugin.run())
     expected_ = sorted(expected)
 
     print_first_diff(errors, expected_)
@@ -369,6 +368,9 @@ def test_107_permutations():
     # since each test is so fast, and there's so many permutations, manually doing
     # the permutations in a single test is much faster than the permutations from using
     # pytest parametrization - and does not clutter up the output massively.
+    plugin = Plugin(ast.AST())
+    initialize_options(plugin, args=["--enable-visitor-codes-regex=TRIO107"])
+
     check = "await foo()"
     for try_, exc1, exc2, bare_exc, else_, finally_ in itertools.product(
         (check, "..."),
@@ -401,7 +403,10 @@ def test_107_permutations():
             )
             return
 
-        errors = [e for e in Plugin(tree).run() if e.code == "TRIO107"]
+        # not a type error per se, but it's pyright warning about assigning to a
+        # protected class member - hence we silence it with a `type: ignore`.
+        plugin._tree = tree  # type: ignore
+        errors = list(plugin.run())
 
         if (
             # return in exception
@@ -422,14 +427,10 @@ def test_107_permutations():
 
 def test_114_raises_on_invalid_parameter(capsys: pytest.CaptureFixture[str]):
     plugin = Plugin(ast.AST())
-    om = _default_option_manager()
-    plugin.add_options(om)
     # flake8 will reraise ArgumentError as SystemExit
     for arg in "blah.foo", "foo*", "*":
         with pytest.raises(SystemExit):
-            plugin.parse_options(
-                om.parse_args(args=[f"--startable-in-context-manager={arg}"])
-            )
+            initialize_options(plugin, args=[f"--startable-in-context-manager={arg}"])
         out, err = capsys.readouterr()
         assert not out
         assert f"{arg!r} is not a valid method identifier" in err
@@ -437,13 +438,9 @@ def test_114_raises_on_invalid_parameter(capsys: pytest.CaptureFixture[str]):
 
 def test_200_options(capsys: pytest.CaptureFixture[str]):
     plugin = Plugin(ast.AST())
-    om = _default_option_manager()
-    plugin.add_options(om)
     for i, arg in (0, "foo"), (2, "foo->->bar"), (2, "foo->bar->fee"):
         with pytest.raises(SystemExit):
-            plugin.parse_options(
-                om.parse_args(args=[f"--trio200-blocking-calls={arg}"])
-            )
+            initialize_options(plugin, args=[f"--trio200-blocking-calls={arg}"])
         out, err = capsys.readouterr()
         assert not out, out
         assert all(word in err for word in (str(i), arg, "->"))
@@ -505,30 +502,52 @@ def test_200_from_config_subprocess(tmp_path: Path):
     assert res.stdout == err_msg.encode("ascii")
 
 
+# from https://docs.python.org/3/library/itertools.html#itertools-recipes
+def consume(iterator: Iterable[Any]):
+    deque(iterator, maxlen=0)
+
+
 @pytest.mark.fuzz
 class TestFuzz(unittest.TestCase):
     @settings(max_examples=1_000, suppress_health_check=[HealthCheck.too_slow])
     @given((from_grammar() | from_node()).map(ast.parse))
     def test_does_not_crash_on_any_valid_code(self, syntax_tree: ast.AST):
+        # TODO: figure out how to get unittest to play along with pytest options
+        # so `--enable-visitor-codes-regex` can be passed through.
+        # Though I barely notice a difference manually changing this value, or even
+        # not running the plugin at all, so overhead looks to be vast majority of runtime
+        enable_visitor_codes_regex = ".*"
+
         # Given any syntatically-valid source code, the checker should
         # not crash.  This tests doesn't check that we do the *right* thing,
         # just that we don't crash on valid-if-poorly-styled code!
-        Plugin(syntax_tree).run()
+        plugin = Plugin(syntax_tree)
+        initialize_options(
+            plugin, [f"--enable-visitor-codes-regex={enable_visitor_codes_regex}"]
+        )
 
-    @staticmethod
-    def _iter_python_files():
-        # Because the generator isn't perfect, we'll also test on all the code
-        # we can easily find in our current Python environment - this includes
-        # the standard library, and all installed packages.
-        for base in sorted(set(site.PREFIXES)):
-            for dirname, _, files in os.walk(base):
-                for f in files:
-                    if f.endswith(".py"):
-                        yield Path(dirname) / f
+        consume(plugin.run())
 
-    def test_does_not_crash_on_site_code(self):
-        for path in self._iter_python_files():
-            try:
-                Plugin.from_filename(str(path)).run()
-            except Exception as err:
-                raise AssertionError(f"Failed on {path}") from err
+
+def _iter_python_files():
+    # Because the generator isn't perfect, we'll also test on all the code
+    # we can easily find in our current Python environment - this includes
+    # the standard library, and all installed packages.
+    for base in sorted(set(site.PREFIXES)):
+        for dirname, _, files in os.walk(base):
+            for f in files:
+                if f.endswith(".py"):
+                    yield Path(dirname) / f
+
+
+@pytest.mark.fuzz
+def test_does_not_crash_on_site_code(enable_visitor_codes_regex: str):
+    for path in _iter_python_files():
+        try:
+            plugin = Plugin.from_filename(str(path))
+            initialize_options(
+                plugin, [f"--enable-visitor-codes-regex={enable_visitor_codes_regex}"]
+            )
+            consume(plugin.run())
+        except Exception as err:
+            raise AssertionError(f"Failed on {path}") from err

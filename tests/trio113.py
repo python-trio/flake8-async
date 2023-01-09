@@ -7,7 +7,7 @@ from functools import partial
 
 import trio
 
-# ARGS --startable-in-context-manager=custom_startable_function
+# ARG --startable-in-context-manager=custom_startable_function
 
 
 @asynccontextmanager

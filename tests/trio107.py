@@ -10,7 +10,7 @@ def __() -> Any:
     ...
 
 
-# INCLUDE TRIO108
+# ARG --enable-visitor-codes-regex=(TRIO107)|(TRIO108)
 
 # function whose body solely consists of pass, ellipsis, or string constants is safe
 async def foo_empty_1():
@@ -476,3 +476,22 @@ async def f2():
     while True:
         await trio.sleep(0)
         return
+
+
+# code coverage
+def foo_sync():
+    # try in sync function
+    try:
+        pass
+    except:
+        pass
+
+    # continue/break in sync function
+    while True:
+        if ...:
+            continue
+        if ...:
+            break
+
+    # boolop in sync function
+    True and True

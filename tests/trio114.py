@@ -1,6 +1,6 @@
 import trio
 
-# ARGS --startable-in-context-manager=foo
+# ARG --startable-in-context-manager=foo
 
 
 async def foo(task_status):

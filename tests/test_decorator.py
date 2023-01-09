@@ -3,9 +3,8 @@ from __future__ import annotations
 import ast
 
 from flake8.main.application import Application
-from test_flake8_trio import _default_option_manager
 
-from flake8_trio import Plugin, Statement, Visitor107_108, fnmatch_qualified_name
+from flake8_trio import Statement, Visitor107_108, fnmatch_qualified_name
 
 
 def dec_list(*decorators: str) -> ast.Module:
@@ -80,22 +79,6 @@ def test_calls():
 def test_pep614():
     # Just don't crash and we'll be good.
     assert not wrap(("(any, expression, we, like)",), "no match here")
-
-
-def test_plugin():
-    tree = dec_list("app.route")
-    plugin = Plugin(tree)
-
-    om = _default_option_manager()
-    plugin.add_options(om)
-
-    plugin.parse_options(om.parse_args(args=[]))
-    assert tuple(plugin.run())
-
-    arg = "--no-checkpoint-warning-decorators=app.route"
-    plugin.parse_options(om.parse_args(args=[arg]))
-
-    assert not tuple(plugin.run())
 
 
 common_flags = ["--select=TRIO", "tests/trio_options.py"]
