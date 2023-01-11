@@ -274,12 +274,11 @@ class Flake8TrioVisitor(ast.NodeVisitor):
 # ignores module and only checks the unqualified name of the decorator
 # used in 101 and 107/108
 def has_decorator(decorator_list: list[ast.expr], *names: str):
-    for dec in decorator_list:
-        if (isinstance(dec, ast.Name) and dec.id in names) or (
-            isinstance(dec, ast.Attribute) and dec.attr in names
-        ):
-            return True
-    return False
+    return any(
+        (isinstance(dec, ast.Name) and dec.id in names)
+        or (isinstance(dec, ast.Attribute) and dec.attr in names)
+        for dec in decorator_list
+    )
 
 
 # matches the fully qualified name against fnmatch pattern
@@ -612,17 +611,18 @@ class Visitor103_104(Flake8TrioVisitor):
         if not self.unraised:
             return
 
+        # the following block is duplicated in Visitor107_108
         infinite_loop = False
         if isinstance(node, ast.While):
             try:
                 infinite_loop = body_guaranteed_once = bool(ast.literal_eval(node.test))
-            except Exception:
+            except Exception:  # noqa: PIE786
                 body_guaranteed_once = False
             self.visit_nodes(node.test)
         else:
-            body_guaranteed_once = iter_guaranteed_once(node.iter)
             self.visit_nodes(node.target)
             self.visit_nodes(node.iter)
+            body_guaranteed_once = iter_guaranteed_once(node.iter)
 
         self.save_state(node, "unraised_break", "unraised_continue")
         self.unraised_break = False
@@ -667,11 +667,10 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
             else:
                 return True
         return False
+
     if isinstance(iterable, ast.Constant):
-        try:
-            return len(iterable.value) > 0
-        except Exception:
-            return False
+        return hasattr(iterable.value, "__len__") and len(iterable.value) > 0
+
     if isinstance(iterable, ast.Dict):
         for key, val in zip(iterable.keys, iterable.values):
             # {**{...}, **{<...>}} is parsed as {None: {...}, None: {<...>}}
@@ -688,7 +687,7 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
     ):
         try:
             return len(range(*[ast.literal_eval(a) for a in iterable.args])) > 0
-        except Exception:
+        except Exception:  # noqa: PIE786
             return False
     return False
 
@@ -975,11 +974,13 @@ class Visitor107_108(Flake8TrioVisitor):
         if not self.async_function:
             return
         # visit condition
+
+        # the following block is duplicated in Visitor103_104
         infinite_loop = False
         if isinstance(node, ast.While):
             try:
                 infinite_loop = body_guaranteed_once = bool(ast.literal_eval(node.test))
-            except Exception:
+            except Exception:  # noqa: PIE786
                 body_guaranteed_once = False
             self.visit_nodes(node.test)
         else:

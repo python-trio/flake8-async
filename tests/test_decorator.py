@@ -12,8 +12,7 @@ def dec_list(*decorators: str) -> ast.Module:
     for dec in decorators:
         source += f"@{dec}\n"
     source += "async def f():\n  bar()"
-    tree = ast.parse(source)
-    return tree
+    return ast.parse(source)
 
 
 def wrap(decorators: tuple[str, ...], decs2: str) -> str | None:
@@ -86,8 +85,7 @@ common_flags = ["--select=TRIO", "tests/trio_options.py"]
 
 def test_command_line_1(capfd):
     Application().run(common_flags + ["--no-checkpoint-warning-decorators=app.route"])
-    out, err = capfd.readouterr()
-    assert not out and not err
+    assert capfd.readouterr() == ("", "")
 
 
 expected_out = (
@@ -101,11 +99,9 @@ expected_out = (
 
 def test_command_line_2(capfd):
     Application().run(common_flags + ["--no-checkpoint-warning-decorators=app"])
-    out, err = capfd.readouterr()
-    assert out == expected_out and not err
+    assert capfd.readouterr() == (expected_out, "")
 
 
 def test_command_line_3(capfd):
     Application().run(common_flags)
-    out, err = capfd.readouterr()
-    assert out == expected_out and not err
+    assert capfd.readouterr() == (expected_out, "")
