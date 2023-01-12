@@ -1,14 +1,13 @@
 """Tests for flake8-trio package metadata."""
 from __future__ import annotations
 
-import os
 import re
 import unittest
 from collections.abc import Iterable
 from pathlib import Path
 from typing import NamedTuple
 
-from test_flake8_trio import ERROR_CODES, trio_test_files_regex
+from test_flake8_trio import ERROR_CODES
 
 import flake8_trio
 
@@ -68,11 +67,28 @@ class test_messages_documented(unittest.TestCase):
 
         documented_errors["flake8_trio.py"] = set(ERROR_CODES)
 
-        documented_errors["tests/trio*.py"] = {
-            os.path.splitext(f)[0].upper().split("_")[0]
-            for f in os.listdir("tests")
-            if re.match(trio_test_files_regex, f)
-        }
+        # get tested error codes from file names and from `INCLUDE` lines
+        documented_errors["tests/trio*.py"] = set()
+        p = Path(__file__).parent
+        for file_path in p.iterdir():
+            if not file_path.is_file():
+                continue
+
+            if m := re.search(r"trio\d\d\d", str(file_path)):
+                documented_errors["tests/trio*.py"].add(m.group().upper())
+
+            with open(file_path) as file:
+                for line in file:
+                    if line.startswith("# ARG --enable-visitor-codes-regex"):
+                        for m in re.findall(r"trio\d\d\d", line, re.IGNORECASE):
+                            # pyright types m as `Any` (as it is in typeshed)
+                            # mypy types it as Optional[Match[str]]
+                            # but afaict it should be something like str|Tuple[str,...]
+                            # depending on whether there's a group in the pattern or not.
+                            # (or bytes, if both inputs are bytes)
+                            assert isinstance(m, str)
+                            documented_errors["tests/trio*.py"].add(m)
+                        break
 
         unique_errors: dict[str, set[str]] = {}
         missing_errors: dict[str, set[str]] = {}

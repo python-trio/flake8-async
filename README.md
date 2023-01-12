@@ -40,6 +40,10 @@ pip install flake8-trio
 - **TRIO115**: Replace `trio.sleep(0)` with the more suggestive `trio.lowlevel.checkpoint()`.
 - **TRIO116**: `trio.sleep()` with >24 hour interval should usually be`trio.sleep_forever()`.
 - **TRIO200**: User-configured error for blocking sync calls in async functions. Does nothing by default, see [`trio200-blocking-calls`](#trio200-blocking-calls) for how to configure it.
+- **TRIO210**: Sync HTTP call {} in async function, use `httpx.AsyncClient`.
+- **TRIO211**: Likely sync HTTP call {} in async function, use `httpx.AsyncClient`. Looks for `urllib3` method calls on pool objects, but only matching on the method signature and not the object.
+- **TRIO220**: Sync call {} in async function, use `await nursery.start(trio.run_process, ...)`.
+- **TRIO221**: Sync call {} in async function, use `await trio.run_process(...)`.
 
 
 ## Configuration

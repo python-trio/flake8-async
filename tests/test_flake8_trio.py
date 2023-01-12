@@ -23,9 +23,10 @@ from flake8.options.manager import OptionManager
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import Error, Flake8TrioVisitor, Plugin, Statement
+from flake8_trio import ERROR_CLASSES, Error, Plugin, Statement
 
-trio_test_files_regex = re.compile(r"trio\d\d\d(_.*)?.py")
+# TODO: Move test_eval files into a separate directory
+trio_test_files_regex = re.compile(r"trio\d.*.py")
 
 test_files: list[tuple[str, str]] = sorted(
     (os.path.splitext(f)[0].upper(), f)
@@ -59,7 +60,7 @@ def check_version(test: str):
 
 ERROR_CODES = {
     err_code: err_class
-    for err_class in Flake8TrioVisitor.__subclasses__()
+    for err_class in ERROR_CLASSES
     for err_code in err_class.error_codes.keys()
 }
 
@@ -70,12 +71,13 @@ def test_eval(test: str, path: str):
     check_version(test)
     test = test.split("_")[0]
 
-    assert test in ERROR_CODES, "error code not defined in flake8_trio.py"
+    parsed_args = []
 
     # only enable the tested visitor to save performance and ease debugging
     # if a test requires enabling multiple visitors they specify a
     # `# ARG --enable-vis...` that comes later in the arg list, overriding this
-    parsed_args = [f"--enable-visitor-codes-regex={test}"]
+    if test in ERROR_CODES:
+        parsed_args = [f"--enable-visitor-codes-regex={test}"]
 
     expected: list[Error] = []
 
@@ -141,6 +143,7 @@ def test_eval(test: str, path: str):
                 )
                 raise ParseError(msg) from e
 
+    assert parsed_args, "no parsed_args"
     assert expected, f"failed to parse any errors in file {path}"
 
     plugin = read_file(path)
