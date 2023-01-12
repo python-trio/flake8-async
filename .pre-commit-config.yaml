@@ -1,3 +1,5 @@
+# not necessary as Zac-HD/flake8-trio don't currently run pre-commit as an app
+# but keeping it for forks, or in case that changes
 ci:
   skip: [pyright]
 
