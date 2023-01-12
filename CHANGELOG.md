@@ -1,9 +1,12 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 23.1.3
+- Add TRIO900: ban async generators not decorated with known safe decorator
+
 ## 23.1.2
 - Add TRIO230, TRIO231 - sync IO calls in async function
--
+
 ## 23.1.1
 - Add TRIO210, TRIO211 - blocking sync call in async function, using network packages (requests, httpx, urllib3)
 - Add TRIO220, TRIO221 - blocking sync call in async function, using subprocess or os.

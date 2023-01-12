@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "23.1.2"
+__version__ = "23.1.3"
 
 
 class Statement(NamedTuple):
@@ -274,12 +274,18 @@ class Flake8TrioVisitor(ast.NodeVisitor):
 
 
 ERROR_CLASSES: set[type[Flake8TrioVisitor]] = set()
+default_disabled_error_codes: list[str] = []
 
 T = TypeVar("T", bound=Flake8TrioVisitor)
 
 
 def error_class(error_class: type[T]) -> type[T]:
     ERROR_CLASSES.add(error_class)
+    return error_class
+
+
+def disabled_by_default(error_class: type[T]) -> type[T]:
+    default_disabled_error_codes.extend(error_class.error_codes)
     return error_class
 
 
@@ -1615,6 +1621,35 @@ class Visitor23X(Visitor200):
             self.error(node, func_name, error_code="TRIO231")
 
 
+@error_class
+@disabled_by_default
+class Visitor900(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO900": ("Async generator without known-safe decorator not allowed.")
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.unsafe_function: ast.AsyncFunctionDef | None = None
+
+    def visit_AsyncFunctionDef(
+        self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
+    ):
+        self.save_state(node, "unsafe_function")
+        if isinstance(node, ast.AsyncFunctionDef) and not fnmatch_qualified_name(
+            node.decorator_list, *self.options.no_checkpoint_warning_decorators
+        ):
+            self.unsafe_function = node
+
+    def visit_Yield(self, node: ast.Yield):
+        if self.unsafe_function is not None:
+            self.error(self.unsafe_function)
+            self.unsafe_function = None
+
+    visit_FunctionDef = visit_AsyncFunctionDef
+    visit_Lambda = visit_AsyncFunctionDef
+
+
 # flake8 ignores type parameters if using comma_separated_list
 # so we need to reimplement that ourselves if we want to use "type"
 # to check values
@@ -1663,6 +1698,9 @@ class Plugin:
 
     @staticmethod
     def add_options(option_manager: OptionManager):
+        # Disable TRIO9xx calls
+        option_manager.extend_default_ignore(default_disabled_error_codes)
+
         option_manager.add_option(
             "--no-checkpoint-warning-decorators",
             default="asynccontextmanager",

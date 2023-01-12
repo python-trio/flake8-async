@@ -526,6 +526,19 @@ def test_200_from_config_subprocess(tmp_path: Path):
     assert res.stdout == err_msg.encode("ascii")
 
 
+def test_900_default_off(capsys: pytest.CaptureFixture[str]):
+    from flake8.main.cli import main
+
+    main(
+        argv=[
+            "tests/trio900.py",
+        ]
+    )
+    out, err = capsys.readouterr()
+    assert not err
+    assert "TRIO900" not in out
+
+
 # from https://docs.python.org/3/library/itertools.html#itertools-recipes
 def consume(iterator: Iterable[Any]):
     deque(iterator, maxlen=0)
