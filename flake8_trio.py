@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "23.1.2"
+__version__ = "23.1.3"
 
 
 class Statement(NamedTuple):
@@ -1613,6 +1613,57 @@ class Visitor23X(Visitor200):
             self.error(node, func_name, error_code="TRIO230")
         elif func_name == "os.fdopen":
             self.error(node, func_name, error_code="TRIO231")
+
+
+@error_class
+class Visitor24X(Visitor200):
+    error_codes = {
+        "TRIO240": ("Avoid using os.path, prefer using trio.Path objects"),
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.imports_from_ospath: set[str] = set()
+
+    os_funcs = (
+        "_path_normpath",
+        "normpath",
+        "_joinrealpath",
+        "islink",
+        "lexists",
+        "ismount",  # safe on windows, unsafe on posix
+        "realpath",
+        "exists",
+        "isdir",
+        "isfile",
+        "getatime",
+        "getctime",
+        "getmtime",
+        "getsize",
+        "samefile",
+        "sameopenfile",
+        "relpath",
+    )
+
+    # doesn't protect against `from os import path` or `import os.path as <x>`
+    # but those should be very rare
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if node.module == "os.path":
+            for alias in node.names:
+                self.imports_from_ospath.add(
+                    alias.asname if alias.asname is not None else alias.name
+                )
+
+    def visit_Call(self, node: ast.Call):
+        if not self.async_function:
+            return
+        func_name = ast.unparse(node.func)
+        if func_name in self.imports_from_ospath:
+            self.error(node, func_name)
+        elif (m := re.fullmatch(r"os\.path\.(?P<func>.*)", func_name)) and m.group(
+            "func"
+        ) in self.os_funcs:
+            self.error(node, m.group("func"))
 
 
 # flake8 ignores type parameters if using comma_separated_list
