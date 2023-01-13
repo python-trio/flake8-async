@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from flake8.options.manager import OptionManager
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "23.1.1"
+__version__ = "23.1.2"
 
 
 class Statement(NamedTuple):
@@ -224,7 +224,9 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         error_code: str | None = None,
     ):
         if error_code is None:
-            assert len(self.error_codes) == 1
+            assert (
+                len(self.error_codes) == 1
+            ), "No error code defined, but class has multiple codes"
             error_code = next(iter(self.error_codes))
         # don't emit an error if this code is disabled in a multi-code visitor
         elif not re.match(self.options.enable_visitor_codes_regex, error_code):
@@ -1588,6 +1590,29 @@ class Visitor22X(Visitor200):
             # otherwise, TRIO221
             self.error(node, func_name, error_code="TRIO221")
             return
+
+
+@error_class
+class Visitor23X(Visitor200):
+    error_codes = {
+        "TRIO230": ("Sync call {} in async function, use " "`trio.open_file(...)`."),
+        "TRIO231": ("Sync call {0} in async function, use " "`trio.wrap_file({0})`."),
+    }
+
+    def visit_Call(self, node: ast.Call):
+        func_name = ast.unparse(node.func)
+        if func_name == "trio.wrap_file" and len(node.args) == 1:
+            setattr(node.args[0], "wrapped", True)  # noqa: B010
+        super().visit_Call(node)
+
+    def visit_blocking_call(self, node: ast.Call):
+        if getattr(node, "wrapped", False):
+            return
+        func_name = ast.unparse(node.func)
+        if func_name in ("open", "io.open", "io.open_code"):
+            self.error(node, func_name, error_code="TRIO230")
+        elif func_name == "os.fdopen":
+            self.error(node, func_name, error_code="TRIO231")
 
 
 # flake8 ignores type parameters if using comma_separated_list

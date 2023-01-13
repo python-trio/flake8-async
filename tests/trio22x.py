@@ -16,6 +16,8 @@ async def foo():
     subprocess.getoutput()  # TRIO221: 4, 'subprocess.getoutput'
     subprocess.getstatusoutput()  # TRIO221: 4, 'subprocess.getstatusoutput'
 
+    await async_fun(subprocess.getoutput())  # TRIO221: 20, 'subprocess.getoutput'
+
     subprocess.anything()
     subprocess.foo()
     subprocess.bar.foo()
