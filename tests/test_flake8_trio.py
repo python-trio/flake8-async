@@ -129,7 +129,7 @@ def test_eval(test: str, path: str):
                 col = 0
             assert isinstance(
                 col, int
-            ), f'invalid column "{col}" @L{lineno}, in "{line}"'
+            ), f"invalid column {col!r} @L{lineno}, in {line!r}"
 
             if err_code == "error":
                 err_code = test
@@ -353,7 +353,7 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
                 f"col: {error.col}",
                 f"code: {error.code}",
                 f"args: {error.args}",
-                f'format string: "{ERROR_CODES[error.code].error_codes[error.code]}"',
+                f"format string: {ERROR_CODES[error.code].error_codes[error.code]!r}",
                 sep="\n    ",
                 file=sys.stderr,
             )
