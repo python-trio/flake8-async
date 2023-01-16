@@ -39,7 +39,7 @@ repos:
     rev: 6.0.0
     hooks:
     -   id: flake8
-        args: ["--exclude", ".*,tests/trio*.py"]
+        args: ["--exclude", ".*,tests/eval_files/*"]
         language_version: python3
         additional_dependencies:
           - flake8-builtins
@@ -63,7 +63,7 @@ repos:
     rev: 5.0.4
     hooks:
     -   id: flake8
-        args: ["--exclude", ".*,tests/trio*.py", "--select=E800"]
+        args: ["--exclude", ".*,tests/eval_files/*", "--select=E800"]
         language_version: python3
         additional_dependencies:
           - flake8-eradicate

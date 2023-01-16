@@ -25,13 +25,8 @@ from hypothesmith import from_grammar, from_node
 
 from flake8_trio import ERROR_CLASSES, Error, Plugin, Statement
 
-# TODO: Move test_eval files into a separate directory
-trio_test_files_regex = re.compile(r"trio\d.*.py")
-
-test_files: list[tuple[str, str]] = sorted(
-    (os.path.splitext(f)[0].upper(), f)
-    for f in os.listdir("tests")
-    if re.match(trio_test_files_regex, f)
+test_files: list[tuple[str, Path]] = sorted(
+    (f.stem.upper(), f) for f in (Path(__file__).parent / "eval_files").iterdir()
 )
 
 
@@ -66,7 +61,7 @@ ERROR_CODES = {
 
 
 @pytest.mark.parametrize(("test", "path"), test_files)
-def test_eval(test: str, path: str):
+def test_eval(test: str, path: Path):
     # version check
     check_version(test)
     test = test.split("_")[0]
@@ -81,7 +76,7 @@ def test_eval(test: str, path: str):
 
     expected: list[Error] = []
 
-    with open(os.path.join("tests", path), encoding="utf-8") as file:
+    with open(path, encoding="utf-8") as file:
         lines = file.readlines()
 
     for lineno, line in enumerate(lines, start=1):
@@ -146,7 +141,7 @@ def test_eval(test: str, path: str):
     assert parsed_args, "no parsed_args"
     assert expected, f"failed to parse any errors in file {path}"
 
-    plugin = read_file(path)
+    plugin = Plugin.from_filename(path)
     assert_expected_errors(plugin, *expected, args=parsed_args)
 
 
@@ -189,10 +184,10 @@ class SyncTransformer(ast.NodeTransformer):
 
 
 @pytest.mark.parametrize(("test", "path"), test_files)
-def test_noerror_on_sync_code(test: str, path: str):
+def test_noerror_on_sync_code(test: str, path: Path):
     if any(e in test for e in error_codes_ignored_when_checking_transformed_sync_code):
         return
-    with tokenize.open(f"tests/{path}") as f:
+    with tokenize.open(path) as f:
         source = f.read()
     tree = SyncTransformer().visit(ast.parse(source))
 
@@ -205,11 +200,6 @@ def test_noerror_on_sync_code(test: str, path: str):
         Plugin(tree),
         args=[f"--enable-visitor-codes-regex={ignored_codes_regex}"],
     )
-
-
-def read_file(test_file: str):
-    filename = Path(__file__).absolute().parent / test_file
-    return Plugin.from_filename(str(filename))
 
 
 def initialize_options(plugin: Plugin, args: list[str] | None = None):
