@@ -3,6 +3,7 @@
 
 ## 23.1.3
 - Add TRIO240: usage of `os.path` in async function.
+- Add TRIO900: ban async generators not decorated with known safe decorator
 
 ## 23.1.2
 - Add TRIO230, TRIO231 - sync IO calls in async function

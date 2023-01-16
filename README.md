@@ -49,12 +49,15 @@ pip install flake8-trio
 - **TRIO240**: Avoid using `os.path` in async functions, prefer using `trio.Path` objects.
 
 
+### Warnings disabled by default
+- **TRIO900**: Async generator without known-safe decorator (@asynccontextmanager, or what's specified by `--no-checkpoint-warning-decorators`) not allowed."
+
 ## Configuration
 [You can configure `flake8` with command-line options](https://flake8.pycqa.org/en/latest/user/configuration.html),
 but we prefer using a config file. The file needs to start with a section marker `[flake8]` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.
 
 ### `no-checkpoint-warning-decorators`
-Specify a list of decorators to disable checkpointing checks for, turning off TRIO107 and TRIO108 warnings for functions decorated with any decorator matching any in the list. Matching is done with [fnmatch](https://docs.python.org/3/library/fnmatch.html). Defaults to disabling for `asynccontextmanager`.
+Specify a list of decorators to disable checkpointing checks for, turning off TRIO107, TRIO108 and TRIO900 warnings for functions decorated with any decorator matching any in the list. Matching is done with [fnmatch](https://docs.python.org/3/library/fnmatch.html). Defaults to disabling for `asynccontextmanager`.
 
 Decorators-to-match must be identifiers or dotted names only (not PEP-614 expressions), and will match against the name only - e.g. `foo.bar` matches `foo.bar`, `foo.bar()`, and `foo.bar(args, here)`, etc.
 
