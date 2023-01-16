@@ -1,3 +1,5 @@
+"""Test file used in tests/test_decator.py to check decorator and command line."""
+
 app = None
 
 
