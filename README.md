@@ -46,6 +46,8 @@ pip install flake8-trio
 - **TRIO221**: Sync process call in async function, use `await trio.run_process(...)`.
 - **TRIO230**: Sync IO call in async function, use `trio.open_file(...)`."
 - **TRIO231**: Sync IO call in async function, use `trio.wrap_file(...)`."
+- **TRIO240**: Avoid using `os.path` in async functions, prefer using `trio.Path` objects.
+
 
 ## Configuration
 [You can configure `flake8` with command-line options](https://flake8.pycqa.org/en/latest/user/configuration.html),
