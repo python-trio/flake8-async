@@ -18,6 +18,7 @@ import tokenize
 from argparse import ArgumentTypeError, Namespace
 from collections.abc import Iterable
 from fnmatch import fnmatch
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar, Union, cast
 
 # guard against internal flake8 changes
@@ -1739,7 +1740,7 @@ class Plugin:
         self._tree = tree
 
     @classmethod
-    def from_filename(cls, filename: str) -> Plugin:
+    def from_filename(cls, filename: str | Path) -> Plugin:
         with tokenize.open(filename) as f:
             source = f.read()
         return cls(ast.parse(source))

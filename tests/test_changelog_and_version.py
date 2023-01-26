@@ -68,14 +68,14 @@ class test_messages_documented(unittest.TestCase):
         documented_errors["flake8_trio.py"] = set(ERROR_CODES)
 
         # get tested error codes from file names and from `INCLUDE` lines
-        documented_errors["tests/trio*.py"] = set()
-        p = Path(__file__).parent
+        documented_errors["eval_files"] = set()
+        p = Path(__file__).parent / "eval_files"
         for file_path in p.iterdir():
             if not file_path.is_file():
                 continue
 
             if m := re.search(r"trio\d\d\d", str(file_path)):
-                documented_errors["tests/trio*.py"].add(m.group().upper())
+                documented_errors["eval_files"].add(m.group().upper())
 
             with open(file_path) as file:
                 for line in file:
@@ -87,7 +87,7 @@ class test_messages_documented(unittest.TestCase):
                             # depending on whether there's a group in the pattern or not.
                             # (or bytes, if both inputs are bytes)
                             assert isinstance(m, str)
-                            documented_errors["tests/trio*.py"].add(m)
+                            documented_errors["eval_files"].add(m)
                         break
 
         unique_errors: dict[str, set[str]] = {}

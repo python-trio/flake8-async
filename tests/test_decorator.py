@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from pathlib import Path
 
 from flake8.main.application import Application
 
@@ -80,7 +81,8 @@ def test_pep614():
     assert not wrap(("(any, expression, we, like)",), "no match here")
 
 
-common_flags = ["--select=TRIO", "tests/trio_options.py"]
+file_path = str(Path(__file__).parent / "trio_options.py")
+common_flags = ["--select=TRIO", file_path]
 
 
 def test_command_line_1(capfd):
@@ -89,9 +91,9 @@ def test_command_line_1(capfd):
 
 
 expected_out = (
-    "tests/trio_options.py:2:1: TRIO107 "
+    f"{file_path}:5:1: TRIO107 "
     + Visitor107_108.error_codes["TRIO107"].format(
-        "exit", Statement("function definition", 2)
+        "exit", Statement("function definition", 5)
     )
     + "\n"
 )
