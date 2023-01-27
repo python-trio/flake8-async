@@ -3,6 +3,9 @@
 ## Future
 - Add TRIO232: blocking sync call on file object.
 
+## Future
+- TRIO103 and TRIO104 no longer triggers when `trio.Cancelled` has been handled in previous except handlers.
+
 ## 23.1.4
 - TRIO114 no longer triggers on posonly args named "task_status"
 - TRIO116 will now match on any attribute parameter named `.inf`, not just `math.inf`.
