@@ -23,6 +23,7 @@ def foo4():
     yield
 
 
+# no-checkpoint-warning-decorator now ignored
 @other_context_manager
-async def foo5():
+async def foo5():  # TRIO900: 0
     yield

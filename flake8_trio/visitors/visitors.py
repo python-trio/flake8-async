@@ -10,7 +10,6 @@ from .helpers import (
     cancel_scope_names,
     disabled_by_default,
     error_class,
-    fnmatch_qualified_name,
     get_matching_call,
     has_decorator,
 )
@@ -384,7 +383,7 @@ class Visitor116(Flake8TrioVisitor):
 @disabled_by_default
 class Visitor900(Flake8TrioVisitor):
     error_codes = {
-        "TRIO900": ("Async generator without known-safe decorator not allowed.")
+        "TRIO900": ("Async generator without `@asynccontextmanager` not allowed.")
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -395,8 +394,8 @@ class Visitor900(Flake8TrioVisitor):
         self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
     ):
         self.save_state(node, "unsafe_function")
-        if isinstance(node, ast.AsyncFunctionDef) and not fnmatch_qualified_name(
-            node.decorator_list, *self.options.no_checkpoint_warning_decorators
+        if isinstance(node, ast.AsyncFunctionDef) and not any(
+            _get_identifier(d) == "asynccontextmanager" for d in node.decorator_list
         ):
             self.unsafe_function = node
 
