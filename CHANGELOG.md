@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 23.1.4
+- TRIO900 now only checks `@asynccontextmanager`, not other decorators passed with --no-checkpoint-warning-decorators.
+
 ## 23.1.3
 - Add TRIO240: usage of `os.path` in async function.
 - Add TRIO900: ban async generators not decorated with known safe decorator
