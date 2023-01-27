@@ -51,13 +51,14 @@ repos:
           - flake8-bugbear
           - flake8-comprehensions
           - flake8-datetimez
-         #- flake8-docstrings
+          - flake8-docstrings
           - flake8-mutable
           - flake8-noqa
           - flake8-pie
           - flake8-pytest-style
           - flake8-return
           - flake8-simplify
+          - flake8-type-checking
 
 -   repo: https://github.com/PyCQA/flake8
     rev: 5.0.4

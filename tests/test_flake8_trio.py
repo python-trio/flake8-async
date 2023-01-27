@@ -1,3 +1,5 @@
+"""Main test file for the plugin."""
+
 from __future__ import annotations
 
 import ast
@@ -11,19 +13,22 @@ import sys
 import tokenize
 import unittest
 from collections import deque
-from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Any, DefaultDict
+from typing import TYPE_CHECKING, Any, DefaultDict
 
 import pytest
 from flake8 import __version_info__ as flake8_version_info
 from flake8.options.manager import OptionManager
-
-# import trio  # type: ignore
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import ERROR_CLASSES, Error, Plugin, Statement
+from flake8_trio import Plugin
+from flake8_trio.base import Error, Statement
+from flake8_trio.visitors import ERROR_CLASSES
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
 
 test_files: list[tuple[str, Path]] = sorted(
     (f.stem.upper(), f) for f in (Path(__file__).parent / "eval_files").iterdir()
@@ -351,14 +356,15 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
 
     for err, exp in zip(errors, expected):
         err_msg = info_tuple(err)
-        for err, type_ in zip(err_msg, (int, int, str, type)):
+        for err, type_ in zip(err_msg, (int, int, str, type(None))):
             assert isinstance(err, type_)
         assert err_msg == info_tuple(exp)
 
 
 def test_107_permutations():
-    """
-    since each test is so fast, and there's so many permutations, manually doing
+    """Tests all possible permutations for TRIO107.
+
+    Since each test is so fast, and there's so many permutations, manually doing
     the permutations in a single test is much faster than the permutations from using
     pytest parametrization - and does not clutter up the output massively.
 

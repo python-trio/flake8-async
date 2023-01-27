@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
+"""Main setup & config file."""
 
 from pathlib import Path
 
-import setuptools
+from setuptools import find_packages, setup
 
 
 def local_file(name: str) -> Path:
     return Path(__file__).parent / name
 
 
-with local_file("flake8_trio.py").open("r") as o:
+with open(Path(__file__).parent / "flake8_trio" / "__init__.py") as o:
     for line in o:
         if line.startswith("__version__"):
             _, __version__, _ = line.split('"')
@@ -18,12 +19,12 @@ with local_file("flake8_trio.py").open("r") as o:
         raise AssertionError("__version__ must be set")
 
 
-setuptools.setup(
+setup(
     name="flake8-trio",
     version=__version__,
     author="Zac Hatfield-Dodds and Contributors",
     author_email="zac@zhd.dev",
-    py_modules=["flake8_trio"],
+    packages=find_packages(include=["flake8_trio", "flake8_trio.*"]),
     url="https://github.com/Zac-HD/flake8-trio",
     license="MIT",
     description="A highly opinionated flake8 plugin for Trio-related problems.",

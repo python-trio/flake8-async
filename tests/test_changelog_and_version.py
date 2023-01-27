@@ -1,15 +1,20 @@
 """Tests for flake8-trio package metadata."""
+
 from __future__ import annotations
 
 import re
 import unittest
-from collections.abc import Iterable
 from pathlib import Path
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from test_flake8_trio import ERROR_CODES
 
 import flake8_trio
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+root_path = Path(__file__).parent.parent
 
 
 class Version(NamedTuple):
@@ -24,7 +29,7 @@ class Version(NamedTuple):
 
 def get_releases() -> Iterable[Version]:
     valid_pattern = re.compile(r"^## (\d\d\.\d?\d\.\d?\d)$")
-    with open(Path(__file__).parent.parent / "CHANGELOG.md", encoding="utf-8") as f:
+    with open(root_path / "CHANGELOG.md", encoding="utf-8") as f:
         lines = f.readlines()
     for aline in lines:
         version_match = valid_pattern.match(aline)
@@ -33,7 +38,7 @@ def get_releases() -> Iterable[Version]:
 
 
 def test_last_release_against_changelog():
-    """Ensure we have the latest version covered in CHANGELOG.md"""
+    """Ensure we have the latest version covered in 'CHANGELOG.md'."""
     latest_release, *_ = get_releases()
     assert latest_release == Version.from_string(flake8_trio.__version__)
 
@@ -58,7 +63,7 @@ class test_messages_documented(unittest.TestCase):
             "CHANGELOG.md",
             "README.md",
         ):
-            with open(Path(__file__).parent.parent / filename, encoding="utf-8") as f:
+            with open(root_path / filename, encoding="utf-8") as f:
                 lines = f.readlines()
             documented_errors[filename] = set()
             for line in lines:
@@ -66,6 +71,7 @@ class test_messages_documented(unittest.TestCase):
                     documented_errors[filename].add(error_msg)
 
         documented_errors["flake8_trio.py"] = set(ERROR_CODES)
+        # check files for @error_class
 
         # get tested error codes from file names and from `INCLUDE` lines
         documented_errors["eval_files"] = set()

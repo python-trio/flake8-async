@@ -1,3 +1,5 @@
+"""Additional tests for command line parameters and decorator handling."""
+
 from __future__ import annotations
 
 import ast
@@ -5,7 +7,9 @@ from pathlib import Path
 
 from flake8.main.application import Application
 
-from flake8_trio import Statement, Visitor107_108, fnmatch_qualified_name
+from flake8_trio.base import Statement
+from flake8_trio.visitors.helpers import fnmatch_qualified_name
+from flake8_trio.visitors.visitor107_108 import Visitor107_108
 
 
 def dec_list(*decorators: str) -> ast.Module:
@@ -90,10 +94,17 @@ def test_command_line_1(capfd):
     assert capfd.readouterr() == ("", "")
 
 
+expected_lineno = -1
+with open(file_path) as f:
+    for lineno, line in enumerate(f):
+        if line.startswith("async def"):
+            expected_lineno = lineno + 1
+            break
+
 expected_out = (
-    f"{file_path}:5:1: TRIO107 "
+    f"{file_path}:{expected_lineno}:1: TRIO107 "
     + Visitor107_108.error_codes["TRIO107"].format(
-        "exit", Statement("function definition", 5)
+        "exit", Statement("function definition", expected_lineno)
     )
     + "\n"
 )
