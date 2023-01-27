@@ -1,6 +1,10 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 23.1.4
+- TRIO114 no longer triggers on posonly args named "task_status"
+- TRIO116 will now match on any attribute parameter named `.inf`, not just `math.inf`.
+
 ## 23.1.3
 - Add TRIO240: usage of `os.path` in async function.
 - Add TRIO900: ban async generators not decorated with known safe decorator

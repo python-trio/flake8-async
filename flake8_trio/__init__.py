@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "23.1.3"
+__version__ = "23.1.4"
 
 
 class Plugin:
@@ -92,7 +92,7 @@ class Plugin:
             parse_from_config=True,
             required=False,
             help=(
-                "Comma-separated list of key:value pairs, where key is a [dotted] "
+                "Comma-separated list of key->value pairs, where key is a [dotted] "
                 "function that if found inside an async function will raise TRIO200, "
                 "suggesting it be replaced with {value}"
             ),

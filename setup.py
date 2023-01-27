@@ -22,7 +22,7 @@ with open(Path(__file__).parent / "flake8_trio" / "__init__.py") as o:
 setup(
     name="flake8-trio",
     version=__version__,
-    author="Zac Hatfield-Dodds and Contributors",
+    author="Zac Hatfield-Dodds, John Litborn, and Contributors",
     author_email="zac@zhd.dev",
     packages=find_packages(include=["flake8_trio", "flake8_trio.*"]),
     url="https://github.com/Zac-HD/flake8-trio",

@@ -96,9 +96,9 @@ def test_command_line_1(capfd):
 
 expected_lineno = -1
 with open(file_path) as f:
-    for lineno, line in enumerate(f):
+    for lineno, line in enumerate(f, start=1):
         if line.startswith("async def"):
-            expected_lineno = lineno + 1
+            expected_lineno = lineno
             break
 
 expected_out = (

@@ -23,7 +23,8 @@ checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
 class Visitor100(Flake8TrioVisitor):
     error_codes = {
         "TRIO100": (
-            "{} context contains no checkpoints, add `await trio.lowlevel.checkpoint()`"
+            "{} context contains no checkpoints, remove the context or add"
+            " `await trio.lowlevel.checkpoint()`"
         ),
     }
 
@@ -255,8 +256,8 @@ STARTABLE_CALLS = (
 class Visitor113(Flake8TrioVisitor):
     error_codes = {
         "TRIO113": (
-            "Dangerous `.start_soon()`, process might not run before `__aenter__` "
-            "exits. Consider replacing with `.start()`."
+            "Dangerous `.start_soon()`, function might not be executed before"
+            " `__aenter__` exits. Consider replacing with `.start()`."
         ),
     }
 
@@ -315,9 +316,7 @@ class Visitor114(Flake8TrioVisitor):
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         if any(
             isinstance(n, ast.arg) and n.arg == "task_status"
-            for n in self.walk(
-                *node.args.args, *node.args.posonlyargs, *node.args.kwonlyargs
-            )
+            for n in self.walk(*node.args.args, *node.args.kwonlyargs)
         ) and not any(
             node.name == opt
             for opt in (*self.options.startable_in_context_manager, *STARTABLE_CALLS)
@@ -357,12 +356,7 @@ class Visitor116(Flake8TrioVisitor):
             arg = node.args[0]
             if (
                 # `trio.sleep(math.inf)`
-                (
-                    isinstance(arg, ast.Attribute)
-                    and isinstance(arg.value, ast.Name)
-                    and arg.attr == "inf"
-                    and arg.value.id == "math"
-                )
+                (isinstance(arg, ast.Attribute) and arg.attr == "inf")
                 # `trio.sleep(inf)`
                 or (isinstance(arg, ast.Name) and arg.id == "inf")
                 # `trio.sleep(float("inf"))`

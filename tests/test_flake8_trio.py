@@ -249,7 +249,7 @@ def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
 
     if first_expected_line != first_error_line:
         print(
-            "First lines with different errors",
+            "\nFirst lines with different errors",
             f"  actual: {[e.cmp() for e in first_error_line]}",
             f"expected: {[e.cmp() for e in first_expected_line]}",
             "",

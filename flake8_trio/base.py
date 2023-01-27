@@ -36,6 +36,8 @@ class Error:
         yield self.line
         yield self.col
         yield f"{self.code} " + self.message.format(*self.args)
+        # We are no longer yielding `type(Plugin)` since that's quite tricky to do
+        # without circular imports, and afaik flake8 doesn't care anymore.
         yield None
 
     def cmp(self):

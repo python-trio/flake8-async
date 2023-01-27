@@ -12,6 +12,7 @@ async def foo():
     await trio.sleep(float("inf"))  # error: 10
     await trio.sleep(math.inf)  # error: 10
     await trio.sleep(inf)  # error: 10
+
     # 'inf literal' overflow trick
     await trio.sleep(1e999)  # error: 10
 
@@ -31,6 +32,13 @@ async def foo():
     await trio.sleep(86400 + ...)  # type: ignore
     await trio.sleep("hello")
     await trio.sleep(...)
+
+    # don't require inf to be in math #103
+    await trio.sleep(np.inf)  # error: 10
+    await trio.sleep(anything.inf)  # error: 10
+    await trio.sleep(anything.anything.inf)  # error: 10
+    await trio.sleep(inf.inf)  # error: 10
+    await trio.sleep(inf.anything)
 
 
 # does not require the call to be awaited, nor in an async fun

@@ -24,7 +24,8 @@ async def foo3(*, task_status):  # error: 0, "foo3"
     ...
 
 
-async def foo4(task_status, /):  # error: 0, "foo4"
+# don't error on pos-only parameter
+async def foo4(task_status, /):
     ...
 
 
