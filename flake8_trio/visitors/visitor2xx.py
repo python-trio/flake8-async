@@ -187,6 +187,108 @@ class Visitor23X(Visitor200):
 
 
 @error_class
+class Visitor232(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO232": (
+            "Blocking sync call {1} on file object {0}, wrap the file object"
+            "in `trio.wrap_file()` to get an async file object"
+        )
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.variables: dict[str, str] = {}  # name: type
+        self.async_function = False
+
+    def visit_AsyncFunctionDef(
+        self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
+    ):
+        def or_none(node: ast.AST | None):
+            if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.BitOr):
+                return None
+            if isinstance(node.left, ast.Constant) and node.left.value is None:
+                return node.right
+            if isinstance(node.right, ast.Constant) and node.right.value is None:
+                return node.left
+            return None
+
+        self.save_state(node, "variables", "async_function", copy=True)
+        self.async_function = isinstance(node, ast.AsyncFunctionDef)
+
+        args = node.args
+        for arg in *args.args, *args.posonlyargs, *args.kwonlyargs:
+            annotation = arg.annotation
+
+            if (
+                isinstance(annotation, ast.Subscript)
+                and isinstance(annotation.value, ast.Name)
+                and annotation.value.id == "Optional"
+            ):
+                annotation = annotation.slice
+            elif res := or_none(annotation):
+                annotation = res
+
+            if not isinstance(annotation, (ast.Name, ast.Attribute)):
+                continue
+
+            self.variables[arg.arg] = ast.unparse(annotation)
+
+    visit_FunctionDef = visit_AsyncFunctionDef
+    visit_Lambda = visit_AsyncFunctionDef
+
+    def visit_Call(self, node: ast.Call):
+        io_file_types = (
+            "io.TextIOWrapper",
+            "io.BufferedReader",
+            "io.BufferedWriter",
+            "io.BufferedRandom",
+        )
+        if (
+            self.async_function
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id in self.variables
+            and (anno := self.variables.get(node.func.value.id))
+            and (anno in io_file_types or f"io.{anno}" in io_file_types)
+        ):
+            self.error(node, node.func.attr, node.func.value.id)
+
+    def visit_Assign(self, node: ast.Assign):
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+            return
+
+        # `f = open(...)`
+        if (
+            isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "open"
+        ):
+            self.variables[
+                node.targets[0].id
+            ] = "io.TextIOWrapper"  # doesn't matter which
+
+        # f = ff (and ff is a variable with known type)
+        elif isinstance(node.value, ast.Name) and (
+            value := self.variables.get(node.value.id, None)
+        ):
+            self.variables[node.targets[0].id] = value
+
+    def visit_With(self, node: ast.With):
+        if len(node.items) != 1:
+            return
+        item = node.items[0]
+        if (
+            isinstance(item.context_expr, ast.Call)
+            and isinstance(item.context_expr.func, ast.Name)
+            and item.context_expr.func.id == "open"
+            and isinstance(item.optional_vars, ast.Name)
+        ):
+            self.variables[
+                item.optional_vars.id
+            ] = "io.TextIOWrapper"  # doesn't matter which
+
+
+@error_class
 class Visitor24X(Visitor200):
     error_codes = {
         "TRIO240": ("Avoid using os.path, prefer using trio.Path objects"),

@@ -1,5 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
+## Future
+- Add TRIO232: blocking sync call on file object.
 
 ## 23.1.4
 - TRIO114 no longer triggers on posonly args named "task_status"
