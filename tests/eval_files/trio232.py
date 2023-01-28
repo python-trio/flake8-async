@@ -7,6 +7,11 @@ blah: Any = None
 
 async def file_text(f: io.TextIOWrapper):
     f.read()  # TRIO232: 4, 'read', 'f'
+    f.readlines()  # TRIO232: 4, 'readlines', 'f'
+
+    # there might be non-sync calls on TextIOWrappers? - but it will currently trigger
+    # on all calls
+    f.anything()  # TRIO232: 4, 'anything', 'f'
 
 
 async def file_binary_read(f: io.BufferedReader):
@@ -42,24 +47,29 @@ async def file_text_3(f: TextIOWrapper = blah):
 
 
 async def file_text_4(f: TextIOWrapper | None):
+    f.read()  # TRIO232: 4, 'read', 'f'
     if f:
         f.read()  # TRIO232: 8, 'read', 'f'
 
 
 async def file_text_5(f: TextIOWrapper | None = None):
+    f.read()  # TRIO232: 4, 'read', 'f'
     if f:
         f.read()  # TRIO232: 8, 'read', 'f'
 
 
 async def file_text_6(f: Optional[TextIOWrapper] = None):
+    f.read()  # TRIO232: 4, 'read', 'f'
     if f:
         f.read()  # TRIO232: 8, 'read', 'f'
 
 
+# posonly
 async def file_text_7(f: TextIOWrapper = blah, /):
     f.read()  # TRIO232: 4, 'read', 'f'
 
 
+# keyword-only
 async def file_text_8(*, f: TextIOWrapper = blah):
     f.read()  # TRIO232: 4, 'read', 'f'
 
@@ -117,6 +127,16 @@ def sync_fun_2():
         f.read()  # TRIO232: 8, 'read', 'f'
 
 
+async def type_assign():
+    f: TextIOWrapper = ...
+    f.read()  # TRIO232: 4, 'read', 'f'
+
+
+# define global variables
+f = open("")
+g: TextIOWrapper = ...
+
+# Test state handling on nested functions
 async def async_wrapper(f: TextIOWrapper):
     def inside(f: int):
         f.read()
@@ -129,7 +149,91 @@ async def async_wrapper(f: TextIOWrapper):
     f.read()  # TRIO232: 4, 'read', 'f'
     lambda f: f.read()
     f.read()  # TRIO232: 4, 'read', 'f'
-
-    # known false positive, but will be complained about by type checkers
-    f = None
     f.read()  # TRIO232: 4, 'read', 'f'
+
+
+# and show that they're still marked as TextIOWrappers
+async def global_vars():
+    f.read()  # TRIO232: 4, 'read', 'f'
+    g.read()  # TRIO232: 4, 'read', 'g'
+
+
+# If the type is explicitly overriden, it will not error
+async def overriden_type(f: TextIOWrapper):
+    f: int = 7
+    f.read()
+    f: TextIOWrapper = ...
+    f.read()  # TRIO232: 4, 'read', 'f'
+    f: int = 7
+    f.read()
+    f: TextIOWrapper = ...
+    f.read()  # TRIO232: 4, 'read', 'f'
+
+
+# ***** Known unhandled cases *****
+
+# It will error on non-explicit assignments
+async def implicit_overriden_type():
+    f: TextIOWrapper = ...
+    f = arbitrary_function()
+    f.read()  # TRIO232: 4, 'read', 'f'
+    f = 7
+    f.read()  # TRIO232: 4, 'read', 'f'
+
+
+# Tuple assignments are completely ignored
+async def multi_assign():
+    x, y = open(""), open("")
+    x.read()  # should error
+    y.read()  # should error
+
+
+# as are attribute assignments
+async def attribute_assign():
+    x.y = open("")
+    x.y.read()  # should error
+
+
+# or calling on subattributes of an object
+async def attribute_access_on_object():
+    f: TextIOWrapper = ...
+    f.any.thing()  # should error
+
+
+# The type checker is very naive, and will not do any parsing of logic pertaining
+# to the type
+async def type_restricting_1(f: Optional[TextIOWrapper] = None):
+    if f is None:
+        f.read()  # TRIO232: 8, 'read', 'f'
+
+
+async def type_restricting_2(f: Optional[TextIOWrapper] = None):
+    if isinstance(f, TextIOWrapper):
+        return
+    f.read()  # TRIO232: 4, 'read', 'f'
+
+
+# Classes are not supported, partly due to not handling attributes at all,
+# but would require additional logic
+class myclass:
+    x: TextIOWrapper
+
+    async def foo(self):
+        self.x.read()  # should error
+
+
+class myclass_2:
+    def __init__(self):
+        self.x: TextIOWrapper = open("")
+
+    async def foo(self):
+        self.x.read()  # should error
+
+
+# Return types are not parsed
+async def call_function_with_return_type():
+    def return_textiowrapper() -> TextIOWrapper:
+        return open("")
+
+    k = return_textiowrapper()
+    k.read()  # should error

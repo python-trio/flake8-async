@@ -253,6 +253,13 @@ class Visitor232(Flake8TrioVisitor):
         ):
             self.error(node, node.func.attr, node.func.value.id)
 
+    def visit_AnnAssign(self, node: ast.AnnAssign):
+        if not isinstance(node.target, ast.Name):
+            return
+        target = node.target.id
+        typename = ast.unparse(node.annotation)
+        self.variables[target] = typename
+
     def visit_Assign(self, node: ast.Assign):
         if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
             return
