@@ -39,6 +39,7 @@ pip install flake8-trio
 - **TRIO114**: Startable function (i.e. has a `task_status` keyword parameter) not in `--startable-in-context-manager` parameter list, please add it so TRIO113 can catch errors when using it.
 - **TRIO115**: Replace `trio.sleep(0)` with the more suggestive `trio.lowlevel.checkpoint()`.
 - **TRIO116**: `trio.sleep()` with >24 hour interval should usually be`trio.sleep_forever()`.
+- **TRIO117**: Don't raise or catch `trio.[NonBase]MultiError`, prefer `[exceptiongroup.]BaseExceptionGroup`. Even if Trio still raises `MultiError` for legacy code, it can be caught with `BaseExceptionGroup` so it's fully redundant.
 - **TRIO200**: User-configured error for blocking sync calls in async functions. Does nothing by default, see [`trio200-blocking-calls`](#trio200-blocking-calls) for how to configure it.
 - **TRIO210**: Sync HTTP call in async function, use `httpx.AsyncClient`.
 - **TRIO211**: Likely sync HTTP call in async function, use `httpx.AsyncClient`. Looks for `urllib3` method calls on pool objects, but only matching on the method signature and not the object.

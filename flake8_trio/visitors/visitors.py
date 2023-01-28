@@ -380,6 +380,21 @@ class Visitor116(Flake8TrioVisitor):
 
 
 @error_class
+class Visitor117(Flake8TrioVisitor):
+    error_codes = {
+        "TRIO117": ("Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup"),
+    }
+
+    def visit_Name(self, node: ast.Name):
+        if node.id in ("MultiError", "NonBaseMultiError"):
+            self.error(node, node.id)
+
+    def visit_Attribute(self, node: ast.Attribute):
+        if (n := ast.unparse(node)) in ("trio.MultiError", "trio.NonBaseMultiError"):
+            self.error(node, n)
+
+
+@error_class
 @disabled_by_default
 class Visitor900(Flake8TrioVisitor):
     error_codes = {
