@@ -5,6 +5,7 @@
 
 ## Future
 - TRIO103 and TRIO104 no longer triggers when `trio.Cancelled` has been handled in previous except handlers.
+- Add TRIO117: Reference to deprecated `trio.[NonBase]MultiError`; use `[Base]ExceptionGroup` instead.
 
 ## 23.1.4
 - TRIO114 no longer triggers on posonly args named "task_status"
