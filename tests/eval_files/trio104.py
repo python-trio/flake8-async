@@ -7,8 +7,14 @@ try:
 # raise different exception
 except BaseException:
     raise ValueError()  # error: 4
+
+try:
+    ...
 except trio.Cancelled as e:
     raise ValueError() from e  # error: 4
+
+try:
+    ...
 except trio.Cancelled as e:
     # see https://github.com/Zac-HD/flake8-trio/pull/8#discussion_r932737341
     raise BaseException() from e  # error: 4
@@ -17,36 +23,50 @@ except trio.Cancelled as e:
 # nested try
 # in theory safe if the try, and all excepts raises - and there's a bare except.
 # But is a very weird pattern that we don't handle.
-except BaseException as e:  # TRIO103: 7, "BaseException"
+try:
+    ...
+except BaseException as e:  # TRIO103: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
     try:
         raise e
     except ValueError:
         raise e
     except:
         raise e  # though sometimes okay, error: 8
+
+try:
+    ...
 except BaseException:  # safe
     try:
-        pass
+        ...
     finally:
         raise
+
 # check that nested non-critical exceptions are ignored
+try:
+    ...
 except BaseException:
     try:
-        pass
+        ...
     except ValueError:
-        pass  # safe
+        ...  # safe
     raise
+
 # check that name isn't lost
+try:
+    ...
 except trio.Cancelled as e:
     try:
-        pass
+        ...
     except BaseException as f:
         raise f
     raise e
+
 # don't bypass raise by raising from nested except
+try:
+    ...
 except trio.Cancelled as e:
     try:
-        pass
+        ...
     except ValueError as g:
         raise g  # error: 8
     except BaseException as h:
@@ -55,10 +75,10 @@ except trio.Cancelled as e:
 
 # avoid re-raise by raising parent exception
 try:
-    pass
+    ...
 except ValueError as e:
     try:
-        pass
+        ...
     except BaseException:
         raise e  # error: 8
 
@@ -68,12 +88,14 @@ def foo():
         return
 
     try:
-        pass
-    except BaseException:  # TRIO103: 11, "BaseException"
+        ...
+    except BaseException:  # TRIO103: 11, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
         return  # error: 8
 
     # check that we properly iterate over all nodes in try
-    except BaseException:  # TRIO103: 11, "BaseException"
+    try:
+        ...
+    except BaseException:  # TRIO103: 11, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
         try:
             return  # error: 12
         except ValueError:
@@ -87,7 +109,7 @@ def foo():
 # don't avoid re-raise with continue/break
 while True:
     try:
-        pass
+        ...
     except BaseException:
         if True:
             continue  # error: 12
@@ -95,18 +117,21 @@ while True:
 
 while True:
     try:
-        pass
+        ...
     except BaseException:
         if True:
             break  # error: 12
         raise
 
 try:
-    pass
+    ...
 except BaseException:  # safe
     while True:
         break
     raise
+
+try:
+    ...
 except BaseException:  # safe
     while True:
         continue
@@ -118,12 +143,14 @@ def foo_yield():
         yield 1
 
     try:
-        pass
+        ...
     except BaseException:
         yield 1  # error: 8
         raise
 
     # check that we properly iterate over all nodes in try
+    try:
+        ...
     except BaseException:
         try:
             yield 1  # error: 12
@@ -134,3 +161,30 @@ def foo_yield():
         finally:
             yield 1  # error: 12
         raise
+
+
+# issue #106
+# don't warn on bare / BaseException when cancelled have been handled in a previous except
+def foo_cancelled_handled():
+    try:
+        ...
+    except trio.Cancelled:
+        raise
+    except BaseException:
+        return  # would otherwise error
+    except:
+        return  # would otherwise error
+
+    try:
+        ...
+    except trio.Cancelled:
+        raise
+    except:
+        return  # would otherwise error
+
+    try:
+        ...
+    except BaseException:
+        raise
+    except:
+        return  # would otherwise error

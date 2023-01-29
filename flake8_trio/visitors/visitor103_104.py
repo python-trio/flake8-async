@@ -19,8 +19,8 @@ from .helpers import critical_except, error_class, iter_guaranteed_once
 @error_class
 class Visitor103_104(Flake8TrioVisitor):
     error_codes = {
-        "TRIO103": "{} block with a code path that doesn't re-raise the error",
-        "TRIO104": "Cancelled (and therefore BaseException) must be re-raised",
+        "TRIO103": "{} block with a code path that doesn't re-raise the error.{}",
+        "TRIO104": "Cancelled (and therefore BaseException) must be re-raised.",
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -31,12 +31,27 @@ class Visitor103_104(Flake8TrioVisitor):
         self.unraised_continue: bool = False
         self.loop_depth = 0
 
+        self.cancelled_caught: bool = False
+
     # If an `except` is bare, catches `BaseException`, or `trio.Cancelled`
     # set self.unraised, and if it's still set after visiting child nodes
     # then there might be a code path that doesn't re-raise.
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
+        # If previous excepts have handled trio.Cancelled, don't do anything - namely
+        # don't set self.unraised (so 104 isn't triggered) nor check for 103.
+        if self.cancelled_caught:
+            return
 
-        self.save_state(node)
+        # Don't save the state of cancelled_caught, that's handled in Try and would
+        # reset it between each except
+        self.save_state(
+            node,
+            "except_name",
+            "unraised",
+            "unraised_break",
+            "unraised_continue",
+            "loop_depth",
+        )
         marker = critical_except(node)
 
         # we need to *not* unset self.unraised if this is non-critical, to still
@@ -49,15 +64,28 @@ class Visitor103_104(Flake8TrioVisitor):
             self.loop_depth = 0
             self.unraised = True
 
-        # visit child nodes. Will unset self.unraised if all code paths `raise`
+        # Visit child nodes manually since we want to do logic afterwards.
+        # Will unset self.unraised if all code paths `raise`
         self.generic_visit(node)
 
         if self.unraised and marker is not None:
+            extra_message = ""
+            if marker.name != "trio.Cancelled":
+                extra_message = (
+                    " Consider adding an `except trio.Cancelled: raise` before this"
+                    " exception handler."
+                )
             self.error(
                 marker,
                 marker.name,
+                extra_message,
                 error_code="TRIO103",
             )
+
+        # If this was a critical except, later excepts won't be catching cancelled
+        # so we can ignore those.
+        if marker is not None:
+            self.cancelled_caught = True
 
     def visit_Raise(self, node: ast.Raise):
         # if there's an unraised critical exception, the raise isn't bare,
@@ -81,6 +109,9 @@ class Visitor103_104(Flake8TrioVisitor):
 
     # Treat Try's as fully covering only if `finally` always raises.
     def visit_Try(self, node: ast.Try):
+        self.save_state(node, "cancelled_caught")
+        self.cancelled_caught = False
+
         if not self.unraised:
             return
 
