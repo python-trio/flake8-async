@@ -12,7 +12,7 @@ async def foo_1(timeout):  # error: 16
     ...
 
 
-# arg in args wih default & annotation
+# arg in args with default & annotation
 async def foo_2(timeout: int = 3):  # error: 16
     ...
 

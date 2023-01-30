@@ -232,7 +232,7 @@ class Visitor107_108(Flake8TrioVisitor):
     # inline if
     visit_IfExp = visit_If
 
-    # Check for yields w/o checkpoint inbetween due to entering loop body the first time,
+    # Check for yields w/o checkpoint in between due to entering loop body the first time,
     # after completing all of loop body, and after any continues.
     # yield in else have same requirement
     # state after the loop same as above, and in addition the state at any break
