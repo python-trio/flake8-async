@@ -16,13 +16,14 @@ To run our test suite please use tox.
 
 ```console
 # Formatting and Linting
-tox -e check
-# Test Running
-tox -e py311
-# Run checks and all test environments (tox -a for a complete list)
+pre-commit run [--all-files]
+# Run tests against current version of python and latest flake8
+tox -e testenv
+# Run all test environments (tox -a for a complete list)
 tox
-# Tip: Use -p (run tests in parallel), --develop (install package with -e), and -q to save time when modifying and rerunning
+# Tip: Use --parallel and --develop, to save time when modifying and rerunning.
 tox -p --develop
+# --quiet and --parallel-no-spinner are also nice for output control.
 ```
 
 ## Meta-tests
