@@ -38,7 +38,7 @@ You can instead of `error` specify the error code.
 
 ### `# ARG`
 With `# ARG` lines you can also specify command-line arguments that should be passed to the plugin when parsing a file. Can be specified multiple times for several different arguments.  
-Generated tests will by default `--select` the error code of the file, which will enable any visitors that can generate that code (and if those visitors can raise other codes they might be raised too). This can be overriden by adding an `# ARG --select=...` line.
+Generated tests will by default `--select` the error code of the file, which will enable any visitors that can generate that code (and if those visitors can raise other codes they might be raised too). This can be overridden by adding an `# ARG --select=...` line.
 
 ## Running pytest outside tox
 If you don't want to bother with tox to quickly test stuff, you'll need to install the following dependencies:

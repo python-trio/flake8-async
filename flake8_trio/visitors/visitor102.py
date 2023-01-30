@@ -60,7 +60,7 @@ class Visitor102(Flake8TrioVisitor):
     def visit_With(self, node: ast.With | ast.AsyncWith):
         self.save_state(node, "_trio_context_managers", copy=True)
 
-        # Check for a `with trio.<scope_creater>`
+        # Check for a `with trio.<scope_creator>`
         for item in node.items:
             call = get_matching_call(
                 item.context_expr, "open_nursery", *cancel_scope_names

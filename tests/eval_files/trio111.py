@@ -230,7 +230,7 @@ with trio.open_nursery() as nursery:
         def myfun(nursery, bar):
             nursery.start(bar)
 
-# nursery overriden by non-expression context manager
+# nursery overridden by non-expression context manager
 b = trio.open()
 with trio.open_nursery() as nursery:
     with b as nursery:

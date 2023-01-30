@@ -33,7 +33,7 @@ pip install flake8-trio
   Checkpoints are `await`, `async for`, and `async with` (on one of enter/exit).
 - **TRIO109**: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead
 - **TRIO110**: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.
-- **TRIO111**: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accesed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
+- **TRIO111**: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
 - **TRIO112**: nursery body with only a call to `nursery.start[_soon]` and not passing itself as a parameter can be replaced with a regular function call.
 - **TRIO113**: using `nursery.start_soon` in `__aenter__` doesn't wait for the task to begin. Consider replacing with `nursery.start`.
 - **TRIO114**: Startable function (i.e. has a `task_status` keyword parameter) not in `--startable-in-context-manager` parameter list, please add it so TRIO113 can catch errors when using it.
@@ -97,7 +97,7 @@ trio200-blocking-calls =
   dangerous_module.* -> corresponding function in safe_module,
   *.dangerous_call -> .safe_call()
 ```
-Specified patterns must not have parantheses, and will only match when the pattern is the name of a call, so given the above configuration
+Specified patterns must not have parentheses, and will only match when the pattern is the name of a call, so given the above configuration
 ```python
 async def my_function():
     my_blocking_call()  # this would raise an error
