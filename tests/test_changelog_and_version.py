@@ -31,8 +31,8 @@ def get_releases() -> Iterable[Version]:
     valid_pattern = re.compile(r"^## (\d\d\.\d?\d\.\d?\d)$")
     with open(root_path / "CHANGELOG.md", encoding="utf-8") as f:
         lines = f.readlines()
-    for aline in lines:
-        version_match = valid_pattern.match(aline)
+    for line in lines:
+        version_match = valid_pattern.match(line)
         if version_match:
             yield Version.from_string(version_match.group(1))
 
