@@ -158,8 +158,8 @@ async def global_vars():
     g.read()  # TRIO232: 4, 'read', 'g'
 
 
-# If the type is explicitly overriden, it will not error
-async def overriden_type(f: TextIOWrapper):
+# If the type is explicitly overridden, it will not error
+async def overridden_type(f: TextIOWrapper):
     f: int = 7
     f.read()
     f: TextIOWrapper = ...
@@ -173,7 +173,7 @@ async def overriden_type(f: TextIOWrapper):
 # ***** Known unhandled cases *****
 
 # It will error on non-explicit assignments
-async def implicit_overriden_type():
+async def implicit_overridden_type():
     f: TextIOWrapper = ...
     f = arbitrary_function()
     f.read()  # TRIO232: 4, 'read', 'f'
