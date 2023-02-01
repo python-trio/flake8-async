@@ -12,6 +12,7 @@ def __() -> Any:
 
 # ARG --enable-visitor-codes-regex=(TRIO107)|(TRIO108)
 
+
 # function whose body solely consists of pass, ellipsis, or string constants is safe
 async def foo_empty_1():
     ...

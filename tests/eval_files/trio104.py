@@ -20,6 +20,9 @@ except trio.Cancelled as e:
     raise BaseException() from e  # error: 4
 
 
+# fmt: off
+# TODO: Black 23.1.0 moves the long comments around a bit.
+
 # nested try
 # in theory safe if the try, and all excepts raises - and there's a bare except.
 # But is a very weird pattern that we don't handle.
