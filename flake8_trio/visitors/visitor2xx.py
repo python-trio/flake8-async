@@ -249,6 +249,10 @@ class Visitor22X(Visitor200):
             "`await nursery.start(trio.run_process, ...)`"
         ),
         "TRIO221": "Sync call {} in async function, use `await trio.run_process(...)`",
+        "TRIO222": (
+            "Sync call {} in async function, use a nursery or other methods"
+            " for intra-process communications."
+        ),
     }
 
     def visit_blocking_call(self, node: ast.Call):
@@ -269,15 +273,18 @@ class Visitor22X(Visitor200):
         func_name = ast.unparse(node.func)
         if func_name in ("subprocess.Popen", "os.popen"):
             self.error(node, func_name, error_code="TRIO220")
-            return
 
-        if func_name == "os.system" or get_matching_call(
-            node, *subprocess_calls, base="subprocess"
-        ):
+        elif func_name in (
+            "os.system",
+            "os.posix_spawn",
+            "os.posix_spawnp",
+        ) or get_matching_call(node, *subprocess_calls, base="subprocess"):
             self.error(node, func_name, error_code="TRIO221")
-            return
 
-        if re.match("os.spawn[vl]p?e?", func_name):
+        elif re.fullmatch("os.wait([34]|(id)|(pid))?", func_name):
+            self.error(node, func_name, error_code="TRIO222")
+
+        elif re.fullmatch("os.spawn[vl]p?e?", func_name):
             # if mode= is given and not [os.]P_WAIT: TRIO220
             # 1. as a positional parameter
             if node.args:
@@ -293,7 +300,6 @@ class Visitor22X(Visitor200):
 
             # otherwise, TRIO221
             self.error(node, func_name, error_code="TRIO221")
-            return
 
 
 @error_class

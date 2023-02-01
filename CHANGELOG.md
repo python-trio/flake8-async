@@ -3,6 +3,8 @@
 ## Future
 - Add TRIO232: blocking sync call on file object.
 - Add TRIO212: blocking sync call on httpx.Client object.
+- Add TRIO222: os.wait*
+- TRIO221 now also looks for os.posix_spawn[p]
 
 ## Future
 - TRIO103 and TRIO104 no longer triggers when `trio.Cancelled` has been handled in previous except handlers.
