@@ -46,7 +46,7 @@ pip install flake8-trio
 - **TRIO212**: Blocking sync HTTP call on httpx object, use httpx.AsyncClient.
 - **TRIO220**: Sync process call in async function, use `await nursery.start(trio.run_process, ...)`.
 - **TRIO221**: Sync process call in async function, use `await trio.run_process(...)`.
-- **TRIO222**: Sync call in async function, use a nursery or other methods for intra-process communications.
+- **TRIO222**: Sync `os.*` call in async function, wrap in `await trio.to_thread.run_sync()`.
 - **TRIO230**: Sync IO call in async function, use `trio.open_file(...)`.
 - **TRIO231**: Sync IO call in async function, use `trio.wrap_file(...)`.
 - **TRIO232**: Blocking sync call on file object, wrap the file object in `trio.wrap_file()` to get an async file object.

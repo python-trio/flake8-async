@@ -249,10 +249,7 @@ class Visitor22X(Visitor200):
             "`await nursery.start(trio.run_process, ...)`"
         ),
         "TRIO221": "Sync call {} in async function, use `await trio.run_process(...)`",
-        "TRIO222": (
-            "Sync call {} in async function, use a nursery or other methods"
-            " for intra-process communications."
-        ),
+        "TRIO222": "Sync call {} in async function, wrap in `trio.to_thread.run_sync()`",
     }
 
     def visit_blocking_call(self, node: ast.Call):
