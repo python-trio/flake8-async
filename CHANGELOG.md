@@ -2,6 +2,7 @@
 *[CalVer, YY.month.patch](https://calver.org/)*
 ## Future
 - Add TRIO232: blocking sync call on file object.
+- Add TRIO212: blocking sync call on httpx.Client object.
 
 ## Future
 - TRIO103 and TRIO104 no longer triggers when `trio.Cancelled` has been handled in previous except handlers.

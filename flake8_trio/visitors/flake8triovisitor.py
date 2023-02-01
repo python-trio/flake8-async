@@ -108,7 +108,11 @@ class Flake8TrioVisitor(ast.NodeVisitor):
             setattr(self, attr, value)
 
     def save_state(self, node: ast.AST, *attrs: str, copy: bool = False):
-        self.outer[node] = self.get_state(*attrs, copy=copy)
+        state = self.get_state(*attrs, copy=copy)
+        if node in self.outer:
+            self.outer[node].update(state)
+        else:
+            self.outer[node] = state
 
     def walk(self, *body: ast.AST) -> Iterable[ast.AST]:
         for b in body:
