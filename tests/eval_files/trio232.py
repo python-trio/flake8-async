@@ -136,6 +136,7 @@ async def type_assign():
 f = open("")
 g: TextIOWrapper = ...
 
+
 # Test state handling on nested functions
 async def async_wrapper(f: TextIOWrapper):
     def inside(f: int):
@@ -171,6 +172,7 @@ async def overridden_type(f: TextIOWrapper):
 
 
 # ***** Known unhandled cases *****
+
 
 # It will error on non-explicit assignments
 async def implicit_overridden_type():

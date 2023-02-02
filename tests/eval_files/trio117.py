@@ -32,6 +32,7 @@ def bar(x: MultiError):  # TRIO117: 11, "MultiError"
 # Known false alarm
 MultiError: int  # TRIO117: 0, "MultiError"
 
+
 # args are not ast.Name's, so this one (surprisingly!) isn't a false positive
 # (though any use of the variable will be)
 def foo(MultiError: int):

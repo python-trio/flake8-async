@@ -9,6 +9,9 @@ def foo() -> Any:
     ...
 
 
+# fmt: off
+# TODO: Black 23.1.0 moves the long comments around a bit.
+
 try:
     ...
 except (SyntaxError, ValueError, BaseException):

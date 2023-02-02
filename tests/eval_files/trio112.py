@@ -76,6 +76,7 @@ with trio.open_nursery() as n:
 with trio.open_nursery() as n:
     n.start_soon(lambda n: n + 1)
 
+
 # body isn't a call to n.start
 async def foo_1():
     with trio.open_nursery(...) as n:

@@ -1,4 +1,4 @@
-# ARG --enable-visitor-codes-regex=(TRIO220|TRIO221)
+# ARG --enable-visitor-codes-regex=(TRIO220|TRIO221|TRIO222)
 
 
 async def foo():
@@ -23,8 +23,12 @@ async def foo():
     subprocess.bar.foo()
     subprocess()
 
+    os.posix_spawn()  # TRIO221: 4, 'os.posix_spawn'
+    os.posix_spawnp()  # TRIO221: 4, 'os.posix_spawnp'
+
     os.spawn()
     os.spawn
+    os.spawnllll()
 
     os.spawnl()  # TRIO221: 4,   'os.spawnl'
     os.spawnle()  # TRIO221: 4,  'os.spawnle'
@@ -53,3 +57,13 @@ async def foo():
     os.spawnl(0)  # TRIO220: 4,   'os.spawnl'
     os.spawnl(1)  # TRIO220: 4,   'os.spawnl'
     os.spawnl(foo())  # TRIO220: 4,   'os.spawnl'
+
+    # TRIO222
+    os.wait()  # TRIO222: 4, 'os.wait'
+    os.wait3()  # TRIO222: 4, 'os.wait3'
+    os.wait4()  # TRIO222: 4, 'os.wait4'
+    os.waitid()  # TRIO222: 4, 'os.waitid'
+    os.waitpid()  # TRIO222: 4, 'os.waitpid'
+
+    os.waitpi()
+    os.waiti()

@@ -117,6 +117,7 @@ async def foo_for_1():  # error: 0, "exit", Statement("function definition", lin
 
 # while
 
+
 # safe if checkpoint in else
 async def foo_while_1():  # error: 0, "exit", Statement("yield", lineno+5)
     while foo():
@@ -603,6 +604,7 @@ async def foo_boolops_3():  # error: 0, "exit", Stmt("yield", line+1) # error: 0
             and (yield))  # error: 17, "yield", Stmt("yield", line-1)
     )
 # fmt: on
+
 
 # loop over non-empty static collection
 async def foo_loop_static():
