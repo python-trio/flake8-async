@@ -1,3 +1,4 @@
+import trio
 import trio as anything
 
 timeout = 10
@@ -8,12 +9,12 @@ async def foo():
 
 
 # args
-async def foo_1(timeout):  # error: 16
+async def foo_1(timeout):  # error: 16, "trio"
     ...
 
 
 # arg in args with default & annotation
-async def foo_2(timeout: int = 3):  # error: 16
+async def foo_2(timeout: int = 3):  # error: 16, "trio"
     ...
 
 
@@ -33,14 +34,14 @@ async def foo_5(
     timeouts,
     my_timeout,
     timeout_,
-    timeout,  # error: 4
+    timeout,  # error: 4, "trio"
 ):
     ...
 
 
 # posonlyargs
 async def foo_6(
-    timeout,  # error: 4
+    timeout,  # error: 4, "trio"
     /,
     bar,
 ):
@@ -50,7 +51,7 @@ async def foo_6(
 # kwonlyargs
 async def foo_7(
     *,
-    timeout,  # error: 4
+    timeout,  # error: 4, "trio"
 ):
     ...
 
@@ -58,7 +59,7 @@ async def foo_7(
 # kwonlyargs (and kw_defaults)
 async def foo_8(
     *,
-    timeout=5,  # error: 4
+    timeout=5,  # error: 4, "trio"
 ):
     ...
 

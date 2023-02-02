@@ -1,4 +1,5 @@
 # ARG --enable-visitor-codes-regex=TRIO103
+# NOANYIO - not interesting, and cumbersome with the error message differences
 # check that partly disabling a visitor works
 from typing import Any
 

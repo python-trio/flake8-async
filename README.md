@@ -1,12 +1,14 @@
 # flake8-trio
 
-A highly opinionated flake8 plugin for Trio-related problems.
+A highly opinionated flake8 plugin for [Trio](https://github.com/python-trio/trio)-related problems.
 
 This can include anything from outright bugs, to pointless/dead code,
 to likely performance issues, to minor points of idiom that might signal
 a misunderstanding.
 
 It may well be too noisy for anyone with different opinions, that's OK.
+
+It also supports the [anyio](https://github.com/agronholm/anyio) library.
 
 Pairs well with flake8-bugbear.
 

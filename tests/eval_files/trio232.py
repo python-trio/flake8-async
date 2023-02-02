@@ -6,72 +6,72 @@ blah: Any = None
 
 
 async def file_text(f: io.TextIOWrapper):
-    f.read()  # TRIO232: 4, 'read', 'f'
-    f.readlines()  # TRIO232: 4, 'readlines', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
+    f.readlines()  # TRIO232: 4, 'readlines', 'f', "trio"
 
     # there might be non-sync calls on TextIOWrappers? - but it will currently trigger
     # on all calls
-    f.anything()  # TRIO232: 4, 'anything', 'f'
+    f.anything()  # TRIO232: 4, 'anything', 'f', "trio"
 
 
 async def file_binary_read(f: io.BufferedReader):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_binary_write(f: io.BufferedWriter):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_binary_readwrite(f: io.BufferedRandom):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_text_(f: TextIOWrapper):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_binary_read_(f: BufferedReader):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_binary_write_(f: BufferedWriter):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_binary_readwrite_(f: BufferedRandom):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_text_3(f: TextIOWrapper = blah):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_text_4(f: TextIOWrapper | None):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
     if f:
-        f.read()  # TRIO232: 8, 'read', 'f'
+        f.read()  # TRIO232: 8, 'read', 'f', "trio"
 
 
 async def file_text_5(f: TextIOWrapper | None = None):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
     if f:
-        f.read()  # TRIO232: 8, 'read', 'f'
+        f.read()  # TRIO232: 8, 'read', 'f', "trio"
 
 
 async def file_text_6(f: Optional[TextIOWrapper] = None):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
     if f:
-        f.read()  # TRIO232: 8, 'read', 'f'
+        f.read()  # TRIO232: 8, 'read', 'f', "trio"
 
 
 # posonly
 async def file_text_7(f: TextIOWrapper = blah, /):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 # keyword-only
 async def file_text_8(*, f: TextIOWrapper = blah):
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def file_text_9(lf: list[TextIOWrapper]):
@@ -91,7 +91,7 @@ async def open_file_2():
 
 async def open_file_3():
     with open("") as f:
-        f.read()  # TRIO232: 8, 'read', 'f'
+        f.read()  # TRIO232: 8, 'read', 'f', "trio"
 
 
 async def open_file_4():
@@ -100,14 +100,14 @@ async def open_file_4():
 
 async def open_file_5():
     f = open("")
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 async def open_file_6():
     ff = open("")
     f = ff
-    f.read()  # TRIO232: 4, 'read', 'f'
-    ff.read()  # TRIO232: 4, 'read', 'ff'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
+    ff.read()  # TRIO232: 4, 'read', 'ff', "trio"
 
 
 async def noerror():
@@ -117,19 +117,19 @@ async def noerror():
 
 def sync_fun(f: TextIOWrapper):
     async def async_fun():
-        f.read()  # TRIO232: 8, 'read', 'f'
+        f.read()  # TRIO232: 8, 'read', 'f', "trio"
 
 
 def sync_fun_2():
     f = open("")
 
     async def async_fun():
-        f.read()  # TRIO232: 8, 'read', 'f'
+        f.read()  # TRIO232: 8, 'read', 'f', "trio"
 
 
 async def type_assign():
     f: TextIOWrapper = ...
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 # define global variables
@@ -147,16 +147,16 @@ async def async_wrapper(f: TextIOWrapper):
 
         f.read()
 
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
     lambda f: f.read()
-    f.read()  # TRIO232: 4, 'read', 'f'
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 # and show that they're still marked as TextIOWrappers
 async def global_vars():
-    f.read()  # TRIO232: 4, 'read', 'f'
-    g.read()  # TRIO232: 4, 'read', 'g'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
+    g.read()  # TRIO232: 4, 'read', 'g', "trio"
 
 
 # If the type is explicitly overridden, it will not error
@@ -164,11 +164,11 @@ async def overridden_type(f: TextIOWrapper):
     f: int = 7
     f.read()
     f: TextIOWrapper = ...
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
     f: int = 7
     f.read()
     f: TextIOWrapper = ...
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 # ***** Known unhandled cases *****
@@ -178,9 +178,9 @@ async def overridden_type(f: TextIOWrapper):
 async def implicit_overridden_type():
     f: TextIOWrapper = ...
     f = arbitrary_function()
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
     f = 7
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 # Tuple assignments are completely ignored
@@ -206,13 +206,13 @@ async def attribute_access_on_object():
 # to the type
 async def type_restricting_1(f: Optional[TextIOWrapper] = None):
     if f is None:
-        f.read()  # TRIO232: 8, 'read', 'f'
+        f.read()  # TRIO232: 8, 'read', 'f', "trio"
 
 
 async def type_restricting_2(f: Optional[TextIOWrapper] = None):
     if isinstance(f, TextIOWrapper):
         return
-    f.read()  # TRIO232: 4, 'read', 'f'
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
 
 
 # Classes are not supported, partly due to not handling attributes at all,

@@ -41,6 +41,12 @@ You can instead of `error` specify the error code.
 With `# ARG` lines you can also specify command-line arguments that should be passed to the plugin when parsing a file. Can be specified multiple times for several different arguments.  
 Generated tests will by default `--select` the error code of the file, which will enable any visitors that can generate that code (and if those visitors can raise other codes they might be raised too). This can be overridden by adding an `# ARG --select=...` line.
 
+### `# NOANYIO` and `# NOTRIO`
+Eval files are also evaluated where ~all instances of "trio" is replaced with "anyio" and `--anyio` is prepended to the argument list, to check for compatibility with the [anyio](https://github.com/agronholm/anyio) library - unless they are marked with `# NOANYIO`.
+If a file is marked with `# NOTRIO` it will not replace instances of "trio" with "anyio", and the file will not be run by the normal `eval_files` test generator.
+#### `# ANYIO_NO_ERROR`
+A file which is marked with this will ignore all `# error` or `# TRIO...` comments when running with anyio. Use when an error is trio-specific and replacing "trio" with "anyio" should silence all errors.
+
 ## Running pytest outside tox
 If you don't want to bother with tox to quickly test stuff, you'll need to install the following dependencies:
 ```

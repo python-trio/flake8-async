@@ -111,6 +111,20 @@ class Plugin:
                 "not report codes matching this regex."
             ),
         )
+        option_manager.add_option(
+            "--anyio",
+            # action=store_true + parse_from_config does seem to work here, despite
+            # https://github.com/PyCQA/flake8/issues/1770
+            action="store_true",
+            parse_from_config=True,
+            required=False,
+            default=False,
+            help=(
+                "Change the default library to be anyio instead of trio."
+                " If trio is imported it will assume both are available and print"
+                " suggestions with [anyio|trio]."
+            ),
+        )
 
     @staticmethod
     def parse_options(options: Namespace):

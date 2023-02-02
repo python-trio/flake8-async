@@ -23,7 +23,7 @@ class Visitor102(Flake8TrioVisitor):
     }
 
     class TrioScope:
-        def __init__(self, node: ast.Call, funcname: str):
+        def __init__(self, node: ast.Call, funcname: str, _):
             self.node = node
             self.funcname = funcname
             self.variable_name: str | None = None

@@ -28,6 +28,16 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         self.outer: dict[ast.AST, dict[str, Any]] = {}
         self.novisit = False
 
+        # check whether library we're working towards has been explicitly
+        # specified with --anyio, otherwise assume Trio - but we update if we
+        # see imports
+        if self.options.anyio:
+            self.library_explicit = True
+            self.library = "anyio"
+        else:
+            self.library_explicit = False
+            self.library = "trio"
+
     def visit(self, node: ast.AST):
         """Visit a node."""
         # construct visitor for this node type
@@ -117,3 +127,17 @@ class Flake8TrioVisitor(ast.NodeVisitor):
     def walk(self, *body: ast.AST) -> Iterable[ast.AST]:
         for b in body:
             yield from ast.walk(b)
+
+    def visit_Import(self, node: ast.Import):
+        for alias in node.names:
+            name = alias.name
+            if name in ("trio", "anyio") and alias.asname is None:
+                # if a library has not been explicitly imported or specified,
+                # replace the default
+                if not self.library_explicit:
+                    self.library = name
+                # otherwise, append this to the messages - if it's not already in it
+                elif name not in self.library:
+                    self.library = f"[{self.library}|{name}]"
+
+                self.library_explicit = True

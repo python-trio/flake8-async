@@ -136,15 +136,16 @@ cancel_scope_names = (
 
 
 # convenience function used in a lot of visitors
+# should probably return a named tuple
 def get_matching_call(
-    node: ast.AST, *names: str, base: str = "trio"
-) -> tuple[ast.Call, str] | None:
+    node: ast.AST, *names: str, base: Iterable[str] = ("trio", "anyio")
+) -> tuple[ast.Call, str, str] | None:
     if (
         isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and isinstance(node.func.value, ast.Name)
-        and node.func.value.id == base
+        and node.func.value.id in base
         and node.func.attr in names
     ):
-        return node, node.func.attr
+        return node, node.func.attr, node.func.value.id
     return None
