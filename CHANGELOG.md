@@ -1,17 +1,15 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
-## Future
-- Add TRIO232: blocking sync call on file object.
-- Add TRIO212: blocking sync call on httpx.Client object.
-- Add TRIO222: os.wait*
-- TRIO221 now also looks for os.posix_spawn[p]
-
-## Future
+## 23.2.1
 - TRIO103 and TRIO104 no longer triggers when `trio.Cancelled` has been handled in previous except handlers.
 - Add TRIO117: Reference to deprecated `trio.[NonBase]MultiError`; use `[Base]ExceptionGroup` instead.
+- Add TRIO232: blocking sync call on file object.
+- Add TRIO212: blocking sync call on `httpx.Client` object.
+- Add TRIO222: blocking sync call to `os.wait*`
+- TRIO221 now also looks for `os.posix_spawn[p]`
 
 ## 23.1.4
-- TRIO114 no longer triggers on posonly args named "task_status"
+- TRIO114 avoids a false alarm on posonly args named "task_status"
 - TRIO116 will now match on any attribute parameter named `.inf`, not just `math.inf`.
 - TRIO900 now only checks `@asynccontextmanager`, not other decorators passed with --no-checkpoint-warning-decorators.
 
