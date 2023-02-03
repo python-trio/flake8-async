@@ -67,6 +67,55 @@ ERROR_CODES = {
 
 @pytest.mark.parametrize(("test", "path"), test_files)
 def test_eval(test: str, path: Path):
+    content = path.read_text()
+    if "# NOTRIO" in content:
+        pytest.skip("file marked with NOTRIO")
+
+    expected, parsed_args = _parse_eval_file(test, content)
+    if "# TRIO_NO_ERROR" in content:
+        expected = []
+
+    plugin = Plugin(ast.parse(content))
+    assert_expected_errors(plugin, *expected, args=parsed_args)
+
+
+@pytest.mark.parametrize(("test", "path"), test_files)
+def test_eval_anyio(test: str, path: Path):
+    # read content, replace instances of trio with anyio, and write to tmp_file
+    content = path.read_text()
+
+    if "# NOANYIO" in content:
+        pytest.skip("file marked with NOANYIO")
+
+    # if test is marked NOTRIO, it's not written to require substitution
+    if "# NOTRIO" not in content:
+        # replace instances of trio with anyio, unless it's part of a flag
+        # (which all conveniently start with --trio... atm)
+        content = re.sub(r"(?<!-)trio", "anyio", content)
+
+    # parse args and expected errors
+    expected, parsed_args = _parse_eval_file(test, content)
+
+    parsed_args.insert(0, "--anyio")
+
+    # initialize plugin and check errors, ignoring columns since they occasionally are
+    # wrong due to len("anyio") > len("trio")
+    plugin = Plugin(ast.parse(content))
+
+    if "# ANYIO_NO_ERROR" in content:
+        expected = []
+
+    errors = assert_expected_errors(
+        plugin, *expected, args=parsed_args, ignore_column=True
+    )
+
+    # check that error messages refer to 'anyio', or to neither library
+    for error in errors:
+        message = error.message.format(*error.args)
+        assert "anyio" in message or "trio" not in message
+
+
+def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
     # version check
     check_version(test)
     test = test.split("_")[0]
@@ -81,10 +130,7 @@ def test_eval(test: str, path: Path):
 
     expected: list[Error] = []
 
-    with open(path, encoding="utf-8") as file:
-        lines = file.readlines()
-
-    for lineno, line in enumerate(lines, start=1):
+    for lineno, line in enumerate(content.split("\n"), start=1):
         # interpret '\n' in comments as actual newlines
         line = line.replace("\\n", "\n")
 
@@ -144,10 +190,8 @@ def test_eval(test: str, path: Path):
                 raise ParseError(msg) from e
 
     assert parsed_args, "no parsed_args"
-    assert expected, f"failed to parse any errors in file {path}"
 
-    plugin = Plugin.from_filename(path)
-    assert_expected_errors(plugin, *expected, args=parsed_args)
+    return expected, parsed_args
 
 
 # Codes that are supposed to also raise errors when run on sync code, and should
@@ -218,26 +262,33 @@ def assert_expected_errors(
     plugin: Plugin,
     *expected: Error,
     args: list[str] | None = None,
-):
+    ignore_column: bool = False,
+) -> list[Error]:
     # initialize default option values
     initialize_options(plugin, args)
 
     errors = sorted(e for e in plugin.run())
     expected_ = sorted(expected)
 
-    print_first_diff(errors, expected_)
+    print_first_diff(errors, expected_, ignore_column)
     assert_correct_lines_and_codes(errors, expected_)
-    assert_correct_columns(errors, expected_)
+    if not ignore_column:
+        assert_correct_columns(errors, expected_)
     assert_correct_args(errors, expected_)
 
     # full check
-    assert errors == expected_
+    if not ignore_column:
+        assert errors == expected_
 
     # test tuple conversion and iter types
-    assert_tuple_and_types(errors, expected_)
+    assert_tuple_and_types(errors, expected_, ignore_column)
+
+    return errors
 
 
-def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
+def print_first_diff(
+    errors: Sequence[Error], expected: Sequence[Error], ignore_column: bool = False
+):
     first_error_line: list[Error] = []
     first_expected_line: list[Error] = []
     for err, exp in zip(errors, expected):
@@ -248,7 +299,7 @@ def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
         if not first_expected_line or exp.line == first_expected_line[0]:
             first_expected_line.append(exp)
 
-    if first_expected_line != first_error_line:
+    if first_expected_line != first_error_line and not ignore_column:
         print(
             "\nFirst lines with different errors",
             f"  actual: {[e.cmp() for e in first_error_line]}",
@@ -318,7 +369,7 @@ def assert_correct_args(errors: Iterable[Error], expected: Iterable[Error]):
     # check errors have correct messages
     args_error = False
     for err, exp in zip(errors, expected):
-        assert (err.line, err.col, err.code) == (exp.line, exp.col, exp.code)
+        assert (err.line, err.code) == (exp.line, exp.code), "error in previous checks"
         if err.args != exp.args:
             if not args_error:
                 print(
@@ -338,7 +389,9 @@ def assert_correct_args(errors: Iterable[Error], expected: Iterable[Error]):
     assert not args_error
 
 
-def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
+def assert_tuple_and_types(
+    errors: Iterable[Error], expected: Iterable[Error], ignore_column: bool = False
+):
     def info_tuple(error: Error):
         try:
             return tuple(error)
@@ -359,7 +412,8 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
         err_msg = info_tuple(err)
         for err, type_ in zip(err_msg, (int, int, str, type(None))):
             assert isinstance(err, type_)
-        assert err_msg == info_tuple(exp)
+        if not ignore_column:
+            assert err_msg == info_tuple(exp)
 
 
 def test_107_permutations():
@@ -463,6 +517,37 @@ def test_200_options(capsys: pytest.CaptureFixture[str]):
         out, err = capsys.readouterr()
         assert not out, out
         assert all(word in err for word in (str(i), arg, "->"))
+
+
+def test_anyio_from_config(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    tmp_path.joinpath(".flake8").write_text(
+        """
+[flake8]
+anyio = True
+select = TRIO220
+"""
+    )
+
+    from flake8_trio.visitors.visitor2xx import Visitor22X
+
+    err_msg = Visitor22X.error_codes["TRIO220"].format(
+        "subprocess.Popen",
+        "[anyio|trio]",
+    )
+    err_file = str(Path(__file__).parent / "eval_files" / "anyio_trio.py")
+    expected = f"{err_file}:9:5: TRIO220 {err_msg}\n"
+    from flake8.main.cli import main
+
+    main(
+        argv=[
+            err_file,
+            "--append-config",
+            str(tmp_path / ".flake8"),
+        ]
+    )
+    out, err = capsys.readouterr()
+    assert not err
+    assert expected == out
 
 
 def _test_trio200_from_config_common(tmp_path: Path) -> str:

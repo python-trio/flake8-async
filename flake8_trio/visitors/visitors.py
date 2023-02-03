@@ -22,8 +22,8 @@ checkpoint_node_types = (ast.Await, ast.AsyncFor, ast.AsyncWith)
 class Visitor100(Flake8TrioVisitor):
     error_codes = {
         "TRIO100": (
-            "{} context contains no checkpoints, remove the context or add"
-            " `await trio.lowlevel.checkpoint()`"
+            "{0}.{1} context contains no checkpoints, remove the context or add"
+            " `await {0}.lowlevel.checkpoint()`"
         ),
     }
 
@@ -34,7 +34,8 @@ class Visitor100(Flake8TrioVisitor):
                 isinstance(x, checkpoint_node_types) and x != node
                 for x in ast.walk(node)
             ):
-                self.error(item, f"trio.{call[1]}")
+                # type checking has been done inside get_matching_call
+                self.error(item, call[2], call[1])
 
     visit_AsyncWith = visit_With
 
@@ -118,10 +119,12 @@ def is_nursery_call(node: ast.AST, name: str) -> bool:
 @error_class
 class Visitor105(Flake8TrioVisitor):
     error_codes = {
-        "TRIO105": "trio async function {} must be immediately awaited",
+        "TRIO105": "{1} async function {0} must be immediately awaited",
     }
 
     def visit_Call(self, node: ast.Call):
+        if "trio" not in self.library:
+            return
         if (
             not getattr(node, "awaited", False)
             and isinstance(node.func, ast.Attribute)
@@ -131,23 +134,23 @@ class Visitor105(Flake8TrioVisitor):
                 or is_nursery_call(node.func, "start")
             )
         ):
-            self.error(node, node.func.attr)
+            self.error(node, node.func.attr, node.func.value.id)
 
 
 @error_class
 class Visitor106(Flake8TrioVisitor):
     error_codes = {
-        "TRIO106": "trio must be imported with `import trio` for the linter to work",
+        "TRIO106": "{0} must be imported with `import {0}` for the linter to work",
     }
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node.module == "trio":
-            self.error(node)
+        if node.module in ("trio", "anyio"):
+            self.error(node, node.module)
 
     def visit_Import(self, node: ast.Import):
         for name in node.names:
-            if name.name == "trio" and name.asname is not None:
-                self.error(node)
+            if name.name in ("trio", "anyio") and name.asname is not None:
+                self.error(node, name.name)
 
 
 @error_class
@@ -155,7 +158,7 @@ class Visitor109(Flake8TrioVisitor):
     error_codes = {
         "TRIO109": (
             "Async function definition with a `timeout` parameter - use "
-            "`trio.[fail/move_on]_[after/at]` instead"
+            "`{}.[fail/move_on]_[after/at]` instead"
         ),
     }
 
@@ -168,15 +171,15 @@ class Visitor109(Flake8TrioVisitor):
         args = node.args
         for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
             if arg.arg == "timeout":
-                self.error(arg)
+                self.error(arg, self.library)
 
 
 @error_class
 class Visitor110(Flake8TrioVisitor):
     error_codes = {
         "TRIO110": (
-            "`while <condition>: await trio.sleep()` should be replaced by "
-            "a `trio.Event`."
+            "`while <condition>: await {0}.sleep()` should be replaced by "
+            "a `{0}.Event`."
         ),
     }
 
@@ -187,7 +190,7 @@ class Visitor110(Flake8TrioVisitor):
             and isinstance(node.body[0].value, ast.Await)
             and get_matching_call(node.body[0].value.value, "sleep", "sleep_until")
         ):
-            self.error(node)
+            self.error(node, self.library)
 
 
 @error_class
@@ -328,30 +331,31 @@ class Visitor114(Flake8TrioVisitor):
 @error_class
 class Visitor115(Flake8TrioVisitor):
     error_codes = {
-        "TRIO115": "Use `trio.lowlevel.checkpoint()` instead of `trio.sleep(0)`.",
+        "TRIO115": "Use `{0}.lowlevel.checkpoint()` instead of `{0}.sleep(0)`.",
     }
 
     def visit_Call(self, node: ast.Call):
         if (
-            get_matching_call(node, "sleep")
+            (m := get_matching_call(node, "sleep"))
             and len(node.args) == 1
             and isinstance(node.args[0], ast.Constant)
             and node.args[0].value == 0
         ):
-            self.error(node)
+            # m[2] is set to node.func.value.id
+            self.error(node, m[2])
 
 
 @error_class
 class Visitor116(Flake8TrioVisitor):
     error_codes = {
         "TRIO116": (
-            "trio.sleep() with >24 hour interval should usually be "
-            "`trio.sleep_forever()`"
+            "{0}.sleep() with >24 hour interval should usually be "
+            "`{0}.sleep_forever()`"
         ),
     }
 
     def visit_Call(self, node: ast.Call):
-        if get_matching_call(node, "sleep") and len(node.args) == 1:
+        if (m := get_matching_call(node, "sleep")) and len(node.args) == 1:
             arg = node.args[0]
             if (
                 # `trio.sleep(math.inf)`
@@ -376,17 +380,22 @@ class Visitor116(Flake8TrioVisitor):
                     and arg.value > 86400
                 )
             ):
-                self.error(node)
+                self.error(node, m[2])
 
 
+DEPRECATED_ERRORS = ("MultiError", "NonBaseMultiError")
+
+
+# anyio does not have MultiError, so this check is trio-only
 @error_class
 class Visitor117(Flake8TrioVisitor):
     error_codes = {
         "TRIO117": ("Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup"),
     }
 
+    # This should never actually happen given TRIO106
     def visit_Name(self, node: ast.Name):
-        if node.id in ("MultiError", "NonBaseMultiError"):
+        if node.id in DEPRECATED_ERRORS and "trio" in self.library:
             self.error(node, node.id)
 
     def visit_Attribute(self, node: ast.Attribute):

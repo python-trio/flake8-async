@@ -1,4 +1,6 @@
+# ANYIO_NO_ERROR
 # Conventional usage
+
 try:
     raise MultiError  # TRIO117: 10, "MultiError"
     raise NonBaseMultiError  # TRIO117: 10, "NonBaseMultiError"

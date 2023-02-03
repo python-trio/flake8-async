@@ -4,21 +4,21 @@ import trio as noerror
 
 async def foo():
     # only trigger on while loop with body being exactly one sleep[_until] statement
-    while ...:  # error: 4
+    while ...:  # error: 4, "trio"
         await trio.sleep()
 
-    while ...:  # error: 4
+    while ...:  # error: 4, "trio"
         await trio.sleep_until()
 
     # nested
 
     while ...:  # safe
-        while ...:  # error: 8
+        while ...:  # error: 8, "trio"
             await trio.sleep()
         await trio.sleep()
 
     while ...:  # safe
-        while ...:  # error: 8
+        while ...:  # error: 8, "trio"
             await trio.sleep()
 
     ### the rest are all safe

@@ -162,39 +162,11 @@ async def foo3():
             await foo()  # safe in theory, error: 12, Statement("try/finally", lineno-12)
 
 
-# New: except cancelled/baseexception are also critical
-async def foo4():
-    try:
-        ...
-    except ValueError:
-        await foo()  # safe
-    except trio.Cancelled:
-        await foo()  # error: 8, Statement("trio.Cancelled", lineno-1)
-    except BaseException:
-        await foo()  # error: 8, Statement("BaseException", lineno-1)
-    except:
-        await foo()  # error: 8, Statement("bare except", lineno-1)
-
-
-async def foo5():
-    try:
-        ...
-    except trio.Cancelled:
-        with trio.CancelScope(deadline=30, shield=True):
-            await foo()  # safe
-    except BaseException:
-        with trio.CancelScope(deadline=30, shield=True):
-            await foo()  # safe
-    except:
-        with trio.CancelScope(deadline=30, shield=True):
-            await foo()  # safe
-
-
 # multiple errors on same line
 # fmt: off
 async def foo6():
     try:
         ...
-    except trio.Cancelled:
-        _ = await foo(), await foo()  # error: 12, Statement("trio.Cancelled", lineno-1) # error: 25, Statement("trio.Cancelled", lineno-1)
+    except BaseException:
+        _ = await foo(), await foo()  # error: 12, Statement("BaseException", lineno-1) # error: 25, Statement("BaseException", lineno-1)
 # fmt: on

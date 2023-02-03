@@ -246,10 +246,10 @@ class Visitor22X(Visitor200):
     error_codes = {
         "TRIO220": (
             "Sync call {} in async function, use "
-            "`await nursery.start(trio.run_process, ...)`"
+            "`await nursery.start({}.run_process, ...)`"
         ),
-        "TRIO221": "Sync call {} in async function, use `await trio.run_process(...)`",
-        "TRIO222": "Sync call {} in async function, wrap in `trio.to_thread.run_sync()`",
+        "TRIO221": "Sync call {} in async function, use `await {}.run_process(...)`",
+        "TRIO222": "Sync call {} in async function, wrap in `{}.to_thread.run_sync()`",
     }
 
     def visit_blocking_call(self, node: ast.Call):
@@ -268,47 +268,48 @@ class Visitor22X(Visitor200):
         }
 
         func_name = ast.unparse(node.func)
+        error_code: str | None = None
         if func_name in ("subprocess.Popen", "os.popen"):
-            self.error(node, func_name, error_code="TRIO220")
+            error_code = "TRIO220"
 
         elif func_name in (
             "os.system",
             "os.posix_spawn",
             "os.posix_spawnp",
         ) or get_matching_call(node, *subprocess_calls, base="subprocess"):
-            self.error(node, func_name, error_code="TRIO221")
+            error_code = "TRIO221"
 
         elif re.fullmatch("os.wait([34]|(id)|(pid))?", func_name):
-            self.error(node, func_name, error_code="TRIO222")
+            error_code = "TRIO222"
 
         elif re.fullmatch("os.spawn[vl]p?e?", func_name):
+            error_code = "TRIO221"
+
             # if mode= is given and not [os.]P_WAIT: TRIO220
             # 1. as a positional parameter
-            if node.args:
-                arg = node.args[0]
-                if not is_p_wait(arg):
-                    self.error(node, func_name, error_code="TRIO220")
-                    return
+            if node.args and not is_p_wait(node.args[0]):
+                error_code = "TRIO220"
+
             # 2. as a keyword parameter
             for kw in node.keywords:
                 if kw.arg == "mode" and not is_p_wait(kw.value):
-                    self.error(node, func_name, error_code="TRIO220")
-                    return
+                    error_code = "TRIO220"
+                    break
 
-            # otherwise, TRIO221
-            self.error(node, func_name, error_code="TRIO221")
+        if error_code is not None:
+            self.error(node, func_name, self.library, error_code=error_code)
 
 
 @error_class
 class Visitor23X(Visitor200):
     error_codes = {
-        "TRIO230": ("Sync call {} in async function, use " "`trio.open_file(...)`."),
-        "TRIO231": ("Sync call {0} in async function, use " "`trio.wrap_file({0})`."),
+        "TRIO230": ("Sync call {0} in async function, use `{1}.open_file(...)`."),
+        "TRIO231": ("Sync call {0} in async function, use `{1}.wrap_file({0})`."),
     }
 
     def visit_Call(self, node: ast.Call):
         func_name = ast.unparse(node.func)
-        if func_name == "trio.wrap_file" and len(node.args) == 1:
+        if re.fullmatch(r"(trio|anyio)\.wrap_file", func_name) and len(node.args) == 1:
             setattr(node.args[0], "wrapped", True)  # noqa: B010
         super().visit_Call(node)
 
@@ -317,9 +318,12 @@ class Visitor23X(Visitor200):
             return
         func_name = ast.unparse(node.func)
         if func_name in ("open", "io.open", "io.open_code"):
-            self.error(node, func_name, error_code="TRIO230")
+            error_code = "TRIO230"
         elif func_name == "os.fdopen":
-            self.error(node, func_name, error_code="TRIO231")
+            error_code = "TRIO231"
+        else:
+            return
+        self.error(node, func_name, self.library, error_code=error_code)
 
 
 @error_class
@@ -327,7 +331,7 @@ class Visitor232(TypeTrackerVisitor200):
     error_codes = {
         "TRIO232": (
             "Blocking sync call {1} on file object {0}, wrap the file object"
-            "in `trio.wrap_file()` to get an async file object"
+            "in `{2}.wrap_file()` to get an async file object"
         )
     }
 
@@ -348,13 +352,13 @@ class Visitor232(TypeTrackerVisitor200):
             and (anno := self.variables.get(node.func.value.id))
             and (anno in io_file_types or f"io.{anno}" in io_file_types)
         ):
-            self.error(node, node.func.attr, node.func.value.id)
+            self.error(node, node.func.attr, node.func.value.id, self.library)
 
 
 @error_class
 class Visitor24X(Visitor200):
     error_codes = {
-        "TRIO240": ("Avoid using os.path, prefer using trio.Path objects"),
+        "TRIO240": ("Avoid using os.path, prefer using {1}.Path objects"),
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -395,8 +399,8 @@ class Visitor24X(Visitor200):
             return
         func_name = ast.unparse(node.func)
         if func_name in self.imports_from_ospath:
-            self.error(node, func_name)
+            self.error(node, func_name, self.library)
         elif (m := re.fullmatch(r"os\.path\.(?P<func>.*)", func_name)) and m.group(
             "func"
         ) in self.os_funcs:
-            self.error(node, m.group("func"))
+            self.error(node, m.group("func"), self.library)
