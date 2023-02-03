@@ -154,7 +154,7 @@ class Visitor103_104(Flake8TrioVisitor):
         if not self.unraised:
             return
 
-        # the following block is duplicated in Visitor107_108
+        # the following block is duplicated in Visitor91X
         infinite_loop = False
         if isinstance(node, ast.While):
             try:

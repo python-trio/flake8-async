@@ -56,6 +56,9 @@ def test_version_increments_are_correct():
             assert current == prev._replace(patch=prev.patch + 1), msg
 
 
+IGNORED_CODES = ("TRIO107", "TRIO108")
+
+
 class test_messages_documented(unittest.TestCase):
     def runTest(self):
         documented_errors: dict[str, set[str]] = {}
@@ -95,6 +98,10 @@ class test_messages_documented(unittest.TestCase):
                             assert isinstance(m, str)
                             documented_errors["eval_files"].add(m)
                         break
+
+        for code in IGNORED_CODES:
+            for errset in documented_errors.values():
+                errset.discard(code)
 
         unique_errors: dict[str, set[str]] = {}
         missing_errors: dict[str, set[str]] = {}

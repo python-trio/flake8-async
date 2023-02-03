@@ -30,9 +30,8 @@ pip install flake8-trio
 - **TRIO104**: `Cancelled` and `BaseException` must be re-raised - when a user tries to `return` or `raise` a different exception.
 - **TRIO105**: Calling a trio async function without immediately `await`ing it.
 - **TRIO106**: trio must be imported with `import trio` for the linter to work.
-- **TRIO107**: exit or `return` from async function with no guaranteed checkpoint or exception since function definition.
-- **TRIO108**: exit, yield or return from async iterable with no guaranteed checkpoint since possible function entry (yield or function definition)
-  Checkpoints are `await`, `async for`, and `async with` (on one of enter/exit).
+- **TRIO107**: Renamed to TRIO910
+- **TRIO108**: Renamed to TRIO911
 - **TRIO109**: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead
 - **TRIO110**: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.
 - **TRIO111**: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
@@ -57,13 +56,16 @@ pip install flake8-trio
 
 ### Warnings disabled by default
 - **TRIO900**: Async generator without `@asynccontextmanager` not allowed.
+- **TRIO910**: exit or `return` from async function with no guaranteed checkpoint or exception since function definition.
+- **TRIO911**: exit, yield or return from async iterable with no guaranteed checkpoint since possible function entry (yield or function definition)
+  Checkpoints are `await`, `async for`, and `async with` (on one of enter/exit).
 
 ## Configuration
 [You can configure `flake8` with command-line options](https://flake8.pycqa.org/en/latest/user/configuration.html),
 but we prefer using a config file. The file needs to start with a section marker `[flake8]` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.
 
 ### `no-checkpoint-warning-decorators`
-Specify a list of decorators to disable checkpointing checks for, turning off TRIO107 and TRIO108 warnings for functions decorated with any decorator matching any in the list. Matching is done with [fnmatch](https://docs.python.org/3/library/fnmatch.html). Defaults to disabling for `asynccontextmanager`.
+Specify a list of decorators to disable checkpointing checks for, turning off TRIO910 and TRIO911 warnings for functions decorated with any decorator matching any in the list. Matching is done with [fnmatch](https://docs.python.org/3/library/fnmatch.html). Defaults to disabling for `asynccontextmanager`.
 
 Decorators-to-match must be identifiers or dotted names only (not PEP-614 expressions), and will match against the name only - e.g. `foo.bar` matches `foo.bar`, `foo.bar()`, and `foo.bar(args, here)`, etc.
 

@@ -1,6 +1,6 @@
-"""Contains Visitor107_108.
+"""Contains Visitor91X.
 
-107 looks for async functions without guaranteed checkpoints (or exceptions), and 108 does
+910 looks for async functions without guaranteed checkpoints (or exceptions), and 911 does
 the same except for async iterables - while also requiring that they checkpoint between
 each yield.
 """
@@ -13,6 +13,7 @@ from typing import Any
 from ..base import Statement
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import (
+    disabled_by_default,
     error_class,
     fnmatch_qualified_name,
     has_decorator,
@@ -20,7 +21,7 @@ from .helpers import (
 )
 
 
-# used in 107/108
+# used in 910/911
 def empty_body(body: list[ast.stmt]) -> bool:
     # Does the function body consist solely of `pass`, `...`, and (doc)string literals?
     return all(
@@ -35,13 +36,14 @@ def empty_body(body: list[ast.stmt]) -> bool:
 
 
 @error_class
-class Visitor107_108(Flake8TrioVisitor):
+@disabled_by_default
+class Visitor91X(Flake8TrioVisitor):
     error_codes = {
-        "TRIO107": (
+        "TRIO910": (
             "{0} from async function with no guaranteed checkpoint or exception "
             "since function definition on line {1.lineno}"
         ),
-        "TRIO108": (
+        "TRIO911": (
             "{0} from async iterable with no guaranteed checkpoint since {1.name} "
             "on line {1.lineno}"
         ),
@@ -89,7 +91,7 @@ class Visitor107_108(Flake8TrioVisitor):
                 node,
                 "return" if isinstance(node, ast.Return) else "exit",
                 statement,
-                error_code="TRIO108" if self.has_yield else "TRIO107",
+                error_code="TRIO911" if self.has_yield else "TRIO910",
             )
 
     def visit_Return(self, node: ast.Return):
@@ -140,7 +142,7 @@ class Visitor107_108(Flake8TrioVisitor):
                 node,
                 "yield",
                 statement,
-                error_code="TRIO108",
+                error_code="TRIO911",
             )
 
         # mark as requiring checkpoint after

@@ -416,8 +416,8 @@ def assert_tuple_and_types(
             assert err_msg == info_tuple(exp)
 
 
-def test_107_permutations():
-    """Tests all possible permutations for TRIO107.
+def test_910_permutations():
+    """Tests all possible permutations for TRIO910.
 
     Since each test is so fast, and there's so many permutations, manually doing
     the permutations in a single test is much faster than the permutations from using
@@ -441,7 +441,7 @@ def test_107_permutations():
             await foo() | ... | return | None
     """
     plugin = Plugin(ast.AST())
-    initialize_options(plugin, args=["--enable-visitor-codes-regex=TRIO107"])
+    initialize_options(plugin, args=["--enable-visitor-codes-regex=TRIO910"])
 
     check = "await foo()"
 

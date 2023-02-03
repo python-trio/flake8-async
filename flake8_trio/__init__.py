@@ -63,7 +63,7 @@ class Plugin:
             required=False,
             comma_separated_list=True,
             help=(
-                "Comma-separated list of decorators to disable TRIO107 & TRIO108 "
+                "Comma-separated list of decorators to disable TRIO910 & TRIO911 "
                 "checkpoint warnings for. "
                 "Decorators can be dotted or not, as well as support * as a wildcard. "
                 "For example, ``--no-checkpoint-warning-decorators=app.route,"
