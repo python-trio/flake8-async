@@ -9,7 +9,7 @@ from flake8.main.application import Application
 
 from flake8_trio.base import Statement
 from flake8_trio.visitors.helpers import fnmatch_qualified_name
-from flake8_trio.visitors.visitor107_108 import Visitor107_108
+from flake8_trio.visitors.visitor91x import Visitor91X
 
 
 def dec_list(*decorators: str) -> ast.Module:
@@ -102,8 +102,8 @@ with open(file_path) as f:
             break
 
 expected_out = (
-    f"{file_path}:{expected_lineno}:1: TRIO107 "
-    + Visitor107_108.error_codes["TRIO107"].format(
+    f"{file_path}:{expected_lineno}:1: TRIO910 "
+    + Visitor91X.error_codes["TRIO910"].format(
         "exit", Statement("function definition", expected_lineno)
     )
     + "\n"

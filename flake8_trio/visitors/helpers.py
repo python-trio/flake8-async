@@ -31,7 +31,7 @@ def disabled_by_default(error_class: type[T]) -> type[T]:
 
 
 # ignores module and only checks the unqualified name of the decorator
-# used in 101 and 107/108
+# used in 101 and 910/911
 def has_decorator(decorator_list: list[ast.expr], *names: str):
     return any(
         (isinstance(dec, ast.Name) and dec.id in names)
@@ -42,7 +42,7 @@ def has_decorator(decorator_list: list[ast.expr], *names: str):
 
 # matches the fully qualified name against fnmatch pattern
 # used to match decorators and methods to user-supplied patterns
-# used in 107/108 and 200
+# used in 910/911 and 200
 def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | None:
     for name in name_list:
         if isinstance(name, ast.Call):
@@ -56,7 +56,7 @@ def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | N
     return None
 
 
-# used in 103/104 and 107/108
+# used in 103/104 and 910/911
 def iter_guaranteed_once(iterable: ast.expr) -> bool:
     # static container with an "elts" attribute
     if hasattr(iterable, "elts"):

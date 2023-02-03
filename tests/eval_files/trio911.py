@@ -4,7 +4,7 @@ import trio
 
 _: Any = ""
 
-# ARG --enable-visitor-codes-regex=(TRIO107)|(TRIO108)
+# ARG --enable-visitor-codes-regex=(TRIO910)|(TRIO911)
 
 
 async def foo() -> Any:
@@ -779,12 +779,12 @@ async def foo_loop_static():
             break
     yield
 
-    # will get caught by any number of linters, but trio108 will also complain
+    # will get caught by any number of linters, but trio911 will also complain
     for _ in 5:  # type: ignore
         await foo()
     yield  # error: 4, "yield", Stmt("yield", line-5)
 
-    # range with constant arguments also handled, see more extensive tests in 107
+    # range with constant arguments also handled, see more extensive tests in 910
     for i in range(5):
         await foo()
     yield
