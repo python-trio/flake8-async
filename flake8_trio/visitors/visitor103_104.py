@@ -15,11 +15,18 @@ from typing import Any
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import critical_except, error_class, iter_guaranteed_once
 
+_trio103_common_msg = "{} block with a code path that doesn't re-raise the error."
+
 
 @error_class
 class Visitor103_104(Flake8TrioVisitor):
     error_codes = {
-        "TRIO103": "{} block with a code path that doesn't re-raise the error.{}",
+        "TRIO103": _trio103_common_msg,
+        "TRIO103_alt": (
+            _trio103_common_msg
+            + " Consider adding an `except trio.Cancelled: raise` before this"
+            " exception handler."
+        ),
         "TRIO104": "Cancelled (and therefore BaseException) must be re-raised.",
     }
 
@@ -69,17 +76,12 @@ class Visitor103_104(Flake8TrioVisitor):
         self.generic_visit(node)
 
         if self.unraised and marker is not None:
-            extra_message = ""
-            if marker.name != "trio.Cancelled":
-                extra_message = (
-                    " Consider adding an `except trio.Cancelled: raise` before this"
-                    " exception handler."
-                )
             self.error(
                 marker,
                 marker.name,
-                extra_message,
-                error_code="TRIO103",
+                error_code=(
+                    "TRIO103" if marker.name == "trio.Cancelled" else "TRIO103_alt"
+                ),
             )
 
         # If this was a critical except, later excepts won't be catching cancelled

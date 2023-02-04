@@ -29,7 +29,7 @@ except trio.Cancelled as e:
 # But is a very weird pattern that we don't handle.
 try:
     ...
-except BaseException as e:  # TRIO103: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException as e:  # TRIO103_alt: 7, "BaseException"
     try:
         raise e
     except ValueError:
@@ -93,13 +93,13 @@ def foo():
 
     try:
         ...
-    except BaseException:  # TRIO103: 11, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+    except BaseException:  # TRIO103_alt: 11, "BaseException"
         return  # error: 8
 
     # check that we properly iterate over all nodes in try
     try:
         ...
-    except BaseException:  # TRIO103: 11, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+    except BaseException:  # TRIO103_alt: 11, "BaseException"
         try:
             return  # error: 12
         except ValueError:

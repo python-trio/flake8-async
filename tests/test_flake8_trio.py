@@ -125,8 +125,10 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
     # only enable the tested visitor to save performance and ease debugging
     # if a test requires enabling multiple visitors they specify a
     # `# ARG --enable-vis...` that comes later in the arg list, overriding this
+    visitor_codes_regex = ""
     if test in ERROR_CODES:
         parsed_args = [f"--enable-visitor-codes-regex={test}"]
+        visitor_codes_regex = f"{test}"
 
     expected: list[Error] = []
 
@@ -138,16 +140,19 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
 
         # add command-line args if specified with #ARG
         if reg_match := re.search(r"(?<=ARG ).*", line):
-            parsed_args.append(reg_match.group().strip())
+            argument = reg_match.group().strip()
+            parsed_args.append(argument)
+            if m := re.match(r"--enable-visitor-codes-regex=(.*)", argument):
+                visitor_codes_regex = m.groups()[0]
 
         # skip commented out lines
         if not line or line[0] == "#":
             continue
 
         # get text between `error:` and (end of line or another comment)
-        k = re.findall(r"(error|TRIO...):([^#]*)(?=#|$)", line)
+        k = re.findall(r"(error|TRIO...)(_.*)?:([^#]*)(?=#|$)", line)
 
-        for err_code, err_args in k:
+        for err_code, alt_code, err_args in k:
             try:
                 # Append a bunch of empty strings so string formatting gives garbage
                 # instead of throwing an exception
@@ -179,8 +184,8 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
 
             if err_code == "error":
                 err_code = test
-            error_class = ERROR_CODES[err_code]
-            message = error_class.error_codes[err_code]
+            error_class = ERROR_CODES[err_code + alt_code]
+            message = error_class.error_codes[err_code + alt_code]
             try:
                 expected.append(Error(err_code, lineno, int(col), message, *args))
             except AttributeError as e:
@@ -189,7 +194,8 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
                 )
                 raise ParseError(msg) from e
 
-    assert parsed_args, "no parsed_args"
+    for error in expected:
+        assert re.match(visitor_codes_regex, error.code)
 
     return expected, parsed_args
 

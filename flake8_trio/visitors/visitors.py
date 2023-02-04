@@ -23,7 +23,7 @@ class Visitor100(Flake8TrioVisitor):
     error_codes = {
         "TRIO100": (
             "{0}.{1} context contains no checkpoints, remove the context or add"
-            " `await {0}.lowlevel.checkpoint()`"
+            " `await {0}.lowlevel.checkpoint()`."
         ),
     }
 
@@ -44,8 +44,8 @@ class Visitor100(Flake8TrioVisitor):
 class Visitor101(Flake8TrioVisitor):
     error_codes = {
         "TRIO101": (
-            "yield inside a nursery or cancel scope is only safe when implementing "
-            "a context manager - otherwise, it breaks exception handling"
+            "`yield` inside a nursery or cancel scope is only safe when implementing "
+            "a context manager - otherwise, it breaks exception handling."
         ),
     }
 
@@ -119,7 +119,7 @@ def is_nursery_call(node: ast.AST, name: str) -> bool:
 @error_class
 class Visitor105(Flake8TrioVisitor):
     error_codes = {
-        "TRIO105": "{1} async function {0} must be immediately awaited",
+        "TRIO105": "{1} async function {0} must be immediately awaited.",
     }
 
     def visit_Call(self, node: ast.Call):
@@ -140,7 +140,7 @@ class Visitor105(Flake8TrioVisitor):
 @error_class
 class Visitor106(Flake8TrioVisitor):
     error_codes = {
-        "TRIO106": "{0} must be imported with `import {0}` for the linter to work",
+        "TRIO106": "{0} must be imported with `import {0}` for the linter to work.",
     }
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
@@ -158,7 +158,7 @@ class Visitor109(Flake8TrioVisitor):
     error_codes = {
         "TRIO109": (
             "Async function definition with a `timeout` parameter - use "
-            "`{}.[fail/move_on]_[after/at]` instead"
+            "`{}.[fail/move_on]_[after/at]` instead."
         ),
     }
 
@@ -198,7 +198,7 @@ class Visitor112(Flake8TrioVisitor):
     error_codes = {
         "TRIO112": (
             "Redundant nursery {}, consider replacing with directly awaiting "
-            "the function call"
+            "the function call."
         ),
     }
 
@@ -350,7 +350,7 @@ class Visitor116(Flake8TrioVisitor):
     error_codes = {
         "TRIO116": (
             "{0}.sleep() with >24 hour interval should usually be "
-            "`{0}.sleep_forever()`"
+            "`{0}.sleep_forever()`."
         ),
     }
 
@@ -390,7 +390,7 @@ DEPRECATED_ERRORS = ("MultiError", "NonBaseMultiError")
 @error_class
 class Visitor117(Flake8TrioVisitor):
     error_codes = {
-        "TRIO117": ("Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup"),
+        "TRIO117": ("Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup."),
     }
 
     # This should never actually happen given TRIO106
