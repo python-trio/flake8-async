@@ -18,7 +18,7 @@ class Visitor102(Flake8TrioVisitor):
     error_codes = {
         "TRIO102": (
             "await inside {0.name} on line {0.lineno} must have shielded cancel "
-            "scope with a timeout"
+            "scope with a timeout."
         ),
     }
 

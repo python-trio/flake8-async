@@ -41,11 +41,11 @@ class Visitor91X(Flake8TrioVisitor):
     error_codes = {
         "TRIO910": (
             "{0} from async function with no guaranteed checkpoint or exception "
-            "since function definition on line {1.lineno}"
+            "since function definition on line {1.lineno}."
         ),
         "TRIO911": (
             "{0} from async iterable with no guaranteed checkpoint since {1.name} "
-            "on line {1.lineno}"
+            "on line {1.lineno}."
         ),
     }
 

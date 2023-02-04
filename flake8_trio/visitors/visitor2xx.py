@@ -133,9 +133,9 @@ class TypeTrackerVisitor200(Visitor200):
 @error_class
 class Visitor21X(Visitor200):
     error_codes = {
-        "TRIO210": "Sync HTTP call {} in async function, use httpx.AsyncClient",
+        "TRIO210": "Sync HTTP call {} in async function, use `httpx.AsyncClient`.",
         "TRIO211": (
-            "Likely sync HTTP call {} in async function, use httpx.AsyncClient"
+            "Likely sync HTTP call {} in async function, use `httpx.AsyncClient`."
         ),
     }
 
@@ -193,7 +193,7 @@ class Visitor21X(Visitor200):
 class Visitor212(TypeTrackerVisitor200):
     error_codes = {
         "TRIO212": (
-            "Blocking sync HTTP call {1} on httpx object {0}, use httpx.AsyncClient"
+            "Blocking sync HTTP call {1} on httpx object {0}, use httpx.AsyncClient."
         )
     }
 
@@ -246,10 +246,10 @@ class Visitor22X(Visitor200):
     error_codes = {
         "TRIO220": (
             "Sync call {} in async function, use "
-            "`await nursery.start({}.run_process, ...)`"
+            "`await nursery.start({}.run_process, ...)`."
         ),
-        "TRIO221": "Sync call {} in async function, use `await {}.run_process(...)`",
-        "TRIO222": "Sync call {} in async function, wrap in `{}.to_thread.run_sync()`",
+        "TRIO221": "Sync call {} in async function, use `await {}.run_process(...)`.",
+        "TRIO222": "Sync call {} in async function, wrap in `{}.to_thread.run_sync()`.",
     }
 
     def visit_blocking_call(self, node: ast.Call):
@@ -331,7 +331,7 @@ class Visitor232(TypeTrackerVisitor200):
     error_codes = {
         "TRIO232": (
             "Blocking sync call {1} on file object {0}, wrap the file object"
-            "in `{2}.wrap_file()` to get an async file object"
+            "in `{2}.wrap_file()` to get an async file object."
         )
     }
 
@@ -358,7 +358,7 @@ class Visitor232(TypeTrackerVisitor200):
 @error_class
 class Visitor24X(Visitor200):
     error_codes = {
-        "TRIO240": ("Avoid using os.path, prefer using {1}.Path objects"),
+        "TRIO240": ("Avoid using os.path, prefer using {1}.Path objects."),
     }
 
     def __init__(self, *args: Any, **kwargs: Any):

@@ -56,7 +56,7 @@ def test_version_increments_are_correct():
             assert current == prev._replace(patch=prev.patch + 1), msg
 
 
-IGNORED_CODES = ("TRIO107", "TRIO108")
+IGNORED_CODES = ("TRIO107", "TRIO108", "TRIO103_alt")
 
 
 class test_messages_documented(unittest.TestCase):

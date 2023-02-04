@@ -87,7 +87,8 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         if not self.suppress_errors:
             self._problems.append(
                 Error(
-                    error_code,
+                    # 7 == len('TRIO...'), so alt messages raise the original code
+                    error_code[:7],
                     node.lineno,
                     node.col_offset,
                     self.error_codes[error_code],

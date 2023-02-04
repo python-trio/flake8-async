@@ -23,7 +23,7 @@ try:
 except (
     SyntaxError,
     ValueError,
-    trio.Cancelled,  # error: 4, "trio.Cancelled", ""
+    trio.Cancelled,  # TRIO103: 4, "trio.Cancelled"
 ) as p:
     ...
 
@@ -44,13 +44,13 @@ except trio.Cancelled as e:
 
 try:
     ...
-except trio.Cancelled:  # error: 7, "trio.Cancelled", ""
+except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
     ...
 
 # if
 try:
     ...
-except BaseException as e:  # error: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException as e:  # TRIO103_alt: 7, "BaseException"
     if True:
         raise e
     elif True:
@@ -60,7 +60,7 @@ except BaseException as e:  # error: 7, "BaseException", " Consider adding an `e
 
 try:
     ...
-except BaseException:  # error: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException:  # TRIO103_alt: 7, "BaseException"
     if True:
         raise
 
@@ -78,7 +78,7 @@ except BaseException:  # safe
 # raises inside the body are never guaranteed to run and are ignored
 try:
     ...
-except trio.Cancelled:  # error: 7, "trio.Cancelled", ""
+except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
     while foo():
         raise
 
@@ -101,7 +101,7 @@ except trio.Cancelled:
 
 try:
     ...
-except BaseException:  # error: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException:  # TRIO103_alt: 7, "BaseException"
     while ...:
         if ...:
             break
@@ -111,7 +111,7 @@ except BaseException:  # error: 7, "BaseException", " Consider adding an `except
 
 try:
     ...
-except BaseException:  # error: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException:  # TRIO103_alt: 7, "BaseException"
     for _ in "":
         if ...:
             break
@@ -136,7 +136,7 @@ except BaseException:
 # But is a very weird pattern that we don't handle.
 try:
     ...
-except BaseException as e:  # error: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException as e:  # TRIO103_alt: 7, "BaseException"
     try:
         raise e
     except ValueError:
@@ -187,7 +187,7 @@ except trio.Cancelled as e:
 # bare except, equivalent to `except baseException`
 try:
     ...
-except:  # error: 0, "bare except", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except:  # TRIO103_alt: 0, "bare except"
     ...
 
 try:
@@ -202,7 +202,7 @@ try:
 except (
     my_super_mega_long_exception_so_it_gets_split,
     SyntaxError,
-    BaseException,  # error: 4, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+    BaseException,  # TRIO103_alt: 4, "BaseException"
     ValueError,
     trio.Cancelled,  # no complaint on this line
 ):
@@ -217,13 +217,13 @@ except BaseException as e:
 
 try:
     ...
-except BaseException:  # error: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException:  # TRIO103_alt: 7, "BaseException"
     for i in [1, 2, 3]:
         ...
 
 try:
     ...
-except BaseException:  # error: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException:  # TRIO103_alt: 7, "BaseException"
     for i in [1, 2, 3]:
         if ...:
             continue
@@ -237,7 +237,7 @@ except BaseException:
 
 try:
     ...
-except BaseException:  # error: 7, "BaseException", " Consider adding an `except trio.Cancelled: raise` before this exception handler."
+except BaseException:  # TRIO103_alt: 7, "BaseException"
     while True:
         if ...:
             break
@@ -280,7 +280,7 @@ except:  # now silent
 # don't throw multiple 103's even if `Cancelled` wasn't properly handled.
 try:
     ...
-except trio.Cancelled:  # error: 7, "trio.Cancelled", ""
+except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
     ...
 except BaseException:  # now silent
     ...
@@ -293,10 +293,10 @@ try:
         ...
     except trio.Cancelled:
         raise
-except trio.Cancelled:  # error: 7, "trio.Cancelled", ""
+except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
     ...
 except:
     try:
         ...
-    except trio.Cancelled:  # error: 11, "trio.Cancelled", ""
+    except trio.Cancelled:  # TRIO103: 11, "trio.Cancelled"
         ...
