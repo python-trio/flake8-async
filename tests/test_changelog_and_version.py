@@ -7,9 +7,9 @@ import unittest
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
-from test_flake8_trio import ERROR_CODES
-
 import flake8_trio
+
+from .test_flake8_trio import ERROR_CODES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
