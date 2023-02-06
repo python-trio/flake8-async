@@ -27,16 +27,9 @@ class Flake8TrioVisitor(ast.NodeVisitor):
         self.options = options
         self.outer: dict[ast.AST, dict[str, Any]] = {}
         self.novisit = False
-
-        # check whether library we're working towards has been explicitly
-        # specified with --anyio, otherwise assume Trio - but we update if we
-        # see imports
+        self._library: tuple[str, ...] = ()
         if self.options.anyio:
-            self.library_explicit = True
-            self.library = "anyio"
-        else:
-            self.library_explicit = False
-            self.library = "trio"
+            self._library = ("anyio",)
 
     def visit(self, node: ast.AST):
         """Visit a node."""
@@ -132,13 +125,19 @@ class Flake8TrioVisitor(ast.NodeVisitor):
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
             name = alias.name
-            if name in ("trio", "anyio") and alias.asname is None:
-                # if a library has not been explicitly imported or specified,
-                # replace the default
-                if not self.library_explicit:
-                    self.library = name
-                # otherwise, append this to the messages - if it's not already in it
-                elif name not in self.library:
-                    self.library = f"[{self.library}|{name}]"
+            if (
+                name in ("trio", "anyio")
+                and name not in self._library
+                and alias.asname is None
+            ):
+                self._library = self._library + (name,)
 
-                self.library_explicit = True
+    @property
+    def library(self) -> tuple[str, ...]:
+        return self._library if self._library else ("trio",)
+
+    @property
+    def library_str(self) -> str:
+        if len(self.library) == 1:
+            return self.library[0]
+        return "[" + "|".join(self.library) + "]"

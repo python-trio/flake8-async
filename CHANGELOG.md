@@ -3,7 +3,8 @@
 
 ## Future
 - Rename TRIO107 to TRIO910, and TRIO108 to TRIO911, and making them optional by default.
--
+- Add support for anyio
+
 ## 23.2.1
 - TRIO103 and TRIO104 no longer triggers when `trio.Cancelled` has been handled in previous except handlers.
 - Add TRIO117: Reference to deprecated `trio.[NonBase]MultiError`; use `[Base]ExceptionGroup` instead.

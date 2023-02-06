@@ -2,6 +2,7 @@
 import anyio
 
 
+# nurseries don't exist in anyio, so don't error on it.
 async def foo():
     nursery = anyio.open_nursery()
     await nursery.start()

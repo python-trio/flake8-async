@@ -171,7 +171,7 @@ class Visitor109(Flake8TrioVisitor):
         args = node.args
         for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
             if arg.arg == "timeout":
-                self.error(arg, self.library)
+                self.error(arg, self.library_str)
 
 
 @error_class
@@ -190,7 +190,7 @@ class Visitor110(Flake8TrioVisitor):
             and isinstance(node.body[0].value, ast.Await)
             and get_matching_call(node.body[0].value.value, "sleep", "sleep_until")
         ):
-            self.error(node, self.library)
+            self.error(node, self.library_str)
 
 
 @error_class

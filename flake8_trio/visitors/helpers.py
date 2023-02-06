@@ -15,7 +15,7 @@ from . import ERROR_CLASSES, default_disabled_error_codes
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from .flake8triovisitor import Flake8TrioVisitor
+    from .flake8triovisitor import Flake8TrioVisitor, HasLineCol
 
     T = TypeVar("T", bound=Flake8TrioVisitor)
 
@@ -97,31 +97,39 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
 
 # used in 102, 103 and 104
 def critical_except(node: ast.ExceptHandler) -> Statement | None:
-    def has_exception(node: ast.expr | None) -> str:
-        if isinstance(node, ast.Name) and node.id == "BaseException":
-            return "BaseException"
-        if (
-            isinstance(node, ast.Attribute)
-            and isinstance(node.value, ast.Name)
-            and node.value.id == "trio"
-            and node.attr == "Cancelled"
+    def has_exception(node: ast.expr) -> str | None:
+        name = ast.unparse(node)
+        if name in (
+            "BaseException",
+            "trio.Cancelled",
+            "anyio.get_cancelled_exc_class()",
+            "get_cancelled_exc_class()",
         ):
-            return "trio.Cancelled"
-        return ""
+            return name
+        return None
+
+    name: str | None = None
+    posnode: HasLineCol = node
 
     # bare except
     if node.type is None:
-        return Statement("bare except", node.lineno, node.col_offset)
+        name = "bare except"
+
     # several exceptions
-    if isinstance(node.type, ast.Tuple):
+    elif isinstance(node.type, ast.Tuple):
         for element in node.type.elts:
             name = has_exception(element)
-            if name:
-                return Statement(name, element.lineno, element.col_offset)
+            if name is not None:
+                posnode = element
+                break
     # single exception, either a Name or an Attribute
-    name = has_exception(node.type)
-    if name:
-        return Statement(name, node.type.lineno, node.type.col_offset)
+    else:
+        name = has_exception(node.type)
+        posnode = node.type
+
+    if name is not None:
+        return Statement(name, posnode.lineno, posnode.col_offset)
+
     return None
 
 

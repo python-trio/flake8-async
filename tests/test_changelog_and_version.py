@@ -56,7 +56,7 @@ def test_version_increments_are_correct():
             assert current == prev._replace(patch=prev.patch + 1), msg
 
 
-IGNORED_CODES = ("TRIO107", "TRIO108", "TRIO103_alt")
+IGNORED_CODES_REGEX = r"TRIO107|TRIO108|TRIO\d\d\d_.*"
 
 
 class test_messages_documented(unittest.TestCase):
@@ -99,9 +99,10 @@ class test_messages_documented(unittest.TestCase):
                             documented_errors["eval_files"].add(m)
                         break
 
-        for code in IGNORED_CODES:
-            for errset in documented_errors.values():
-                errset.discard(code)
+        for errset in documented_errors.values():
+            errset.difference_update(
+                [c for c in errset if re.fullmatch(IGNORED_CODES_REGEX, c)]
+            )
 
         unique_errors: dict[str, set[str]] = {}
         missing_errors: dict[str, set[str]] = {}

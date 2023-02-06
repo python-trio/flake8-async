@@ -297,7 +297,7 @@ class Visitor22X(Visitor200):
                     break
 
         if error_code is not None:
-            self.error(node, func_name, self.library, error_code=error_code)
+            self.error(node, func_name, self.library_str, error_code=error_code)
 
 
 @error_class
@@ -323,7 +323,7 @@ class Visitor23X(Visitor200):
             error_code = "TRIO231"
         else:
             return
-        self.error(node, func_name, self.library, error_code=error_code)
+        self.error(node, func_name, self.library_str, error_code=error_code)
 
 
 @error_class
@@ -352,7 +352,7 @@ class Visitor232(TypeTrackerVisitor200):
             and (anno := self.variables.get(node.func.value.id))
             and (anno in io_file_types or f"io.{anno}" in io_file_types)
         ):
-            self.error(node, node.func.attr, node.func.value.id, self.library)
+            self.error(node, node.func.attr, node.func.value.id, self.library_str)
 
 
 @error_class
@@ -399,8 +399,8 @@ class Visitor24X(Visitor200):
             return
         func_name = ast.unparse(node.func)
         if func_name in self.imports_from_ospath:
-            self.error(node, func_name, self.library)
+            self.error(node, func_name, self.library_str)
         elif (m := re.fullmatch(r"os\.path\.(?P<func>.*)", func_name)) and m.group(
             "func"
         ) in self.os_funcs:
-            self.error(node, m.group("func"), self.library)
+            self.error(node, m.group("func"), self.library_str)
