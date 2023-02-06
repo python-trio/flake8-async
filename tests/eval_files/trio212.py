@@ -24,6 +24,18 @@ async def foo_ann_par(client: httpx.Client):
     client.send(...)  # TRIO212: 4, "send", "client"
 
 
+async def foo_ann_par_leftNone(client: None | httpx.Client):
+    client.send(...)  # TRIO212: 4, "send", "client"
+
+
+async def foo_ann_par_rightNone(client: httpx.Client | None):
+    client.send(...)  # TRIO212: 4, "send", "client"
+
+
+async def foo_ann_par_optional(client: Optional[httpx.Client]):
+    client.send(...)  # TRIO212: 4, "send", "client"
+
+
 async def foo_ann_var():
     client: httpx.Client = ...
     client.send()  # TRIO212: 4, "send", "client"

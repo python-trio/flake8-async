@@ -52,6 +52,22 @@ async def file_text_4(f: TextIOWrapper | None):
         f.read()  # TRIO232: 8, 'read', 'f', "trio"
 
 
+async def file_text_4_left(f: None | TextIOWrapper):
+    f.read()  # TRIO232: 4, 'read', 'f', "trio"
+    if f:
+        f.read()  # TRIO232: 8, 'read', 'f', "trio"
+
+
+# not handled
+async def file_text_4_both(f: None | TextIOWrapper | None):
+    f.read()
+
+
+# not handled
+async def file_text_4_non_none(f: TextIOWrapper | int):
+    f.read()
+
+
 async def file_text_5(f: TextIOWrapper | None = None):
     f.read()  # TRIO232: 4, 'read', 'f', "trio"
     if f:

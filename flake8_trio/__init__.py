@@ -43,7 +43,8 @@ class Plugin:
         self._tree = tree
 
     @classmethod
-    def from_filename(cls, filename: str | PathLike[str]) -> Plugin:
+    def from_filename(cls, filename: str | PathLike[str]) -> Plugin:  # pragma: no cover
+        # only used with --runslow
         with tokenize.open(filename) as f:
             source = f.read()
         return cls(ast.parse(source))
