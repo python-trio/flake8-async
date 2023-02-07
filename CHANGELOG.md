@@ -1,10 +1,10 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 23.2.2
 - Rename TRIO107 to TRIO910, and TRIO108 to TRIO911, and making them optional by default.
 - Allow `@pytest.fixture()`-decorated async generators, since they're morally context managers
-- Add support for anyio
+- Add support for checking code written against [`anyio`](https://anyio.readthedocs.io/en/stable/)
 - Add TRIO118: Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable, since that breaks linter checks and multi-backend programs.
 
 ## 23.2.1
