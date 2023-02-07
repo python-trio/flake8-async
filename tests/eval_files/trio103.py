@@ -1,9 +1,6 @@
 # ARG --enable-visitor-codes-regex=(TRIO103)|(TRIO104)
-# NOANYIO - not implemented
 
 from typing import Any
-
-import trio
 
 
 def foo() -> Any:
@@ -23,7 +20,7 @@ try:
 except (
     SyntaxError,
     ValueError,
-    trio.Cancelled,  # TRIO103: 4, "trio.Cancelled"
+    BaseException,  # TRIO103_trio: 4, "BaseException"
 ) as p:
     ...
 
@@ -34,23 +31,23 @@ except (SyntaxError, ValueError):
 
 try:
     ...
-except trio.Cancelled as e:
+except BaseException as e:
     raise e
 
 try:
     ...
-except trio.Cancelled as e:
+except BaseException as e:
     raise  # acceptable - see https://peps.python.org/pep-0678/#example-usage
 
 try:
     ...
-except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     ...
 
 # if
 try:
     ...
-except BaseException as e:  # TRIO103_alt: 7, "BaseException"
+except BaseException as e:  # TRIO103_trio: 7, "BaseException"
     if True:
         raise e
     elif True:
@@ -60,7 +57,7 @@ except BaseException as e:  # TRIO103_alt: 7, "BaseException"
 
 try:
     ...
-except BaseException:  # TRIO103_alt: 7, "BaseException"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     if True:
         raise
 
@@ -78,14 +75,14 @@ except BaseException:  # safe
 # raises inside the body are never guaranteed to run and are ignored
 try:
     ...
-except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     while foo():
         raise
 
 # raise inside else are guaranteed to run, unless there's a break
 try:
     ...
-except trio.Cancelled:
+except BaseException:
     while ...:
         ...
     else:
@@ -93,7 +90,7 @@ except trio.Cancelled:
 
 try:
     ...
-except trio.Cancelled:
+except BaseException:
     for _ in "":
         ...
     else:
@@ -101,7 +98,7 @@ except trio.Cancelled:
 
 try:
     ...
-except BaseException:  # TRIO103_alt: 7, "BaseException"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     while ...:
         if ...:
             break
@@ -111,7 +108,7 @@ except BaseException:  # TRIO103_alt: 7, "BaseException"
 
 try:
     ...
-except BaseException:  # TRIO103_alt: 7, "BaseException"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     for _ in "":
         if ...:
             break
@@ -136,7 +133,7 @@ except BaseException:
 # But is a very weird pattern that we don't handle.
 try:
     ...
-except BaseException as e:  # TRIO103_alt: 7, "BaseException"
+except BaseException as e:  # TRIO103_trio: 7, "BaseException"
     try:
         raise e
     except ValueError:
@@ -165,7 +162,7 @@ except BaseException:
 # check that name isn't lost
 try:
     ...
-except trio.Cancelled as e:
+except BaseException as e:
     try:
         ...
     except BaseException as f:
@@ -175,7 +172,7 @@ except trio.Cancelled as e:
 # don't bypass raise by raising from nested except
 try:
     ...
-except trio.Cancelled as e:
+except BaseException as e:
     try:
         ...
     except ValueError as g:
@@ -187,7 +184,7 @@ except trio.Cancelled as e:
 # bare except, equivalent to `except baseException`
 try:
     ...
-except:  # TRIO103_alt: 0, "bare except"
+except:  # TRIO103_trio: 0, "bare except"
     ...
 
 try:
@@ -202,9 +199,9 @@ try:
 except (
     my_super_mega_long_exception_so_it_gets_split,
     SyntaxError,
-    BaseException,  # TRIO103_alt: 4, "BaseException"
+    BaseException,  # TRIO103_trio: 4, "BaseException"
     ValueError,
-    trio.Cancelled,  # no complaint on this line
+    BaseException,  # no complaint on this line
 ):
     ...
 
@@ -217,13 +214,13 @@ except BaseException as e:
 
 try:
     ...
-except BaseException:  # TRIO103_alt: 7, "BaseException"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     for i in [1, 2, 3]:
         ...
 
 try:
     ...
-except BaseException:  # TRIO103_alt: 7, "BaseException"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     for i in [1, 2, 3]:
         if ...:
             continue
@@ -237,7 +234,7 @@ except BaseException:
 
 try:
     ...
-except BaseException:  # TRIO103_alt: 7, "BaseException"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     while True:
         if ...:
             break
@@ -251,25 +248,7 @@ except BaseException:
             continue
         raise
 
-
 # Issue #106, false alarm on excepts after `Cancelled` has already been handled
-try:
-    ...
-except trio.Cancelled:
-    raise
-except BaseException:  # now silent
-    ...
-except:  # now silent
-    ...
-
-try:
-    ...
-except trio.Cancelled:
-    raise
-except:  # now silent
-    ...
-
-
 try:
     ...
 except BaseException:
@@ -280,9 +259,7 @@ except:  # now silent
 # don't throw multiple 103's even if `Cancelled` wasn't properly handled.
 try:
     ...
-except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
-    ...
-except BaseException:  # now silent
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     ...
 except:  # now silent
     ...
@@ -291,12 +268,12 @@ except:  # now silent
 try:
     try:
         ...
-    except trio.Cancelled:
+    except BaseException:
         raise
-except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
+except BaseException:  # TRIO103_trio: 7, "BaseException"
     ...
 except:
     try:
         ...
-    except trio.Cancelled:  # TRIO103: 11, "trio.Cancelled"
+    except BaseException:  # TRIO103_trio: 11, "BaseException"
         ...

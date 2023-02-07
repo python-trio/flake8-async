@@ -1,8 +1,4 @@
 # ARG --enable-visitor-codes-regex=(TRIO103)|(TRIO104)
-# NOANYIO - not implemented
-
-import trio
-
 try:
     ...
 # raise different exception
@@ -11,12 +7,12 @@ except BaseException:
 
 try:
     ...
-except trio.Cancelled as e:
+except BaseException as e:
     raise ValueError() from e  # error: 4
 
 try:
     ...
-except trio.Cancelled as e:
+except BaseException as e:
     # see https://github.com/Zac-HD/flake8-trio/pull/8#discussion_r932737341
     raise BaseException() from e  # error: 4
 
@@ -29,7 +25,7 @@ except trio.Cancelled as e:
 # But is a very weird pattern that we don't handle.
 try:
     ...
-except BaseException as e:  # TRIO103_alt: 7, "BaseException"
+except BaseException as e:  # TRIO103_trio: 7, "BaseException"
     try:
         raise e
     except ValueError:
@@ -58,7 +54,7 @@ except BaseException:
 # check that name isn't lost
 try:
     ...
-except trio.Cancelled as e:
+except BaseException as e:
     try:
         ...
     except BaseException as f:
@@ -68,7 +64,7 @@ except trio.Cancelled as e:
 # don't bypass raise by raising from nested except
 try:
     ...
-except trio.Cancelled as e:
+except BaseException as e:
     try:
         ...
     except ValueError as g:
@@ -93,13 +89,13 @@ def foo():
 
     try:
         ...
-    except BaseException:  # TRIO103_alt: 11, "BaseException"
+    except BaseException:  # TRIO103_trio: 11, "BaseException"
         return  # error: 8
 
     # check that we properly iterate over all nodes in try
     try:
         ...
-    except BaseException:  # TRIO103_alt: 11, "BaseException"
+    except BaseException:  # TRIO103_trio: 11, "BaseException"
         try:
             return  # error: 12
         except ValueError:
@@ -172,23 +168,15 @@ def foo_yield():
 def foo_cancelled_handled():
     try:
         ...
-    except trio.Cancelled:
-        raise
     except BaseException:
-        return  # would otherwise error
-    except:
-        return  # would otherwise error
-
-    try:
-        ...
-    except trio.Cancelled:
         raise
     except:
         return  # would otherwise error
 
+def foo_cancelled_not_handled():
     try:
         ...
-    except BaseException:
-        raise
+    except BaseException:  # TRIO103_trio: 11, "BaseException"
+        return  # TRIO104: 8
     except:
         return  # would otherwise error

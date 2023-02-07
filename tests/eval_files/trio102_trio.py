@@ -1,18 +1,26 @@
-# NOANYIO
+# NOANYIO - since anyio.Cancelled does not exist
+import trio
 
 
-# New: except cancelled/baseexception are also critical
+async def foo():
+    ...
+
+
+# except cancelled/baseexception are also critical
 async def foo4():
     try:
         ...
-    except ValueError:
-        await foo()  # safe
+    except trio.Cancelled:
+        await foo()  # error: 8, Statement("trio.Cancelled", lineno-1)
+    except:
+        await foo()  # safe, since after trio.Cancelled
+
+    try:
+        ...
     except trio.Cancelled:
         await foo()  # error: 8, Statement("trio.Cancelled", lineno-1)
     except BaseException:
-        await foo()  # error: 8, Statement("BaseException", lineno-1)
-    except:
-        await foo()  # error: 8, Statement("bare except", lineno-1)
+        await foo()  # safe, since after trio.Cancelled
 
 
 async def foo5():
@@ -22,8 +30,4 @@ async def foo5():
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
     except BaseException:
-        with trio.CancelScope(deadline=30, shield=True):
-            await foo()  # safe
-    except:
-        with trio.CancelScope(deadline=30, shield=True):
-            await foo()  # safe
+        await foo()  # safe, since after trio.Cancelled

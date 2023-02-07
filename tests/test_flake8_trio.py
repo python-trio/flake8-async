@@ -93,6 +93,11 @@ def test_eval_anyio(test: str, path: Path):
         # (which all conveniently start with --trio... atm)
         content = re.sub(r"(?<!-)trio", "anyio", content)
 
+        # if substituting we're messing up columns
+        ignore_column = True
+    else:
+        ignore_column = False
+
     # parse args and expected errors
     expected, parsed_args = _parse_eval_file(test, content)
 
@@ -106,7 +111,7 @@ def test_eval_anyio(test: str, path: Path):
         expected = []
 
     errors = assert_expected_errors(
-        plugin, *expected, args=parsed_args, ignore_column=True
+        plugin, *expected, args=parsed_args, ignore_column=ignore_column
     )
 
     # check that error messages refer to 'anyio', or to neither library
@@ -277,25 +282,27 @@ def assert_expected_errors(
     errors = sorted(e for e in plugin.run())
     expected_ = sorted(expected)
 
-    print_first_diff(errors, expected_, ignore_column)
+    if ignore_column:
+        for e in *errors, *expected_:
+            e.col = -1
+
+    print_first_diff(errors, expected_)
     assert_correct_lines_and_codes(errors, expected_)
     if not ignore_column:
-        assert_correct_columns(errors, expected_)
-    assert_correct_args(errors, expected_)
+        assert_correct_attribute(errors, expected_, "col")
+    assert_correct_attribute(errors, expected_, "message")
+    assert_correct_attribute(errors, expected_, "args")
 
     # full check
-    if not ignore_column:
-        assert errors == expected_
+    assert errors == expected_
 
     # test tuple conversion and iter types
-    assert_tuple_and_types(errors, expected_, ignore_column)
+    assert_tuple_and_types(errors, expected_)
 
     return errors
 
 
-def print_first_diff(
-    errors: Sequence[Error], expected: Sequence[Error], ignore_column: bool = False
-):
+def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
     first_error_line: list[Error] = []
     first_expected_line: list[Error] = []
     for err, exp in zip(errors, expected):
@@ -306,7 +313,7 @@ def print_first_diff(
         if not first_expected_line or exp.line == first_expected_line[0]:
             first_expected_line.append(exp)
 
-    if first_expected_line != first_error_line and not ignore_column:
+    if first_expected_line != first_error_line:
         print(
             "\nFirst lines with different errors",
             f"  actual: {[e.cmp() for e in first_error_line]}",
@@ -318,12 +325,15 @@ def print_first_diff(
 
 
 def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[Error]):
-    MyDict = DefaultDict[int, DefaultDict[str, int]]
-    # Check that errors are on correct lines
+    """Check that errors are on correct lines."""
+    MyDict = DefaultDict[int, DefaultDict[str, int]]  # TypeAlias
+
     all_lines = sorted({e.line for e in (*errors, *expected)})
+
     error_dict: MyDict = DefaultDict(lambda: DefaultDict(int))
     expected_dict = copy.deepcopy(error_dict)
 
+    # populate dicts with number of errors per line
     for e in errors:
         error_dict[e.line][e.code] += 1
     for e in expected:
@@ -333,6 +343,8 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
     for line in all_lines:
         if error_dict[line] == expected_dict[line]:
             continue
+
+        # go through all the codes on the line
         for code in sorted({*error_dict[line], *expected_dict[line]}):
             if not any_error:
                 print(
@@ -355,32 +367,19 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
     assert not any_error
 
 
-def assert_correct_columns(errors: Iterable[Error], expected: Iterable[Error]):
-    # check errors have correct columns
-    col_error = False
-    for err, exp in zip(errors, expected):
-        assert err.line == exp.line
-        if err.col != exp.col:
-            if not col_error:
-                print("Errors with same line but different columns:", file=sys.stderr)
-                print("| line | actual | expected |", file=sys.stderr)
-                col_error = True
-            print(
-                f"| {err.line:4} | {err.col:6} | {exp.col:8} |",
-                file=sys.stderr,
-            )
-    assert not col_error
-
-
-def assert_correct_args(errors: Iterable[Error], expected: Iterable[Error]):
+def assert_correct_attribute(
+    errors: Iterable[Error], expected: Iterable[Error], attribute: str
+):
     # check errors have correct messages
     args_error = False
     for err, exp in zip(errors, expected):
         assert (err.line, err.code) == (exp.line, exp.code), "error in previous checks"
-        if err.args != exp.args:
+        errattr = getattr(err, attribute)
+        expattr = getattr(exp, attribute)
+        if errattr != expattr:
             if not args_error:
                 print(
-                    "Errors with different args:",
+                    f"Errors with different {attribute}:",
                     "-" * 20,
                     sep="\n",
                     file=sys.stderr,
@@ -388,17 +387,15 @@ def assert_correct_args(errors: Iterable[Error], expected: Iterable[Error]):
                 args_error = True
             print(
                 f"*    line: {err.line:3} differs\n",
-                f"  actual: {err.args}\n",
-                f"expected: {exp.args}\n",
+                f"  actual: {errattr}\n",
+                f"expected: {expattr}\n",
                 "-" * 20,
                 file=sys.stderr,
             )
     assert not args_error
 
 
-def assert_tuple_and_types(
-    errors: Iterable[Error], expected: Iterable[Error], ignore_column: bool = False
-):
+def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
     def info_tuple(error: Error):
         try:
             return tuple(error)
@@ -419,8 +416,7 @@ def assert_tuple_and_types(
         err_msg = info_tuple(err)
         for err, type_ in zip(err_msg, (int, int, str, type(None))):
             assert isinstance(err, type_)
-        if not ignore_column:
-            assert err_msg == info_tuple(exp)
+        assert err_msg == info_tuple(exp)
 
 
 def test_910_permutations():

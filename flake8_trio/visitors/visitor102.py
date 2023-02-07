@@ -46,6 +46,7 @@ class Visitor102(Flake8TrioVisitor):
         super().__init__(*args, **kwargs)
         self._critical_scope: Statement | None = None
         self._trio_context_managers: list[Visitor102.TrioScope] = []
+        self.cancelled_caught = False
 
     # if we're inside a finally, and we're not inside a scope that doesn't have
     # both a timeout and shield
@@ -81,7 +82,10 @@ class Visitor102(Flake8TrioVisitor):
         self.visit_With(node)
 
     def visit_Try(self, node: ast.Try):
-        self.save_state(node, "_critical_scope", "_trio_context_managers")
+        self.save_state(
+            node, "_critical_scope", "_trio_context_managers", "cancelled_caught"
+        )
+        self.cancelled_caught = False
         # There's no visit_Finally, so we need to manually visit the Try fields.
         self.visit_nodes(node.body, node.handlers, node.orelse)
 
@@ -90,11 +94,14 @@ class Visitor102(Flake8TrioVisitor):
         self.visit_nodes(node.finalbody)
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
+        if self.cancelled_caught:
+            return
         res = critical_except(node)
         if res is None:
             return
 
         self.save_state(node, "_critical_scope", "_trio_context_managers")
+        self.cancelled_caught = True
         self._trio_context_managers = []
         self._critical_scope = res
 
