@@ -12,7 +12,9 @@ if TYPE_CHECKING:
     from argparse import Namespace
     from collections.abc import Iterable
 
-    HasLineCol = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
+    HasLineCol = Union[
+        ast.expr, ast.stmt, ast.arg, ast.excepthandler, ast.alias, Statement
+    ]
 
 
 class Flake8TrioVisitor(ast.NodeVisitor):
