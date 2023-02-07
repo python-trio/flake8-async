@@ -216,6 +216,7 @@ error_codes_ignored_when_checking_transformed_sync_code = {
     "TRIO115",
     "TRIO116",
     "TRIO117",
+    "TRIO118",
 }
 
 

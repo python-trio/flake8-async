@@ -3,6 +3,7 @@
 
 ## Future
 - Rename TRIO107 to TRIO910, and TRIO108 to TRIO911, and making them optional by default.
+- Add TRIO118: Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable, since that breaks linter checks and multi-backend programs.
 -
 ## 23.2.1
 - TRIO103 and TRIO104 no longer triggers when `trio.Cancelled` has been handled in previous except handlers.
