@@ -20,6 +20,7 @@ default_disabled_error_codes: list[str] = []
 from . import visitor102  # isort: skip
 from . import visitor103_104  # isort: skip
 from . import visitor111  # isort: skip
+from . import visitor118  # isort: skip
 from . import visitor2xx  # isort: skip
 from . import visitor91x  # isort: skip
 from . import visitors  # isort: skip
