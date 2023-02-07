@@ -23,6 +23,16 @@ def foo4():
     yield
 
 
+@pytest.fixture
+async def async_fixtures_are_basically_context_managers():
+    yield
+
+
+@pytest.fixture(scope="function")  # args don't matter
+async def async_fixtures_can_take_arguments():
+    yield
+
+
 # no-checkpoint-warning-decorator now ignored
 @other_context_manager
 async def foo5():  # TRIO900: 0

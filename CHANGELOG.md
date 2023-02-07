@@ -3,6 +3,7 @@
 
 ## Future
 - Rename TRIO107 to TRIO910, and TRIO108 to TRIO911, and making them optional by default.
+- Allow `@pytest.fixture()`-decorated async generators, since they're morally context managers
 - Add support for anyio
 - Add TRIO118: Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable, since that breaks linter checks and multi-backend programs.
 

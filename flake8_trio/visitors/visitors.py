@@ -235,12 +235,14 @@ class Visitor112(Flake8TrioVisitor):
     visit_AsyncWith = visit_With
 
 
-# used in 113
+# used in 113 and 900
 def _get_identifier(node: ast.expr) -> str:
     if isinstance(node, ast.Name):
         return node.id
     if isinstance(node, ast.Attribute):
         return node.attr
+    if isinstance(node, ast.Call):
+        return _get_identifier(node.func)
     return ""
 
 
@@ -419,7 +421,8 @@ class Visitor900(Flake8TrioVisitor):
     ):
         self.save_state(node, "unsafe_function")
         if isinstance(node, ast.AsyncFunctionDef) and not any(
-            _get_identifier(d) == "asynccontextmanager" for d in node.decorator_list
+            _get_identifier(d) in ("asynccontextmanager", "fixture")
+            for d in node.decorator_list
         ):
             self.unsafe_function = node
 
