@@ -1,5 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
+## Future
+- Fix get_matching_call when passed a single string as base. Resolves possibly several false alarms, TRIO210 among them.
 
 ## 23.2.2
 - Rename TRIO107 to TRIO910, and TRIO108 to TRIO911, and making them optional by default.
