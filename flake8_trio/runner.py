@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import ast
 import re
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .visitors import ERROR_CLASSES
+from .visitors import ERROR_CLASSES, utility_visitors
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -20,21 +21,30 @@ if TYPE_CHECKING:
     from .visitors.flake8triovisitor import Flake8TrioVisitor
 
 
+@dataclass
+class SharedState:
+    options: Namespace
+    problems: list[Error] = field(default_factory=list)
+    library: tuple[str, ...] = field(default_factory=tuple)
+    typed_calls: dict[str, str] = field(default_factory=dict)
+    variables: dict[str, str] = field(default_factory=dict)
+
+
 class Flake8TrioRunner(ast.NodeVisitor):
     def __init__(self, options: Namespace):
         super().__init__()
-        self._problems: list[Error] = []
-        self.options = options
+        self.state = SharedState(options)
+
+        # utility visitors that need to run before the error-checking visitors
+        self.utility_visitors = {v(self.state) for v in utility_visitors}
 
         self.visitors = {
-            v(options, self._problems)
-            for v in ERROR_CLASSES
-            if self.selected(v.error_codes)
+            v(self.state) for v in ERROR_CLASSES if self.selected(v.error_codes)
         }
 
     def selected(self, error_codes: dict[str, str]) -> bool:
         return any(
-            re.match(self.options.enable_visitor_codes_regex, code)
+            re.match(self.state.options.enable_visitor_codes_regex, code)
             for code in error_codes
         )
 
@@ -42,25 +52,17 @@ class Flake8TrioRunner(ast.NodeVisitor):
     def run(cls, tree: ast.AST, options: Namespace) -> Iterable[Error]:
         runner = cls(options)
         runner.visit(tree)
-        yield from runner._problems
+        yield from runner.state.problems
 
     def visit(self, node: ast.AST):
         """Visit a node."""
-        # don't bother visiting if no visitors are enabled, or all enabled visitors
-        # in parent nodes have marked novisit
-        if not self.visitors:
-            return
-
         # tracks the subclasses that, from this node on, iterated through it's subfields
         # we need to remember it so we can restore it at the end of the function.
         novisit: set[Flake8TrioVisitor] = set()
 
         method = "visit_" + node.__class__.__name__
 
-        if m := getattr(self, method, None):
-            m(node)
-
-        for subclass in self.visitors:
+        for subclass in *self.utility_visitors, *self.visitors:
             # check if subclass has defined a visitor for this type
             class_method = getattr(subclass, method, None)
             if class_method is None:
@@ -89,10 +91,5 @@ class Flake8TrioRunner(ast.NodeVisitor):
         self.visitors.update(novisit)
 
         # restore any outer state that was saved in the visitor method
-        for subclass in self.visitors:
+        for subclass in *self.utility_visitors, *self.visitors:
             subclass.set_state(subclass.outer.pop(node, {}))
-
-    def visit_Await(self, node: ast.Await):
-        if isinstance(node.value, ast.Call):
-            # add attribute to indicate it's awaited
-            setattr(node.value, "awaited", True)  # noqa: B010

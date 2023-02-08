@@ -49,85 +49,6 @@ class Visitor200(Flake8TrioVisitor):
 
 
 # used by Visitor212 and Visitor232
-class TypeTrackerVisitor200(Visitor200):
-    def __init__(
-        self, typed_calls: dict[str, str] | None = None, *args: Any, **kwargs: Any
-    ):
-        super().__init__(*args, **kwargs)
-        self.typed_calls: dict[str, str] = {} if typed_calls is None else typed_calls
-        self.variables: dict[str, str] = {}  # name: type
-
-    def visit_AsyncFunctionDef(
-        self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
-    ):
-        super().visit_AsyncFunctionDef(node)
-
-        def or_none(node: ast.AST | None):
-            if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.BitOr):
-                return None
-            if isinstance(node.left, ast.Constant) and node.left.value is None:
-                return node.right
-            if isinstance(node.right, ast.Constant) and node.right.value is None:
-                return node.left
-            return None
-
-        self.save_state(node, "variables", copy=True)
-
-        args = node.args
-        for arg in *args.args, *args.posonlyargs, *args.kwonlyargs:
-            annotation = arg.annotation
-
-            if (
-                isinstance(annotation, ast.Subscript)
-                and isinstance(annotation.value, ast.Name)
-                and annotation.value.id == "Optional"
-            ):
-                annotation = annotation.slice
-            elif res := or_none(annotation):
-                annotation = res
-
-            if not isinstance(annotation, (ast.Name, ast.Attribute)):
-                continue
-
-            self.variables[arg.arg] = ast.unparse(annotation)
-
-    visit_FunctionDef = visit_AsyncFunctionDef
-    visit_Lambda = visit_AsyncFunctionDef
-
-    def visit_AnnAssign(self, node: ast.AnnAssign):
-        if not isinstance(node.target, ast.Name):
-            return
-        target = node.target.id
-        typename = ast.unparse(node.annotation)
-        self.variables[target] = typename
-
-    def visit_Assign(self, node: ast.Assign):
-        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
-            return
-
-        # `f = open(...)`
-        if isinstance(node.value, ast.Call) and (
-            vartype := self.typed_calls.get(ast.unparse(node.value.func), None)
-        ):
-            self.variables[node.targets[0].id] = vartype
-
-        # f = ff (and ff is a variable with known type)
-        elif isinstance(node.value, ast.Name) and (
-            value := self.variables.get(node.value.id, None)
-        ):
-            self.variables[node.targets[0].id] = value
-
-    def visit_With(self, node: ast.With):
-        if len(node.items) != 1:
-            return
-        item = node.items[0]
-        if (
-            isinstance(item.context_expr, ast.Call)
-            and isinstance(item.context_expr.func, ast.Name)
-            and isinstance(item.optional_vars, ast.Name)
-            and (vartype := self.typed_calls.get(item.context_expr.func.id, None))
-        ):
-            self.variables[item.optional_vars.id] = vartype
 
 
 @error_class
@@ -190,7 +111,7 @@ class Visitor21X(Visitor200):
 
 
 @error_class
-class Visitor212(TypeTrackerVisitor200):
+class Visitor212(Visitor200):
     error_codes = {
         "TRIO212": (
             "Blocking sync HTTP call {1} on httpx object {0}, use httpx.AsyncClient."
@@ -211,9 +132,9 @@ class Visitor212(TypeTrackerVisitor200):
             "urllib3.poolmanager.ProxyManager",
             "urllib3.request.RequestMethods",
         )
-        super().__init__(
-            dict(zip(self.dangerous_classes, self.dangerous_classes)), *args, **kwargs
-        )
+        super().__init__(*args, **kwargs)
+        for c in self.dangerous_classes:
+            self.typed_calls[c] = c
 
     def visit_blocking_call(self, node: ast.Call):
         httpx_blocking_methods = (
@@ -327,7 +248,7 @@ class Visitor23X(Visitor200):
 
 
 @error_class
-class Visitor232(TypeTrackerVisitor200):
+class Visitor232(Visitor200):
     error_codes = {
         "TRIO232": (
             "Blocking sync call {1} on file object {0}, wrap the file object"
@@ -336,7 +257,8 @@ class Visitor232(TypeTrackerVisitor200):
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__({"open": "io.TextIOWrapper"}, *args, **kwargs)
+        super().__init__(*args, **kwargs)
+        self.typed_calls["open"] = "io.TextIOWrapper"
 
     def visit_blocking_call(self, node: ast.Call):
         io_file_types = (

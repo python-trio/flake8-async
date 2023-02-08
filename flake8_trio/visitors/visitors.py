@@ -12,6 +12,7 @@ from .helpers import (
     error_class,
     get_matching_call,
     has_decorator,
+    is_nursery_call,
 )
 
 # used in 100
@@ -84,57 +85,6 @@ class Visitor101(Flake8TrioVisitor):
     def visit_Yield(self, node: ast.Yield):
         if self._yield_is_error:
             self.error(node)
-
-
-# used in 105
-trio_async_funcs = (
-    "aclose_forcefully",
-    "open_file",
-    "open_ssl_over_tcp_listeners",
-    "open_ssl_over_tcp_stream",
-    "open_tcp_listeners",
-    "open_tcp_stream",
-    "open_unix_socket",
-    "run_process",
-    "serve_listeners",
-    "serve_ssl_over_tcp",
-    "serve_tcp",
-    "sleep",
-    "sleep_forever",
-    "sleep_until",
-)
-
-
-# used in 105 and 113
-def is_nursery_call(node: ast.AST, name: str) -> bool:
-    assert name in ("start", "start_soon")
-    if isinstance(node, ast.Attribute):
-        if isinstance(node.value, ast.Name):
-            return node.attr == name and node.value.id.endswith("nursery")
-        if isinstance(node.value, ast.Attribute):
-            return node.attr == name and node.value.attr.endswith("nursery")
-    return False
-
-
-@error_class
-class Visitor105(Flake8TrioVisitor):
-    error_codes = {
-        "TRIO105": "{1} async function {0} must be immediately awaited.",
-    }
-
-    def visit_Call(self, node: ast.Call):
-        if "trio" not in self.library:
-            return
-        if (
-            not getattr(node, "awaited", False)
-            and isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and (
-                (node.func.value.id == "trio" and node.func.attr in trio_async_funcs)
-                or is_nursery_call(node.func, "start")
-            )
-        ):
-            self.error(node, node.func.attr, node.func.value.id)
 
 
 @error_class
