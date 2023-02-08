@@ -10,7 +10,7 @@ from fnmatch import fnmatch
 from typing import TYPE_CHECKING, TypeVar
 
 from ..base import Statement
-from . import ERROR_CLASSES, default_disabled_error_codes
+from . import ERROR_CLASSES, default_disabled_error_codes, utility_visitors
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -28,6 +28,12 @@ def error_class(error_class: type[T]) -> type[T]:
 def disabled_by_default(error_class: type[T]) -> type[T]:
     default_disabled_error_codes.extend(error_class.error_codes)
     return error_class
+
+
+def utility_visitor(c: type[T]) -> type[T]:
+    c.error_codes = {"noerror": "ignore"}
+    utility_visitors.add(c)
+    return c
 
 
 # ignores module and only checks the unqualified name of the decorator
@@ -131,6 +137,17 @@ def critical_except(node: ast.ExceptHandler) -> Statement | None:
         return Statement(name, posnode.lineno, posnode.col_offset)
 
     return None
+
+
+# used in 105 and 113
+def is_nursery_call(node: ast.AST, name: str) -> bool:
+    assert name in ("start", "start_soon")
+    if isinstance(node, ast.Attribute):
+        if isinstance(node.value, ast.Name):
+            return node.attr == name and node.value.id.endswith("nursery")
+        if isinstance(node.value, ast.Attribute):
+            return node.attr == name and node.value.attr.endswith("nursery")
+    return False
 
 
 # used in 100, 101 and 102
