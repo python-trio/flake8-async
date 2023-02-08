@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "23.2.2"
+__version__ = "23.2.3"
 
 
 class Plugin:
