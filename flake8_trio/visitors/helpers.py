@@ -148,6 +148,8 @@ cancel_scope_names = (
 def get_matching_call(
     node: ast.AST, *names: str, base: Iterable[str] = ("trio", "anyio")
 ) -> tuple[ast.Call, str, str] | None:
+    if isinstance(base, str):
+        base = (base,)
     if (
         isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)

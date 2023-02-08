@@ -37,3 +37,6 @@ async def foo():
     urllib.request.urlopen("")  # TRIO210: 4, 'urllib.request.urlopen'
     request.urlopen()  # TRIO210: 4, 'request.urlopen'
     urlopen()  # TRIO210: 4, 'urlopen'
+
+    r = {}
+    r.get("not a sync http client")
