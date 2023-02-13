@@ -1,3 +1,4 @@
+# type: ignore
 import math
 from math import inf
 

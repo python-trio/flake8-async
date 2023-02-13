@@ -1,3 +1,4 @@
+# type: ignore
 # ARG --enable-visitor-codes-regex=(TRIO230)|(TRIO231)
 import io
 import os

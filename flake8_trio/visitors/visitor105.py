@@ -5,43 +5,56 @@ from __future__ import annotations
 import ast
 
 from .flake8triovisitor import Flake8TrioVisitor
-from .helpers import error_class, is_nursery_call
+from .helpers import error_class
 
 # used in 105
 trio_async_funcs = (
-    "aclose_forcefully",
-    "open_file",
-    "open_ssl_over_tcp_listeners",
-    "open_ssl_over_tcp_stream",
-    "open_tcp_listeners",
-    "open_tcp_stream",
-    "open_unix_socket",
-    "run_process",
-    "serve_listeners",
-    "serve_ssl_over_tcp",
-    "serve_tcp",
-    "sleep",
-    "sleep_forever",
-    "sleep_until",
+    "trio.aclose_forcefully",
+    "trio.open_file",
+    "trio.open_ssl_over_tcp_listeners",
+    "trio.open_ssl_over_tcp_stream",
+    "trio.open_tcp_listeners",
+    "trio.open_tcp_stream",
+    "trio.open_unix_socket",
+    "trio.run_process",
+    "trio.serve_listeners",
+    "trio.serve_ssl_over_tcp",
+    "trio.serve_tcp",
+    "trio.sleep",
+    "trio.sleep_forever",
+    "trio.sleep_until",
+    "trio.lowlevel.cancel_shielded_checkpoint",
+    "trio.lowlevel.checkpoint",
+    "trio.lowlevel.checkpoint_if_cancelled",
+    "trio.lowlevel.open_process",
+    "trio.lowlevel.permanently_detach_coroutine_object",
+    "trio.lowlevel.reattach_detached_coroutine_object",
+    "trio.lowlevel.temporarily_detach_coroutine_object",
+    "trio.lowlevel.wait_readable",
+    "trio.lowlevel.wait_task_rescheduled",
+    "trio.lowlevel.wait_writable",
 )
 
 
 @error_class
 class Visitor105(Flake8TrioVisitor):
     error_codes = {
-        "TRIO105": "{1} async function {0} must be immediately awaited.",
+        "TRIO105": "{0} async {1} must be immediately awaited.",
     }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.typed_calls["trio.open_nursery"] = "trio.Nursery"
+
     def visit_Call(self, node: ast.Call):
-        if "trio" not in self.library:
+        if getattr(node, "awaited", False) or "trio" not in self.library:
             return
-        if (
-            not getattr(node, "awaited", False)
-            and isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and (
-                (node.func.value.id == "trio" and node.func.attr in trio_async_funcs)
-                or is_nursery_call(node.func, "start")
-            )
-        ):
-            self.error(node, node.func.attr, node.func.value.id)
+
+        if (name := ast.unparse(node.func)) in trio_async_funcs:
+            self.error(node, name, "function")
+        elif isinstance(node.func, ast.Attribute) and node.func.attr == "start":
+            var = ast.unparse(node.func.value)
+
+            if self.variables.get(var, "") == "trio.Nursery" or var.endswith("nursery"):
+                self.error(node, "trio.Nursery.start", "method")

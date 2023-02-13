@@ -1,3 +1,4 @@
+# type: ignore
 # ARG --no-checkpoint-warning-decorator=asynccontextmanager,other_context_manager
 
 

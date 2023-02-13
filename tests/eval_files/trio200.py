@@ -1,3 +1,4 @@
+# type: ignore
 # specify command-line arguments to be used when testing this file.
 # Test spaces in options, and trailing comma
 # Cannot test newlines, since argparse splits on those if passed on the CLI
@@ -5,7 +6,7 @@
 
 
 # don't error in sync function
-def foo():
+def bar():
     bar()
     bee.bonnet()
 

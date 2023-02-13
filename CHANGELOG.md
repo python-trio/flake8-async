@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- TRIO113 now also works on anyio.TaskGroup
+
 ## 23.2.3
 - Fix get_matching_call when passed a single string as base. Resolves possibly several false alarms, TRIO210 among them.
 

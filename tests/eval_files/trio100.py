@@ -1,3 +1,4 @@
+# type: ignore
 import trio
 
 with trio.move_on_after(10):  # error: 5,"trio", "move_on_after"
@@ -35,10 +36,7 @@ async def function_name():
             pass
 
 
-import trio
-
-
-async def function_name():
+async def function_name2():
     with (
         open("") as _,
         trio.fail_after(10),  # error: 8, "trio", "fail_after"

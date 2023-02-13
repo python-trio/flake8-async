@@ -538,7 +538,7 @@ select = TRIO220
         "[anyio|trio]",
     )
     err_file = str(Path(__file__).parent / "eval_files" / "anyio_trio.py")
-    expected = f"{err_file}:9:5: TRIO220 {err_msg}\n"
+    expected = f"{err_file}:10:5: TRIO220 {err_msg}\n"
     from flake8.main.cli import main
 
     main(

@@ -1,3 +1,4 @@
+# type: ignore
 import typing
 from typing import Any, overload
 
