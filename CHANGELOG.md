@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- Fix TRIO900 false alarm on nested functions
+
 ## 23.2.3
 - Fix get_matching_call when passed a single string as base. Resolves possibly several false alarms, TRIO210 among them.
 
