@@ -23,7 +23,7 @@ class Version(NamedTuple):
     patch: int
 
     @classmethod
-    def from_string(cls, string):
+    def from_string(cls, string: str):
         return cls(*map(int, string.split(".")))
 
 

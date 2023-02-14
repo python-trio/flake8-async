@@ -21,11 +21,10 @@ if TYPE_CHECKING:
 
 class Flake8TrioVisitor(ast.NodeVisitor, ABC):
     # abstract attribute by not providing a value
-    error_codes: dict[str, str]
+    error_codes: dict[str, str]  # pyright: reportUninitializedInstanceVariable=false
 
     def __init__(self, shared_state: SharedState):
         super().__init__()
-        assert self.error_codes, "subclass must define error_codes"
         self.outer: dict[ast.AST, dict[str, Any]] = {}
         self.novisit = False
         self.__state = shared_state
@@ -48,11 +47,11 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
 
     # `variables` can be saved/loaded, but need a setter to not clear the reference
     @property
-    def variables(self):
+    def variables(self) -> dict[str, str]:
         return self.__state.variables
 
     @variables.setter
-    def variables(self, value):
+    def variables(self, value: dict[str, str]) -> None:
         self.__state.variables.clear()
         self.__state.variables.update(value)
 
@@ -155,6 +154,6 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
             return self.library[0]
         return "[" + "|".join(self.library) + "]"
 
-    def add_library(self, name) -> None:
+    def add_library(self, name: str) -> None:
         if name not in self.__state.library:
             self.__state.library = self.__state.library + (name,)

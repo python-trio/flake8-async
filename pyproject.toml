@@ -1,6 +1,13 @@
 [tool.pyright]
-strict = ["*.py", "tests/test_flake8_trio.py", "tests/conftest.py"]
+strict = ["*.py", "tests/*.py", "flake8_trio/**/*.py"]
 exclude = ["**/node_modules", "**/__pycache__", "**/.*"]
+reportUnusedCallResult=true
+reportUninitializedInstanceVariable=true
+reportPropertyTypeMismatch=true
+reportMissingSuperCall=true
+reportImplicitStringConcatenation=true
+reportCallInDefaultInitializer=true
+reportShadowedImports=true
 
 [tool.codespell]
 ignore-words-list = 'spawnve'

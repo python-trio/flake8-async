@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from typing import Any
 
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import error_class
@@ -42,7 +43,7 @@ class Visitor105(Flake8TrioVisitor):
         "TRIO105": "{0} async {1} must be immediately awaited.",
     }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
 
         self.typed_calls["trio.open_nursery"] = "trio.Nursery"

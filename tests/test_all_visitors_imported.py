@@ -15,7 +15,7 @@ def test_all_visitors_imported():
     visitor_files = {
         f.stem for f in visitor_dir.iterdir() if f.stem.startswith("visitor")
     }
-    visited_files = set()
+    visited_files: set[str] = set()
     with open(visitor_dir / "__init__.py") as f:
         for line in f:
             if m := re.match(r"from \. import (?P<module>\w*)", line):

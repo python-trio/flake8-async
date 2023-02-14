@@ -25,6 +25,7 @@ class Error:
     def __init__(
         self, error_code: str, lineno: int, col: int, message: str, *args: object
     ):
+        super().__init__()
         self.line = lineno
         self.col = col
         self.code = error_code
