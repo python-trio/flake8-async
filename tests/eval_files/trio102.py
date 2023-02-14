@@ -1,3 +1,4 @@
+# type: ignore
 from contextlib import asynccontextmanager
 
 import trio

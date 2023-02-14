@@ -1,3 +1,4 @@
+# type: ignore
 # ARG --enable-visitor-codes-regex=(TRIO220)
 # NOTRIO
 

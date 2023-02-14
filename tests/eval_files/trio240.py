@@ -1,3 +1,4 @@
+# type: ignore
 import os.path
 from os.path import isfile, normpath, relpath
 

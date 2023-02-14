@@ -1,3 +1,4 @@
+# type: ignore
 import trio
 import trio as noerror
 

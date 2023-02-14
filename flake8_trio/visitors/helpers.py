@@ -139,17 +139,6 @@ def critical_except(node: ast.ExceptHandler) -> Statement | None:
     return None
 
 
-# used in 105 and 113
-def is_nursery_call(node: ast.AST, name: str) -> bool:
-    assert name in ("start", "start_soon")
-    if isinstance(node, ast.Attribute):
-        if isinstance(node.value, ast.Name):
-            return node.attr == name and node.value.id.endswith("nursery")
-        if isinstance(node.value, ast.Attribute):
-            return node.attr == name and node.value.attr.endswith("nursery")
-    return False
-
-
 # used in 100, 101 and 102
 cancel_scope_names = (
     "fail_after",

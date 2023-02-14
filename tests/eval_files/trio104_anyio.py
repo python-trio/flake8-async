@@ -1,3 +1,4 @@
+# type: ignore
 import anyio
 
 try:

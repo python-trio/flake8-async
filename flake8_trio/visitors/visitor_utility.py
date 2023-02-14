@@ -47,6 +47,10 @@ class VisitorTypeTracker(Flake8TrioVisitor):
     visit_FunctionDef = visit_AsyncFunctionDef
     visit_Lambda = visit_AsyncFunctionDef
 
+    # Does not handle class members, or attributes in general
+    def visit_ClassDef(self, node: ast.ClassDef):
+        self.save_state(node, "variables", copy=True)
+
     def visit_AnnAssign(self, node: ast.AnnAssign):
         if not isinstance(node.target, ast.Name):
             return
@@ -70,17 +74,22 @@ class VisitorTypeTracker(Flake8TrioVisitor):
         ):
             self.variables[node.targets[0].id] = value
 
-    def visit_With(self, node: ast.With):
+    def visit_With(self, node: ast.With | ast.AsyncWith):
         if len(node.items) != 1:
             return
         item = node.items[0]
         if (
             isinstance(item.context_expr, ast.Call)
-            and isinstance(item.context_expr.func, ast.Name)
             and isinstance(item.optional_vars, ast.Name)
-            and (vartype := self.typed_calls.get(item.context_expr.func.id, None))
+            and (
+                vartype := self.typed_calls.get(
+                    ast.unparse(item.context_expr.func), None
+                )
+            )
         ):
             self.variables[item.optional_vars.id] = vartype
+
+    visit_AsyncWith = visit_With
 
 
 @utility_visitor

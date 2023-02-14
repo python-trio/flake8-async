@@ -22,6 +22,8 @@ repos:
           - hypothesmith
           - pytest
           - flake8
+          - trio
+          - anyio
 
 -   repo: https://github.com/codespell-project/codespell
     rev: v2.2.2

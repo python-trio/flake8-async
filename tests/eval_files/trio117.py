@@ -1,5 +1,7 @@
+# type: ignore
 # ANYIO_NO_ERROR
 # Conventional usage
+from trio import MultiError
 
 try:
     raise MultiError  # TRIO117: 10, "MultiError"

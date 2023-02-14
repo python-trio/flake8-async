@@ -1,3 +1,4 @@
+# type: ignore
 from urllib3 import PoolManager
 
 

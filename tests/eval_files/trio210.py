@@ -1,3 +1,4 @@
+# type: ignore
 import urllib
 
 import httpx

@@ -12,7 +12,6 @@ from .helpers import (
     error_class,
     get_matching_call,
     has_decorator,
-    is_nursery_call,
 )
 
 # used in 100
@@ -217,6 +216,9 @@ class Visitor113(Flake8TrioVisitor):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        self.typed_calls["trio.open_nursery"] = "trio.Nursery"
+        self.typed_calls["anyio.create_task_group"] = "anyio.TaskGroup"
+
         self.async_function = False
         self.asynccontextmanager = False
         self.aenter = False
@@ -241,9 +243,21 @@ class Visitor113(Flake8TrioVisitor):
                 return any(is_startable(nn, *startable_list) for nn in n.args)
             return False
 
+        def is_nursery_call(node: ast.expr):
+            if not isinstance(node, ast.Attribute) or node.attr != "start_soon":
+                return False
+            var = ast.unparse(node.value)
+            return ("trio" in self.library and var.endswith("nursery")) or (
+                self.variables.get(var, "")
+                in (
+                    "trio.Nursery",
+                    "anyio.TaskGroup",
+                )
+            )
+
         if (
             self.aenter
-            and is_nursery_call(node.func, "start_soon")
+            and is_nursery_call(node.func)
             and len(node.args) > 0
             and is_startable(
                 node.args[0],
