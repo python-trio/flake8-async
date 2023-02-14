@@ -389,6 +389,8 @@ class Visitor900(Flake8TrioVisitor):
             for d in node.decorator_list
         ):
             self.unsafe_function = node
+        else:
+            self.unsafe_function = None
 
     def visit_Yield(self, node: ast.Yield):
         if self.unsafe_function is not None:
