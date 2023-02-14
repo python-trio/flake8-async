@@ -791,3 +791,14 @@ async def foo_loop_static():
     yield
 
     await foo()
+
+
+# don't warn on pytest.fixture
+@pytest.fixture
+async def foo_test():
+    yield
+
+
+@pytest.fixture()
+async def foo_test2():
+    yield

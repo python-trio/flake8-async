@@ -63,7 +63,7 @@ class Visitor91X(Flake8TrioVisitor):
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         # don't lint functions whose bodies solely consist of pass or ellipsis
-        if has_decorator(node.decorator_list, "overload") or empty_body(node.body):
+        if has_decorator(node, "overload", "fixture") or empty_body(node.body):
             return
 
         self.save_state(node)

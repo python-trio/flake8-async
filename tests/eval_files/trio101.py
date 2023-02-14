@@ -57,3 +57,15 @@ def foo8():
 def foo9():
     with trio.open_nursery() as _:
         yield 1  # error: 8
+
+
+@pytest.fixture()
+def foo_false_alarm():
+    with trio.open_nursery() as _:
+        yield 1
+
+
+@pytest.fixture
+def foo_false_alarm_2():
+    with trio.open_nursery() as _:
+        yield 1
