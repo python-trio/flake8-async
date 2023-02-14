@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 23.2.4
 - Fix TRIO900 false alarm on nested functions
 - TRIO113 now also works on `anyio.TaskGroup`
 
