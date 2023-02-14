@@ -11,7 +11,7 @@ repos:
         args: ['--py39-plus']
 
 -   repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.286
+    rev: v1.1.293
     hooks:
     -   id: pyright
         entry: env PYRIGHT_PYTHON_FORCE_VERSION=latest pyright

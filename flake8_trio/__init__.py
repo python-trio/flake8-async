@@ -40,6 +40,7 @@ class Plugin:
     options: Namespace = Namespace()
 
     def __init__(self, tree: ast.AST):
+        super().__init__()
         self._tree = tree
 
     @classmethod
@@ -155,7 +156,7 @@ def parse_trio200_dict(raw_value: str) -> dict[str, str]:
             # if we raise it as ValueError
             raise ArgumentTypeError(
                 f"Invalid number ({len(split_values)-1}) of splitter "
-                f"tokens {splitter!r} in {value!r}",
+                + f"tokens {splitter!r} in {value!r}"
             )
         res[split_values[0]] = split_values[1]
     return res

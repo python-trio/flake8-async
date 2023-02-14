@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flake8.main.application import Application
 
 from flake8_trio.base import Statement
 from flake8_trio.visitors.helpers import fnmatch_qualified_name
 from flake8_trio.visitors.visitor91x import Visitor91X
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def dec_list(*decorators: str) -> ast.Module:
@@ -89,7 +93,7 @@ file_path = str(Path(__file__).parent / "trio_options.py")
 common_flags = ["--select=TRIO", file_path]
 
 
-def test_command_line_1(capfd):
+def test_command_line_1(capfd: pytest.CaptureFixture[str]):
     Application().run(common_flags + ["--no-checkpoint-warning-decorators=app.route"])
     assert capfd.readouterr() == ("", "")
 
@@ -110,11 +114,11 @@ expected_out = (
 )
 
 
-def test_command_line_2(capfd):
+def test_command_line_2(capfd: pytest.CaptureFixture[str]):
     Application().run(common_flags + ["--no-checkpoint-warning-decorators=app"])
     assert capfd.readouterr() == (expected_out, "")
 
 
-def test_command_line_3(capfd):
+def test_command_line_3(capfd: pytest.CaptureFixture[str]):
     Application().run(common_flags)
     assert capfd.readouterr() == (expected_out, "")

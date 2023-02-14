@@ -21,8 +21,10 @@ from .helpers import error_class, fnmatch_qualified_name, get_matching_call
 @error_class
 class Visitor200(Flake8TrioVisitor):
     error_codes = {
-        "TRIO200": "User-configured blocking sync call {0} in async function, consider "
-        "replacing with {1}.",
+        "TRIO200": (
+            "User-configured blocking sync call {0} in async function, consider "
+            "replacing with {1}."
+        )
     }
 
     def __init__(self, *args: Any, **kwargs: Any):

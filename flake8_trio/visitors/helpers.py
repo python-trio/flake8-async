@@ -21,17 +21,20 @@ if TYPE_CHECKING:
 
 
 def error_class(error_class: type[T]) -> type[T]:
+    assert error_class.error_codes
     ERROR_CLASSES.add(error_class)
     return error_class
 
 
 def disabled_by_default(error_class: type[T]) -> type[T]:
+    assert error_class.error_codes
     default_disabled_error_codes.extend(error_class.error_codes)
     return error_class
 
 
 def utility_visitor(c: type[T]) -> type[T]:
-    c.error_codes = {"noerror": "ignore"}
+    assert not hasattr(c, "error_codes")
+    c.error_codes = {}
     utility_visitors.add(c)
     return c
 

@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 class SharedState:
     options: Namespace
     problems: list[Error] = field(default_factory=list)
-    library: tuple[str, ...] = field(default_factory=tuple)
+    library: tuple[str, ...] = ()
     typed_calls: dict[str, str] = field(default_factory=dict)
     variables: dict[str, str] = field(default_factory=dict)
 

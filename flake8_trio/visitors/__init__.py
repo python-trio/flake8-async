@@ -1,3 +1,4 @@
+# pyright: reportUnusedImport=false
 """Submodule for all error classes/visitors.
 
 Exports ERROR_CLASSES and default_disabled_error_codes to be used by others, and populates

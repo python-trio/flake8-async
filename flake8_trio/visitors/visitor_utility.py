@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from typing import Any
 
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import utility_visitor
@@ -102,7 +103,7 @@ class VisitorAwaitModifier(Flake8TrioVisitor):
 
 @utility_visitor
 class VisitorLibraryHandler(Flake8TrioVisitor):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         # check whether library we're working towards has been explicitly
         # specified with --anyio, otherwise assume Trio - but we update if we

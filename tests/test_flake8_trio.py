@@ -76,7 +76,7 @@ def test_eval(test: str, path: Path):
         expected = []
 
     plugin = Plugin(ast.parse(content))
-    assert_expected_errors(plugin, *expected, args=parsed_args)
+    _ = assert_expected_errors(plugin, *expected, args=parsed_args)
 
 
 @pytest.mark.parametrize(("test", "path"), test_files)
@@ -258,7 +258,7 @@ def test_noerror_on_sync_code(test: str, path: Path):
         + "|".join(error_codes_ignored_when_checking_transformed_sync_code)
         + "))"
     )
-    assert_expected_errors(
+    _ = assert_expected_errors(
         Plugin(tree),
         args=[f"--enable-visitor-codes-regex={ignored_codes_regex}"],
     )
@@ -523,7 +523,7 @@ def test_200_options(capsys: pytest.CaptureFixture[str]):
 
 
 def test_anyio_from_config(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-    tmp_path.joinpath(".flake8").write_text(
+    assert tmp_path.joinpath(".flake8").write_text(
         """
 [flake8]
 anyio = True
@@ -541,20 +541,21 @@ select = TRIO220
     expected = f"{err_file}:10:5: TRIO220 {err_msg}\n"
     from flake8.main.cli import main
 
-    main(
+    returnvalue = main(
         argv=[
             err_file,
             "--append-config",
             str(tmp_path / ".flake8"),
         ]
     )
+    assert returnvalue == 1
     out, err = capsys.readouterr()
     assert not err
     assert expected == out
 
 
 def _test_trio200_from_config_common(tmp_path: Path) -> str:
-    tmp_path.joinpath(".flake8").write_text(
+    assert tmp_path.joinpath(".flake8").write_text(
         """
 [flake8]
 trio200-blocking-calls =
@@ -563,7 +564,7 @@ trio200-blocking-calls =
 select = TRIO200
 """
     )
-    tmp_path.joinpath("example.py").write_text(
+    assert tmp_path.joinpath("example.py").write_text(
         """
 import sync_fns
 
@@ -590,7 +591,7 @@ def test_200_from_config_flake8_internals(
 
     from flake8.main.cli import main
 
-    main(
+    returnvalue = main(
         argv=[
             str(tmp_path / "example.py"),
             "--append-config",
@@ -598,6 +599,7 @@ def test_200_from_config_flake8_internals(
         ]
     )
     out, err = capsys.readouterr()
+    assert returnvalue == 1
     assert not err
     assert err_msg == out
 
@@ -614,19 +616,20 @@ def test_200_from_config_subprocess(tmp_path: Path):
 def test_900_default_off(capsys: pytest.CaptureFixture[str]):
     from flake8.main.cli import main
 
-    main(
+    returnvalue = main(
         argv=[
             "tests/trio900.py",
         ]
     )
     out, err = capsys.readouterr()
+    assert returnvalue == 1
     assert not err
     assert "TRIO900" not in out
 
 
 # from https://docs.python.org/3/library/itertools.html#itertools-recipes
 def consume(iterator: Iterable[Any]):
-    deque(iterator, maxlen=0)
+    deque(iterator, maxlen=0)  # pyright: reportUnusedCallResult=false
 
 
 @pytest.mark.fuzz()
