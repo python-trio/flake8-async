@@ -1,6 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
-## Future
+
+## 23.2.5
 - Fix false alarms for `@pytest.fixture`-decorated functions in TRIO101, TRIO910 and TRIO911
 
 ## 23.2.4
