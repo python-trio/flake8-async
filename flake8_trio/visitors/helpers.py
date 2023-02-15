@@ -39,14 +39,20 @@ def utility_visitor(c: type[T]) -> type[T]:
     return c
 
 
+def _get_identifier(node: ast.expr) -> str:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    if isinstance(node, ast.Call):
+        return _get_identifier(node.func)
+    return ""
+
+
 # ignores module and only checks the unqualified name of the decorator
-# used in 101 and 910/911
-def has_decorator(decorator_list: list[ast.expr], *names: str):
-    return any(
-        (isinstance(dec, ast.Name) and dec.id in names)
-        or (isinstance(dec, ast.Attribute) and dec.attr in names)
-        for dec in decorator_list
-    )
+# used in 101, 113, 900 and 910/911
+def has_decorator(node: ast.FunctionDef | ast.AsyncFunctionDef, *names: str):
+    return any(_get_identifier(dec) in names for dec in node.decorator_list)
 
 
 # matches the fully qualified name against fnmatch pattern

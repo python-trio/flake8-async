@@ -75,7 +75,7 @@ class Visitor101(Flake8TrioVisitor):
         self.save_state(node)
         self._yield_is_error = False
         self._safe_decorator = has_decorator(
-            node.decorator_list, "contextmanager", "asynccontextmanager"
+            node, "contextmanager", "asynccontextmanager", "fixture"
         )
 
     visit_AsyncWith = visit_With
@@ -184,17 +184,6 @@ class Visitor112(Flake8TrioVisitor):
     visit_AsyncWith = visit_With
 
 
-# used in 113 and 900
-def _get_identifier(node: ast.expr) -> str:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        return node.attr
-    if isinstance(node, ast.Call):
-        return _get_identifier(node.func)
-    return ""
-
-
 # used in 113 and 114
 STARTABLE_CALLS = (
     "run_process",
@@ -226,8 +215,8 @@ class Visitor113(Flake8TrioVisitor):
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         self.save_state(node, "aenter")
 
-        self.aenter = node.name == "__aenter__" or any(
-            _get_identifier(d) == "asynccontextmanager" for d in node.decorator_list
+        self.aenter = node.name == "__aenter__" or has_decorator(
+            node, "asynccontextmanager"
         )
 
     def visit_Yield(self, node: ast.Yield):
@@ -384,9 +373,8 @@ class Visitor900(Flake8TrioVisitor):
         self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
     ):
         self.save_state(node, "unsafe_function")
-        if isinstance(node, ast.AsyncFunctionDef) and not any(
-            _get_identifier(d) in ("asynccontextmanager", "fixture")
-            for d in node.decorator_list
+        if isinstance(node, ast.AsyncFunctionDef) and not has_decorator(
+            node, "asynccontextmanager", "fixture"
         ):
             self.unsafe_function = node
         else:

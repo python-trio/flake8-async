@@ -497,3 +497,24 @@ def foo_sync():
 
     # boolop in sync function
     True and True
+
+
+# don't warn on pytest.fixture
+@pytest.fixture
+async def foo_test():
+    print("...")
+
+
+@pytest.fixture()
+async def foo_test2():
+    print("...")
+
+
+@pytest.fixture
+async def foo_test_return():
+    return
+
+
+@pytest.fixture()
+async def foo_test_return2():
+    return
