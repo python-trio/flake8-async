@@ -7,22 +7,37 @@ from __future__ import annotations
 
 import ast
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, NamedTuple, TypeVar
+
+import libcst as cst
+import libcst.matchers as m
 
 from ..base import Statement
-from . import ERROR_CLASSES, default_disabled_error_codes, utility_visitors
+from . import (
+    ERROR_CLASSES,
+    ERROR_CLASSES_CST,
+    default_disabled_error_codes,
+    utility_visitors,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator, Sequence
 
-    from .flake8triovisitor import Flake8TrioVisitor, HasLineCol
+    from .flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst, HasLineCol
 
     T = TypeVar("T", bound=Flake8TrioVisitor)
+    T_CST = TypeVar("T_CST", bound=Flake8TrioVisitor_cst)
 
 
 def error_class(error_class: type[T]) -> type[T]:
     assert error_class.error_codes
     ERROR_CLASSES.add(error_class)
+    return error_class
+
+
+def error_class_cst(error_class: type[T_CST]) -> type[T_CST]:
+    assert error_class.error_codes
+    ERROR_CLASSES_CST.add(error_class)
     return error_class
 
 
@@ -174,3 +189,66 @@ def get_matching_call(
     ):
         return node, node.func.attr, node.func.value.id
     return None
+
+
+# ___ CST helpers ___
+def oneof_names(*names: str):
+    return m.OneOf(*map(m.Name, names))
+
+
+CSTNode_T = TypeVar("CSTNode_T", bound=cst.CSTNode)
+
+
+def list_contains(
+    seq: Sequence[CSTNode_T], matcher: m.BaseMatcherNode
+) -> Iterator[CSTNode_T]:
+    yield from (item for item in seq if m.matches(item, matcher))
+
+
+class AttributeCall(NamedTuple):
+    node: cst.Call
+    base: str
+    function: str
+
+
+def with_has_call(
+    node: cst.With, *names: str, base: Iterable[str] = ("trio", "anyio")
+) -> list[AttributeCall]:
+    res_list: list[AttributeCall] = []
+    for item in node.items:
+        if res := m.extract(
+            item.item,
+            m.Call(
+                func=m.Attribute(
+                    value=m.SaveMatchedNode(m.Name(), name="library"),
+                    attr=m.SaveMatchedNode(
+                        oneof_names(*names),
+                        name="function",
+                    ),
+                )
+            ),
+        ):
+            assert isinstance(item.item, cst.Call)
+            assert isinstance(res["library"], cst.Name)
+            assert isinstance(res["function"], cst.Name)
+            if res["library"].value not in base:
+                continue
+            res_list.append(
+                AttributeCall(item.item, res["library"].value, res["function"].value)
+            )
+    return res_list
+
+
+def func_has_decorator(func: cst.FunctionDef, *names: str) -> bool:
+    return any(
+        list_contains(
+            func.decorators,
+            m.Decorator(
+                decorator=m.OneOf(
+                    oneof_names(*names),
+                    m.Attribute(attr=oneof_names(*names)),
+                    m.Call(func=m.Attribute(attr=oneof_names(*names))),
+                )
+            ),
+        )
+    )

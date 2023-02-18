@@ -11,14 +11,18 @@ import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .visitors import ERROR_CLASSES, utility_visitors
+import libcst as cst
+
+from .visitors import ERROR_CLASSES, ERROR_CLASSES_CST, utility_visitors
 
 if TYPE_CHECKING:
     from argparse import Namespace
     from collections.abc import Iterable
 
+    from libcst import Module
+
     from .base import Error
-    from .visitors.flake8triovisitor import Flake8TrioVisitor
+    from .visitors.flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst
 
 
 @dataclass
@@ -93,3 +97,27 @@ class Flake8TrioRunner(ast.NodeVisitor):
         # restore any outer state that was saved in the visitor method
         for subclass in *self.utility_visitors, *self.visitors:
             subclass.set_state(subclass.outer.pop(node, {}))
+
+
+class Flake8TrioRunner_cst:
+    def __init__(self, options: Namespace):
+        super().__init__()
+        self.state = SharedState(options)
+        self.options = options
+        self.visitors: tuple[Flake8TrioVisitor_cst, ...] = tuple(
+            v(self.state) for v in ERROR_CLASSES_CST if self.selected(v.error_codes)
+        )
+
+    def run(self, module: Module) -> Iterable[Error]:
+        if not self.visitors:
+            return
+        wrapper = cst.MetadataWrapper(module)
+        for v in self.visitors:
+            _ = wrapper.visit(v)
+        yield from self.state.problems
+
+    def selected(self, error_codes: dict[str, str]) -> bool:
+        return any(
+            re.match(self.state.options.enable_visitor_codes_regex, code)
+            for code in error_codes
+        )

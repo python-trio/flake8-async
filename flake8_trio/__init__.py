@@ -13,16 +13,19 @@ from __future__ import annotations
 
 import ast
 import keyword
+import os
 import re
 import tokenize
 from argparse import ArgumentTypeError, Namespace
 from typing import TYPE_CHECKING
 
-from .runner import Flake8TrioRunner
+import libcst as cst
+
+from .runner import Flake8TrioRunner, Flake8TrioRunner_cst
 from .visitors import default_disabled_error_codes
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
     from os import PathLike
 
     from flake8.options.manager import OptionManager
@@ -34,24 +37,53 @@ if TYPE_CHECKING:
 __version__ = "23.2.5"
 
 
+# Enable support in libcst for new grammar
+# See e.g. https://github.com/Instagram/LibCST/issues/862
+# wrapping the call and restoring old values in case there's other libcst parsers
+# in the same environment, which we don't wanna mess up.
+def cst_parse_module_native(source: str) -> cst.Module:
+    var = os.environ.get("LIBCST_PARSER_TYPE")
+    try:
+        os.environ["LIBCST_PARSER_TYPE"] = "native"
+        mod = cst.parse_module(source)
+    finally:
+        del os.environ["LIBCST_PARSER_TYPE"]
+        if var is not None:  # pragma: no cover
+            os.environ["LIBCST_PARSER_TYPE"] = var
+    return mod
+
+
 class Plugin:
     name = __name__
     version = __version__
     options: Namespace = Namespace()
 
-    def __init__(self, tree: ast.AST):
+    def __init__(self, tree: ast.AST, lines: Sequence[str]):
         super().__init__()
         self._tree = tree
+        source = "".join(lines)
+
+        self._module: cst.Module = cst_parse_module_native(source)
 
     @classmethod
     def from_filename(cls, filename: str | PathLike[str]) -> Plugin:  # pragma: no cover
         # only used with --runslow
         with tokenize.open(filename) as f:
             source = f.read()
-        return cls(ast.parse(source))
+        return cls.from_source(source)
+
+    # alternative `__init__` to avoid re-splitting and/or re-joining lines
+    @classmethod
+    def from_source(cls, source: str) -> Plugin:
+        plugin = Plugin.__new__(cls)
+        super(Plugin, plugin).__init__()
+        plugin._tree = ast.parse(source)
+        plugin._module = cst_parse_module_native(source)
+        return plugin
 
     def run(self) -> Iterable[Error]:
         yield from Flake8TrioRunner.run(self._tree, self.options)
+        yield from Flake8TrioRunner_cst(self.options).run(self._module)
 
     @staticmethod
     def add_options(option_manager: OptionManager):
