@@ -7,6 +7,10 @@ import re
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Union
 
+import libcst as cst
+import libcst.matchers as m
+from libcst.metadata import PositionProvider
+
 from ..base import Error, Statement
 
 if TYPE_CHECKING:
@@ -157,3 +161,72 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
     def add_library(self, name: str) -> None:
         if name not in self.__state.library:
             self.__state.library = self.__state.library + (name,)
+
+
+class Flake8TrioVisitor_cst(m.MatcherDecoratableTransformer, ABC):
+    # abstract attribute by not providing a value
+    error_codes: dict[str, str]  # pyright: reportUninitializedInstanceVariable=false
+    METADATA_DEPENDENCIES = (PositionProvider,)
+
+    def __init__(self, shared_state: SharedState):
+        super().__init__()
+        self.outer: dict[cst.BaseStatement, dict[str, Any]] = {}
+        self.__state = shared_state
+
+        self.options = self.__state.options
+
+    def get_state(self, *attrs: str, copy: bool = False) -> dict[str, Any]:
+        # require attrs, since we inherit a *ton* of stuff which we don't want to copy
+        assert attrs
+        res: dict[str, Any] = {}
+        for attr in attrs:
+            value = getattr(self, attr)
+            if copy and hasattr(value, "copy"):
+                value = value.copy()
+            res[attr] = value
+        return res
+
+    def set_state(self, attrs: dict[str, Any], copy: bool = False):
+        for attr, value in attrs.items():
+            if copy and hasattr(value, "copy"):  # pragma: no cover
+                # not used by visitors yet
+                value = value.copy()
+            setattr(self, attr, value)
+
+    def save_state(self, node: cst.BaseStatement, *attrs: str, copy: bool = False):
+        state = self.get_state(*attrs, copy=copy)
+        if node in self.outer:
+            # not currently used, and not gonna bother adding dedicated test
+            # visitors atm
+            self.outer[node].update(state)  # pragma: no cover
+        else:
+            self.outer[node] = state
+
+    def error(
+        self,
+        node: cst.CSTNode,
+        *args: str | Statement | int,
+        error_code: str | None = None,
+    ):
+        if error_code is None:
+            assert (
+                len(self.error_codes) == 1
+            ), "No error code defined, but class has multiple codes"
+            error_code = next(iter(self.error_codes))
+        # don't emit an error if this code is disabled in a multi-code visitor
+        elif not re.match(
+            self.options.enable_visitor_codes_regex, error_code
+        ):  # pragma: no cover
+            return
+        pos = self.get_metadata(PositionProvider, node).start
+
+        self.__state.problems.append(
+            Error(
+                # 7 == len('TRIO...'), so alt messages raise the original code
+                error_code[:7],
+                pos.line,
+                pos.column,
+                self.error_codes[error_code],
+                *args,
+            )
+        )

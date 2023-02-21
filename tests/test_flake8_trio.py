@@ -24,7 +24,7 @@ from hypothesmith import from_grammar, from_node
 
 from flake8_trio import Plugin
 from flake8_trio.base import Error, Statement
-from flake8_trio.visitors import ERROR_CLASSES
+from flake8_trio.visitors import ERROR_CLASSES, ERROR_CLASSES_CST
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -60,7 +60,7 @@ def check_version(test: str):
 
 ERROR_CODES = {
     err_code: err_class
-    for err_class in ERROR_CLASSES
+    for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
     for err_code in err_class.error_codes.keys()
 }
 
@@ -75,7 +75,7 @@ def test_eval(test: str, path: Path):
     if "# TRIO_NO_ERROR" in content:
         expected = []
 
-    plugin = Plugin(ast.parse(content))
+    plugin = Plugin.from_source(content)
     _ = assert_expected_errors(plugin, *expected, args=parsed_args)
 
 
@@ -105,7 +105,7 @@ def test_eval_anyio(test: str, path: Path):
 
     # initialize plugin and check errors, ignoring columns since they occasionally are
     # wrong due to len("anyio") > len("trio")
-    plugin = Plugin(ast.parse(content))
+    plugin = Plugin.from_source(content)
 
     if "# ANYIO_NO_ERROR" in content:
         expected = []
@@ -200,7 +200,9 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
                 raise ParseError(msg) from e
 
     for error in expected:
-        assert re.match(visitor_codes_regex, error.code)
+        assert re.match(
+            visitor_codes_regex, error.code
+        ), "Expected error code not enabled"
 
     return expected, parsed_args
 
@@ -259,7 +261,7 @@ def test_noerror_on_sync_code(test: str, path: Path):
         + "))"
     )
     _ = assert_expected_errors(
-        Plugin(tree),
+        Plugin(tree, [ast.unparse(tree)]),
         args=[f"--enable-visitor-codes-regex={ignored_codes_regex}"],
     )
 
@@ -443,7 +445,7 @@ def test_910_permutations():
         finally:
             await foo() | ... | return | None
     """
-    plugin = Plugin(ast.AST())
+    plugin = Plugin(ast.AST(), [])
     initialize_options(plugin, args=["--enable-visitor-codes-regex=TRIO910"])
 
     check = "await foo()"
@@ -502,7 +504,7 @@ def test_910_permutations():
 
 
 def test_114_raises_on_invalid_parameter(capsys: pytest.CaptureFixture[str]):
-    plugin = Plugin(ast.AST())
+    plugin = Plugin(ast.AST(), [])
     # flake8 will reraise ArgumentError as SystemExit
     for arg in "blah.foo", "foo*", "*":
         with pytest.raises(SystemExit):
@@ -513,7 +515,7 @@ def test_114_raises_on_invalid_parameter(capsys: pytest.CaptureFixture[str]):
 
 
 def test_200_options(capsys: pytest.CaptureFixture[str]):
-    plugin = Plugin(ast.AST())
+    plugin = Plugin(ast.AST(), [])
     for i, arg in (0, "foo"), (2, "foo->->bar"), (2, "foo->bar->fee"):
         with pytest.raises(SystemExit):
             initialize_options(plugin, args=[f"--trio200-blocking-calls={arg}"])
@@ -646,7 +648,7 @@ class TestFuzz(unittest.TestCase):
         # Given any syntatically-valid source code, the checker should
         # not crash.  This tests doesn't check that we do the *right* thing,
         # just that we don't crash on valid-if-poorly-styled code!
-        plugin = Plugin(syntax_tree)
+        plugin = Plugin(syntax_tree, [ast.unparse(syntax_tree)])
         initialize_options(
             plugin, [f"--enable-visitor-codes-regex={enable_visitor_codes_regex}"]
         )

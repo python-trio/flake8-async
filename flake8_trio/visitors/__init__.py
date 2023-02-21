@@ -10,16 +10,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .flake8triovisitor import Flake8TrioVisitor
+    from .flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst
 
 __all__ = ["ERROR_CLASSES", "default_disabled_error_codes", "utility_visitors"]
 ERROR_CLASSES: set[type[Flake8TrioVisitor]] = set()
+ERROR_CLASSES_CST: set[type[Flake8TrioVisitor_cst]] = set()
 utility_visitors: set[type[Flake8TrioVisitor]] = set()
 default_disabled_error_codes: list[str] = []
 
 # Import all visitors so their decorators run, filling the above containers
 # This has to be done at the end to avoid circular imports
 from . import visitor_utility  # isort: skip
+from . import visitor100  # isort: skip
+from . import visitor101  # isort: skip
 from . import visitor102  # isort: skip
 from . import visitor103_104  # isort: skip
 from . import visitor105  # isort: skip
