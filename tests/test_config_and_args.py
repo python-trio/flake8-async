@@ -110,14 +110,14 @@ select = TRIO220
     returnvalue = main(
         argv=[
             err_file,
-            "--append-config",
+            "--config",
             str(tmp_path / ".flake8"),
         ]
     )
-    assert returnvalue == 1
     out, err = capsys.readouterr()
     assert not err
     assert expected == out
+    assert returnvalue == 1
 
 
 def _test_trio200_from_config_common(tmp_path: Path) -> str:

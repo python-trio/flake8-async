@@ -48,7 +48,7 @@ repos:
     rev: 6.0.0
     hooks:
     -   id: flake8
-        args: ["--exclude", ".*,tests/eval_files/*"]
+        types: ["python", "pyi"]
         language_version: python3
         additional_dependencies:
           - flake8-builtins
@@ -67,12 +67,15 @@ repos:
           - flake8-return
           - flake8-simplify
           - flake8-type-checking
+          - flake8-pyi
 
+# Pinned to flake8 5.0.4 since flake8-eradicate is not updated to work with flake8 6
+# https://github.com/wemake-services/flake8-eradicate/pull/271
 -   repo: https://github.com/PyCQA/flake8
     rev: 5.0.4
     hooks:
     -   id: flake8
-        args: ["--exclude", ".*,tests/eval_files/*", "--select=E800"]
+        args: ["--select=E800"]
         language_version: python3
         additional_dependencies:
           - flake8-eradicate
