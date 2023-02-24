@@ -161,8 +161,8 @@ async def foo_while_5():
     while foo():
         yield  # error: 8, "yield", Statement("yield", lineno)
 
-        async def foo_nested_error():  # error: 8, "exit", Statement("yield", lineno+1)# error: 8, "exit", Statement("yield", lineno+1)
-            yield  # error: 12, "yield", Statement("function definition", lineno-1)# error: 12, "yield", Statement("function definition", lineno-1)
+        async def foo_nested_error():  # error: 8, "exit", Statement("yield", lineno+1)
+            yield  # error: 12, "yield", Statement("function definition", lineno-1)
 
     await foo()
 
@@ -592,8 +592,14 @@ async def foo_boolops_1():  # error: 0, "exit", Stmt("yield", line+1)
 
 
 # may shortcut after any of the yields
-async def foo_boolops_2():  # error: 0, "exit", Stmt("yield", line+1) # error: 0, "exit", Stmt("yield", line+1)
-    _ = await foo() and (yield) and await foo() and (yield)
+async def foo_boolops_2():  # error: 0, "exit", Stmt("yield", line+4) # error: 0, "exit", Stmt("yield", line+6)
+    # known false positive - but chained yields in bool should be rare
+    _ = (
+        await foo()
+        and (yield)
+        and await foo()
+        and (yield)  # error: 13, "yield", Stmt("yield", line-2, 13)
+    )
 
 
 # fmt: off
@@ -739,6 +745,10 @@ async def foo_loop_static():
     yield  # error: 4, "yield", Stmt("yield", line-4)
 
     for _ in "":
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for _ in """""":
         await foo()
     yield  # error: 4, "yield", Stmt("yield", line-4)
 

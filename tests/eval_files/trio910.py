@@ -12,6 +12,7 @@ def __() -> Any:
 
 
 # ARG --enable-visitor-codes-regex=(TRIO910)|(TRIO911)
+# ARG --no-checkpoint-warning-decorator=custom_disabled_decorator
 
 
 # function whose body solely consists of pass, ellipsis, or string constants is safe
@@ -510,6 +511,16 @@ async def foo_test2():
     print("...")
 
 
+@custom_disabled_decorator
+async def foo_ARG_test():
+    print("...")
+
+
+@custom_disabled_decorator()
+async def foo_ARG_test2():
+    print("...")
+
+
 @pytest.fixture
 async def foo_test_return():
     return
@@ -518,3 +529,12 @@ async def foo_test_return():
 @pytest.fixture()
 async def foo_test_return2():
     return
+
+
+async def foo_comprehension_1():
+    [... for x in range(10) if await foo()]
+
+
+# should error
+async def foo_comprehension_2():
+    [await foo() for x in range(10) if foo()]

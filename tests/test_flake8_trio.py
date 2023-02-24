@@ -16,6 +16,7 @@ from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, DefaultDict
 
+import libcst as cst
 import pytest
 from flake8 import __version_info__ as flake8_version_info
 from flake8.options.manager import OptionManager
@@ -341,14 +342,14 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
     for e in expected:
         expected_dict[e.line][e.code] += 1
 
-    any_error = False
+    error_count = 0
     for line in all_lines:
         if error_dict[line] == expected_dict[line]:
             continue
 
         # go through all the codes on the line
         for code in sorted({*error_dict[line], *expected_dict[line]}):
-            if not any_error:
+            if error_count == 0:
                 print(
                     "Lines with different # of errors:",
                     "-" * 38,
@@ -356,7 +357,6 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
                     sep="\n",
                     file=sys.stderr,
                 )
-                any_error = True
 
             print(
                 f"| {line:4}",
@@ -366,7 +366,8 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
                 sep=" | ",
                 file=sys.stderr,
             )
-    assert not any_error
+            error_count += abs(error_dict[line][code] - expected_dict[line][code])
+    assert error_count == 0
 
 
 def assert_correct_attribute(
@@ -421,6 +422,7 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
         assert err_msg == info_tuple(exp)
 
 
+@pytest.mark.fuzz()
 def test_910_permutations():
     """Tests all possible permutations for TRIO910.
 
@@ -479,11 +481,11 @@ def test_910_permutations():
             if val is not None:
                 function_str += f"  {arg}:\n    {val}\n"
 
-        tree = ast.parse(function_str)
+        module = cst.parse_module(function_str)
 
         # not a type error per se, but it's pyright warning about assigning to a
         # protected class member - hence we silence it with a `type: ignore`.
-        plugin._tree = tree  # type: ignore
+        plugin._module = module  # type: ignore
         errors = list(plugin.run())
 
         if (

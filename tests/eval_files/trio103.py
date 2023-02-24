@@ -228,6 +228,54 @@ except BaseException:  # TRIO103_trio: 7, "BaseException"
 
 try:
     ...
+except BaseException:  # TRIO103_trio: 7, "BaseException"
+    for i in foo():
+        raise
+
+try:
+    ...
+except BaseException:
+    for i in (*(), *(1, 2),):
+        raise
+
+try:
+    ...
+except BaseException:
+    for ii in {**{}, **{1: 2}}:
+        raise
+
+try:
+    ...
+except BaseException:
+    for i in range(3):
+        raise
+
+try:
+    ...
+except BaseException:  # TRIO103_trio: 7, "BaseException"
+    for i in range(foo()):
+        raise
+
+try:
+    ...
+except BaseException:  # TRIO103_trio: 7, "BaseException"
+    for i in []:
+        raise
+
+try:
+    ...
+except BaseException:  # TRIO103_trio: 7, "BaseException"
+    for i in {}:
+        raise
+
+try:
+    ...
+except BaseException:
+    for i in {1: 2}:
+        raise
+
+try:
+    ...
 except BaseException:
     while True:
         raise
