@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import ast
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, NamedTuple, TypeVar
 
 import libcst as cst
 import libcst.matchers as m
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
     T = TypeVar("T", bound=Flake8TrioVisitor)
     T_CST = TypeVar("T_CST", bound=Flake8TrioVisitor_cst)
-    T_EITHER = TypeVar("T_EITHER", Flake8TrioVisitor, Flake8TrioVisitor_cst)
+    T_EITHER = TypeVar("T_EITHER", bound=Flake8TrioVisitor | Flake8TrioVisitor_cst)
 
 
 def error_class(error_class: type[T]) -> type[T]:
@@ -101,7 +101,7 @@ def fnmatch_qualified_name_cst(
     return None
 
 
-# used in 103/104 and 910/911
+# used in 103/104
 def iter_guaranteed_once(iterable: ast.expr) -> bool:
     # static container with an "elts" attribute
     if hasattr(iterable, "elts"):
@@ -122,6 +122,7 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
     if isinstance(iterable, ast.Dict):
         for key, val in zip(iterable.keys, iterable.values):
             # {**{...}, **{<...>}} is parsed as {None: {...}, None: {<...>}}
+            # (where None is the value None, and not an ast node representing None)
             if key is None and isinstance(val, ast.Dict):
                 if iter_guaranteed_once(val):
                     return True
@@ -142,37 +143,22 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
     return False
 
 
-def cst_literal_eval(node: cst.BaseExpression) -> Any:
-    ast_node = cst.Module([cst.SimpleStatementLine([cst.Expr(node)])]).code
-    try:
-        return ast.literal_eval(ast_node)
-    except Exception:  # noqa: PIE786
-        return None
-
-
+# used in 91X
 def iter_guaranteed_once_cst(iterable: cst.BaseExpression) -> bool:
     # static container with an "elts" attribute
-    if elts := getattr(iterable, "elements", []):
-        for elt in elts:
-            assert isinstance(
-                elt,
-                (
-                    cst.Element,
-                    cst.DictElement,
-                    cst.StarredElement,
-                    cst.StarredDictElement,
-                ),
-            )
+    if isinstance(iterable, (cst.Tuple, cst.List, cst.Dict, cst.Set)):
+        for elt in iterable.elements:
             # recurse starred expression
             if isinstance(elt, (cst.StarredElement, cst.StarredDictElement)):
                 if iter_guaranteed_once_cst(elt.value):
                     return True
             else:
+                # a non-starred non-empty container is guaranteed to iter
                 return True
         return False
 
     if isinstance(iterable, cst.SimpleString):
-        return len(ast.literal_eval(iterable.value)) > 0
+        return len(iterable.raw_value) > 0
 
     # check for range() with literal parameters
     if m.matches(
@@ -181,20 +167,32 @@ def iter_guaranteed_once_cst(iterable: cst.BaseExpression) -> bool:
             func=m.Name("range"),
         ),
     ):
+        values: list[int] = []
+        for arg_arg in ensure_type(iterable, cst.Call).args:
+            arg = arg_arg.value
+            if isinstance(arg, cst.UnaryOperation):
+                if not isinstance(arg.expression, cst.Integer):
+                    return False
+                value = arg.expression.evaluated_value
+                if isinstance(arg.operator, cst.Minus):
+                    value = -value
+                elif isinstance(arg.operator, cst.BitInvert):
+                    value = ~value
+            elif isinstance(arg, cst.Integer):
+                value = arg.evaluated_value
+            else:
+                return False
+            values.append(value)
         try:
-            return (
-                len(
-                    range(
-                        *[
-                            cst_literal_eval(a.value)
-                            for a in ensure_type(iterable, cst.Call).args
-                        ]
-                    )
-                )
-                > 0
-            )
-        except Exception:  # noqa: PIE786
+            evaluated_range = range(*values)
+        except (ValueError, TypeError):
             return False
+        try:
+            return len(evaluated_range) > 0
+        # if the length is > sys.maxsize
+        except OverflowError:
+            return True
+
     return False
 
 
