@@ -5,8 +5,9 @@ context does not contain any `await` statements.  This makes it pointless, as
 the timeout can only be triggered by a checkpoint.
 Checkpoints on Await, Async For and Async With
 """
-# if future annotations are imported then shed will reformat away the Union use
-from typing import Any, Union
+from __future__ import annotations
+
+from typing import Any
 
 import libcst as cst
 import libcst.matchers as m
@@ -29,9 +30,13 @@ class Visitor100_libcst(Flake8TrioVisitor_cst):
         self.has_checkpoint_stack: list[bool] = []
         self.node_dict: dict[cst.With, list[AttributeCall]] = {}
 
+    def checkpoint(self) -> None:
+        if self.has_checkpoint_stack:
+            self.has_checkpoint_stack[-1] = True
+
     def visit_With(self, node: cst.With) -> None:
         if m.matches(node, m.With(asynchronous=m.Asynchronous())):
-            self.checkpoint_node(node)
+            self.checkpoint()
         if res := with_has_call(
             node, "fail_after", "fail_at", "move_on_after", "move_on_at", "CancelScope"
         ):
@@ -49,12 +54,12 @@ class Visitor100_libcst(Flake8TrioVisitor_cst):
         # then: remove the with and pop out it's body
         return updated_node
 
-    @m.visit(m.Await() | m.For(asynchronous=m.Asynchronous()))
-    # can't use m.call_if_inside(m.With), since it matches parents *or* the node itself
-    # need to use Union due to https://github.com/Instagram/LibCST/issues/870
-    def checkpoint_node(self, node: Union[cst.Await, cst.For, cst.With]):
-        if self.has_checkpoint_stack:
-            self.has_checkpoint_stack[-1] = True
+    def visit_For(self, node: cst.For):
+        if node.asynchronous is not None:
+            self.checkpoint()
+
+    def visit_Await(self, node: cst.Await | cst.For | cst.With):
+        self.checkpoint()
 
     def visit_FunctionDef(self, node: cst.FunctionDef):
         self.save_state(node, "has_checkpoint_stack", copy=True)
@@ -63,5 +68,5 @@ class Visitor100_libcst(Flake8TrioVisitor_cst):
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
-        self.set_state(self.outer.pop(original_node, {}))
+        self.restore_state(original_node)
         return updated_node

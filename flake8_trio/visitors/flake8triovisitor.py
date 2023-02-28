@@ -8,7 +8,6 @@ from abc import ABC
 from typing import TYPE_CHECKING, Any, Union
 
 import libcst as cst
-import libcst.matchers as m
 from libcst.metadata import PositionProvider
 
 from ..base import Error, Statement
@@ -46,8 +45,6 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
             "outer",
             "typed_calls",
         }
-
-        self.suppress_errors = False
 
     # `variables` can be saved/loaded, but need a setter to not clear the reference
     @property
@@ -105,17 +102,16 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
         elif not re.match(self.options.enable_visitor_codes_regex, error_code):
             return
 
-        if not self.suppress_errors:
-            self.__state.problems.append(
-                Error(
-                    # 7 == len('TRIO...'), so alt messages raise the original code
-                    error_code[:7],
-                    node.lineno,
-                    node.col_offset,
-                    self.error_codes[error_code],
-                    *args,
-                )
+        self.__state.problems.append(
+            Error(
+                # 7 == len('TRIO...'), so alt messages raise the original code
+                error_code[:7],
+                node.lineno,
+                node.col_offset,
+                self.error_codes[error_code],
+                *args,
             )
+        )
 
     def get_state(self, *attrs: str, copy: bool = False) -> dict[str, Any]:
         if not attrs:
@@ -131,8 +127,6 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
 
     def set_state(self, attrs: dict[str, Any], copy: bool = False):
         for attr, value in attrs.items():
-            if copy and hasattr(value, "copy"):
-                value = value.copy()
             setattr(self, attr, value)
 
     def save_state(self, node: ast.AST, *attrs: str, copy: bool = False):
@@ -163,14 +157,14 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
             self.__state.library = self.__state.library + (name,)
 
 
-class Flake8TrioVisitor_cst(m.MatcherDecoratableTransformer, ABC):
+class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
     # abstract attribute by not providing a value
     error_codes: dict[str, str]  # pyright: reportUninitializedInstanceVariable=false
     METADATA_DEPENDENCIES = (PositionProvider,)
 
     def __init__(self, shared_state: SharedState):
         super().__init__()
-        self.outer: dict[cst.BaseStatement, dict[str, Any]] = {}
+        self.outer: dict[cst.CSTNode, dict[str, Any]] = {}
         self.__state = shared_state
 
         self.options = self.__state.options
@@ -193,7 +187,7 @@ class Flake8TrioVisitor_cst(m.MatcherDecoratableTransformer, ABC):
                 value = value.copy()
             setattr(self, attr, value)
 
-    def save_state(self, node: cst.BaseStatement, *attrs: str, copy: bool = False):
+    def save_state(self, node: cst.CSTNode, *attrs: str, copy: bool = False):
         state = self.get_state(*attrs, copy=copy)
         if node in self.outer:
             # not currently used, and not gonna bother adding dedicated test
@@ -201,6 +195,9 @@ class Flake8TrioVisitor_cst(m.MatcherDecoratableTransformer, ABC):
             self.outer[node].update(state)  # pragma: no cover
         else:
             self.outer[node] = state
+
+    def restore_state(self, node: cst.CSTNode):
+        self.set_state(self.outer.pop(node, {}))
 
     def error(
         self,

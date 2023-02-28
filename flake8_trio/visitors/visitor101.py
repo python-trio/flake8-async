@@ -5,10 +5,7 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
-import libcst as cst
-import libcst.matchers as m
+from typing import TYPE_CHECKING, Any
 
 from .flake8triovisitor import Flake8TrioVisitor_cst
 from .helpers import (
@@ -17,6 +14,9 @@ from .helpers import (
     func_has_decorator,
     with_has_call,
 )
+
+if TYPE_CHECKING:
+    import libcst as cst
 
 
 @error_class_cst
@@ -45,12 +45,13 @@ class Visitor101(Flake8TrioVisitor_cst):
             and bool(with_has_call(node, "open_nursery", *cancel_scope_names))
         )
 
-    @m.leave(m.OneOf(m.With(), m.FunctionDef()))
-    def restore_state(
+    def leave_With(
         self, original_node: cst.BaseStatement, updated_node: cst.BaseStatement
     ) -> cst.BaseStatement:
-        self.set_state(self.outer.pop(original_node, {}))
+        self.restore_state(original_node)
         return updated_node
+
+    leave_FunctionDef = leave_With
 
     def visit_FunctionDef(self, node: cst.FunctionDef):
         self.save_state(node, "_yield_is_error", "_safe_decorator")

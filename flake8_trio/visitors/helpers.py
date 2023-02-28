@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import ast
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 
 import libcst as cst
 import libcst.matchers as m
+from libcst.helpers import ensure_type, get_full_name_for_node_or_raise
 
 from ..base import Statement
 from . import (
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
 
     T = TypeVar("T", bound=Flake8TrioVisitor)
     T_CST = TypeVar("T_CST", bound=Flake8TrioVisitor_cst)
+    T_EITHER = TypeVar("T_EITHER", Flake8TrioVisitor, Flake8TrioVisitor_cst)
 
 
 def error_class(error_class: type[T]) -> type[T]:
@@ -41,7 +43,7 @@ def error_class_cst(error_class: type[T_CST]) -> type[T_CST]:
     return error_class
 
 
-def disabled_by_default(error_class: type[T]) -> type[T]:
+def disabled_by_default(error_class: type[T_EITHER]) -> type[T_EITHER]:
     assert error_class.error_codes
     default_disabled_error_codes.extend(error_class.error_codes)
     return error_class
@@ -86,6 +88,19 @@ def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | N
     return None
 
 
+def fnmatch_qualified_name_cst(
+    name_list: Iterable[cst.Decorator], *patterns: str
+) -> str | None:
+    for name in name_list:
+        qualified_name = get_full_name_for_node_or_raise(name)
+
+        for pattern in patterns:
+            # strip leading "@"s for when we're working with decorators
+            if fnmatch(qualified_name, pattern.lstrip("@")):
+                return pattern
+    return None
+
+
 # used in 103/104 and 910/911
 def iter_guaranteed_once(iterable: ast.expr) -> bool:
     # static container with an "elts" attribute
@@ -112,6 +127,8 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
                     return True
             else:
                 return True
+        return False
+
     # check for range() with literal parameters
     if (
         isinstance(iterable, ast.Call)
@@ -120,6 +137,62 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
     ):
         try:
             return len(range(*[ast.literal_eval(a) for a in iterable.args])) > 0
+        except Exception:  # noqa: PIE786
+            return False
+    return False
+
+
+def cst_literal_eval(node: cst.BaseExpression) -> Any:
+    ast_node = cst.Module([cst.SimpleStatementLine([cst.Expr(node)])]).code
+    try:
+        return ast.literal_eval(ast_node)
+    except Exception:  # noqa: PIE786
+        return None
+
+
+def iter_guaranteed_once_cst(iterable: cst.BaseExpression) -> bool:
+    # static container with an "elts" attribute
+    if elts := getattr(iterable, "elements", []):
+        for elt in elts:
+            assert isinstance(
+                elt,
+                (
+                    cst.Element,
+                    cst.DictElement,
+                    cst.StarredElement,
+                    cst.StarredDictElement,
+                ),
+            )
+            # recurse starred expression
+            if isinstance(elt, (cst.StarredElement, cst.StarredDictElement)):
+                if iter_guaranteed_once_cst(elt.value):
+                    return True
+            else:
+                return True
+        return False
+
+    if isinstance(iterable, cst.SimpleString):
+        return len(ast.literal_eval(iterable.value)) > 0
+
+    # check for range() with literal parameters
+    if m.matches(
+        iterable,
+        m.Call(
+            func=m.Name("range"),
+        ),
+    ):
+        try:
+            return (
+                len(
+                    range(
+                        *[
+                            cst_literal_eval(a.value)
+                            for a in ensure_type(iterable, cst.Call).args
+                        ]
+                    )
+                )
+                > 0
+            )
         except Exception:  # noqa: PIE786
             return False
     return False

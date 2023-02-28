@@ -40,8 +40,13 @@ async def function_name():
     async with trio.fail_after(10):
         async with send_channel:
             pass
+
     async with trio.fail_after(10):
         async for _ in receive_channel:
+            pass
+
+    async with trio.fail_after(10):  # error: 15, "trio", "fail_after"
+        for _ in receive_channel:
             pass
 
     # fix missed alarm when function is defined inside the with scope
