@@ -12,11 +12,14 @@ Pairs well with flake8-async and flake8-bugbear.
 from __future__ import annotations
 
 import ast
+import functools
 import keyword
 import os
 import re
+import subprocess
+import sys
 import tokenize
-from argparse import ArgumentTypeError, Namespace
+from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from typing import TYPE_CHECKING
 
 import libcst as cst
@@ -37,6 +40,24 @@ if TYPE_CHECKING:
 __version__ = "23.2.5"
 
 
+# taken from https://github.com/Zac-HD/shed
+@functools.lru_cache
+def _get_git_repo_root(cwd: str | None = None) -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        check=True,
+        timeout=10,
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+    ).stdout.strip()
+
+
+@functools.cache
+def _should_format(fname: str) -> bool:
+    return fname.endswith((".py",))
+
+
 # Enable support in libcst for new grammar
 # See e.g. https://github.com/Instagram/LibCST/issues/862
 # wrapping the call and restoring old values in case there's other libcst parsers
@@ -51,6 +72,44 @@ def cst_parse_module_native(source: str) -> cst.Module:
         if var is not None:  # pragma: no cover
             os.environ["LIBCST_PARSER_TYPE"] = var
     return mod
+
+
+def main():
+    parser = ArgumentParser(prog="flake8_trio")
+    parser.add_argument(
+        nargs="*",
+        metavar="file",
+        dest="files",
+        help="Files(s) to format, instead of autodetection.",
+    )
+    Plugin.add_options(parser)
+    args = parser.parse_args()
+    Plugin.parse_options(args)
+    if args.files:
+        # TODO: go through subdirectories if directory/ies specified
+        all_filenames = args.files
+    else:
+        # Get all tracked files from `git ls-files`
+        try:
+            root = os.path.relpath(_get_git_repo_root())
+            all_filenames = subprocess.run(
+                ["git", "ls-files"],
+                check=True,
+                timeout=10,
+                stdout=subprocess.PIPE,
+                text=True,
+                cwd=root,
+            ).stdout.splitlines()
+        except (subprocess.SubprocessError, FileNotFoundError):
+            print("Doesn't seem to be a git repo; pass filenames to format.")
+            sys.exit(1)
+        all_filenames = [
+            os.path.join(root, f) for f in all_filenames if _should_format(f)
+        ]
+    for file in all_filenames:
+        plugin = Plugin.from_filename(file)
+        for error in sorted(plugin.run()):
+            print(f"{file}:{error}")
 
 
 class Plugin:
@@ -86,16 +145,23 @@ class Plugin:
         yield from Flake8TrioRunner_cst(self.options).run(self._module)
 
     @staticmethod
-    def add_options(option_manager: OptionManager):
-        # Disable TRIO9xx calls
-        option_manager.extend_default_ignore(default_disabled_error_codes)
+    def add_options(option_manager: OptionManager | ArgumentParser):
+        if isinstance(option_manager, ArgumentParser):
+            # if run as standalone
+            add_argument = option_manager.add_argument
+        else:  # if run as a flake8 plugin
+            # Disable TRIO9xx calls
+            option_manager.extend_default_ignore(default_disabled_error_codes)
+            # add parameter to parse from flake8 config
+            add_argument = functools.partial(
+                option_manager.add_option, parse_from_config=True
+            )
 
-        option_manager.add_option(
+        add_argument(
             "--no-checkpoint-warning-decorators",
             default="asynccontextmanager",
-            parse_from_config=True,
             required=False,
-            comma_separated_list=True,
+            type=comma_separated_list,
             help=(
                 "Comma-separated list of decorators to disable TRIO910 & TRIO911 "
                 "checkpoint warnings for. "
@@ -104,11 +170,10 @@ class Plugin:
                 "mydecorator,mypackage.mydecorators.*``"
             ),
         )
-        option_manager.add_option(
+        add_argument(
             "--startable-in-context-manager",
             type=parse_trio114_identifiers,
             default="",
-            parse_from_config=True,
             required=False,
             help=(
                 "Comma-separated list of method calls to additionally enable TRIO113 "
@@ -119,11 +184,10 @@ class Plugin:
                 "myfunction``"
             ),
         )
-        option_manager.add_option(
+        add_argument(
             "--trio200-blocking-calls",
             type=parse_trio200_dict,
             default={},
-            parse_from_config=True,
             required=False,
             help=(
                 "Comma-separated list of key->value pairs, where key is a [dotted] "
@@ -131,11 +195,10 @@ class Plugin:
                 "suggesting it be replaced with {value}"
             ),
         )
-        option_manager.add_option(
+        add_argument(
             "--enable-visitor-codes-regex",
             type=re.compile,
             default=".*",
-            parse_from_config=True,
             required=False,
             help=(
                 "Regex string of visitors to enable. Can be used to disable broken "
@@ -145,12 +208,11 @@ class Plugin:
                 "not report codes matching this regex."
             ),
         )
-        option_manager.add_option(
+        add_argument(
             "--anyio",
             # action=store_true + parse_from_config does seem to work here, despite
             # https://github.com/PyCQA/flake8/issues/1770
             action="store_true",
-            parse_from_config=True,
             required=False,
             default=False,
             help=(
@@ -165,11 +227,12 @@ class Plugin:
         Plugin.options = options
 
 
-# flake8 ignores type parameters if using comma_separated_list
-# so we need to reimplement that ourselves if we want to use "type"
-# to check values
+def comma_separated_list(raw_value: str) -> list[str]:
+    return [s.strip() for s in raw_value.split(",") if s.strip()]
+
+
 def parse_trio114_identifiers(raw_value: str) -> list[str]:
-    values = [s.strip() for s in raw_value.split(",") if s.strip()]
+    values = comma_separated_list(raw_value)
     for value in values:
         if keyword.iskeyword(value) or not value.isidentifier():
             raise ArgumentTypeError(f"{value!r} is not a valid method identifier")

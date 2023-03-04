@@ -32,11 +32,14 @@ class Error:
         self.message = message
         self.args = args
 
+    def format_message(self):
+        return f"{self.code} " + self.message.format(*self.args)
+
     # for yielding to flake8
     def __iter__(self):
         yield self.line
         yield self.col
-        yield f"{self.code} " + self.message.format(*self.args)
+        yield self.format_message()
         # We are no longer yielding `type(Plugin)` since that's quite tricky to do
         # without circular imports, and afaik flake8 doesn't care anymore.
         yield None
@@ -55,3 +58,7 @@ class Error:
     def __repr__(self) -> str:  # pragma: no cover
         trailer = "".join(f", {x!r}" for x in self.args)
         return f"<{self.code} error at {self.line}:{self.col}{trailer}>"
+
+    def __str__(self) -> str:
+        # flake8 adds 1 to the yielded column from `__iter__`, so we do the same here
+        return f"{self.line}:{self.col+1}: {self.format_message()}"

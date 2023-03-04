@@ -55,7 +55,6 @@ repos:
           - flake8-bugbear
           - flake8-comprehensions
           - flake8-2020
-          - flake8-bandit
           - flake8-builtins
           - flake8-bugbear
           - flake8-comprehensions

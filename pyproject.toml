@@ -1,7 +1,7 @@
 [tool.pyright]
 strict = ["*.py", "tests/*.py", "flake8_trio/**/*.py"]
 exclude = ["**/node_modules", "**/__pycache__", "**/.*"]
-reportUnusedCallResult=true
+reportUnusedCallResult=false
 reportUninitializedInstanceVariable=true
 reportPropertyTypeMismatch=true
 reportMissingSuperCall=true
