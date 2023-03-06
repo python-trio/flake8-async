@@ -13,7 +13,12 @@ import libcst as cst
 import libcst.matchers as m
 
 from .flake8triovisitor import Flake8TrioVisitor_cst
-from .helpers import AttributeCall, error_class_cst, with_has_call
+from .helpers import (
+    AttributeCall,
+    error_class_cst,
+    flatten_preserving_comments,
+    with_has_call,
+)
 
 
 @error_class_cst
@@ -46,12 +51,16 @@ class Visitor100_libcst(Flake8TrioVisitor_cst):
         else:
             self.has_checkpoint_stack.append(True)
 
-    def leave_With(self, original_node: cst.With, updated_node: cst.With) -> cst.With:
+    def leave_With(
+        self, original_node: cst.With, updated_node: cst.With
+    ) -> cst.BaseStatement | cst.FlattenSentinel[cst.BaseStatement]:
         if not self.has_checkpoint_stack.pop():
             for res in self.node_dict[original_node]:
                 self.error(res.node, res.base, res.function)
-        # if: autofixing is enabled for this code
-        # then: remove the with and pop out it's body
+
+            if self.options.autofix and len(updated_node.items) == 1:
+                return flatten_preserving_comments(updated_node)
+
         return updated_node
 
     def visit_For(self, node: cst.For):

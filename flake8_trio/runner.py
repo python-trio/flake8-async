@@ -100,20 +100,20 @@ class Flake8TrioRunner(ast.NodeVisitor):
 
 
 class Flake8TrioRunner_cst:
-    def __init__(self, options: Namespace):
+    def __init__(self, options: Namespace, module: Module):
         super().__init__()
         self.state = SharedState(options)
         self.options = options
         self.visitors: tuple[Flake8TrioVisitor_cst, ...] = tuple(
             v(self.state) for v in ERROR_CLASSES_CST if self.selected(v.error_codes)
         )
+        self.module = module
 
-    def run(self, module: Module) -> Iterable[Error]:
+    def run(self) -> Iterable[Error]:
         if not self.visitors:
             return
-        wrapper = cst.MetadataWrapper(module)
         for v in self.visitors:
-            _ = wrapper.visit(v)
+            self.module = cst.MetadataWrapper(self.module).visit(v)
         yield from self.state.problems
 
     def selected(self, error_codes: dict[str, str]) -> bool:

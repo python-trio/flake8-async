@@ -63,8 +63,24 @@ def test_run_no_git_repo(
     with pytest.raises(SystemExit):
         from flake8_trio import __main__  # noqa
     out, err = capsys.readouterr()
-    assert out == "Doesn't seem to be a git repo; pass filenames to format.\n"
+    assert err == "Doesn't seem to be a git repo; pass filenames to format.\n"
+    assert not out
+
+
+def test_run_100_autofix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    err_msg = _common_error_setup(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        sys, "argv", [tmp_path / "flake8_trio", "--autofix", "./example.py"]
+    )
+    from flake8_trio import __main__  # noqa
+
+    out, err = capsys.readouterr()
+    assert out == err_msg
     assert not err
+    assert tmp_path.joinpath("example.py").read_text() == "import trio\n...\n"
 
 
 def test_114_raises_on_invalid_parameter(capsys: pytest.CaptureFixture[str]):

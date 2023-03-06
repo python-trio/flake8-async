@@ -101,7 +101,10 @@ def main():
                 cwd=root,
             ).stdout.splitlines()
         except (subprocess.SubprocessError, FileNotFoundError):
-            print("Doesn't seem to be a git repo; pass filenames to format.")
+            print(
+                "Doesn't seem to be a git repo; pass filenames to format.",
+                file=sys.stderr,
+            )
             sys.exit(1)
         all_filenames = [
             os.path.join(root, f) for f in all_filenames if _should_format(f)
@@ -110,6 +113,9 @@ def main():
         plugin = Plugin.from_filename(file)
         for error in sorted(plugin.run()):
             print(f"{file}:{error}")
+        if plugin.options.autofix:
+            with open(file, "w") as file:
+                file.write(plugin.module.code)
 
 
 class Plugin:
@@ -122,7 +128,7 @@ class Plugin:
         self._tree = tree
         source = "".join(lines)
 
-        self._module: cst.Module = cst_parse_module_native(source)
+        self.module: cst.Module = cst_parse_module_native(source)
 
     @classmethod
     def from_filename(cls, filename: str | PathLike[str]) -> Plugin:  # pragma: no cover
@@ -137,12 +143,14 @@ class Plugin:
         plugin = Plugin.__new__(cls)
         super(Plugin, plugin).__init__()
         plugin._tree = ast.parse(source)
-        plugin._module = cst_parse_module_native(source)
+        plugin.module = cst_parse_module_native(source)
         return plugin
 
     def run(self) -> Iterable[Error]:
         yield from Flake8TrioRunner.run(self._tree, self.options)
-        yield from Flake8TrioRunner_cst(self.options).run(self._module)
+        cst_runner = Flake8TrioRunner_cst(self.options, self.module)
+        yield from cst_runner.run()
+        self.module = cst_runner.module
 
     @staticmethod
     def add_options(option_manager: OptionManager | ArgumentParser):
@@ -157,6 +165,7 @@ class Plugin:
             add_argument = functools.partial(
                 option_manager.add_option, parse_from_config=True
             )
+        add_argument("--autofix", action="store_true", required=False)
 
         add_argument(
             "--no-checkpoint-warning-decorators",

@@ -91,7 +91,7 @@ class Visitor112(Flake8TrioVisitor):
             nursery = get_matching_call(item.context_expr, "open_nursery")
 
             # `isinstance(..., ast.Call)` is done in get_matching_call
-            body_call = cast(ast.Call, node.body[0].value)
+            body_call = cast("ast.Call", node.body[0].value)
 
             if (
                 nursery is not None

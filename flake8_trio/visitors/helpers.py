@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import ast
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, NamedTuple, TypeVar, cast
 
 import libcst as cst
 import libcst.matchers as m
@@ -341,3 +341,62 @@ def func_has_decorator(func: cst.FunctionDef, *names: str) -> bool:
             ),
         )
     )
+
+
+def get_comments(node: cst.CSTNode | Iterable[cst.CSTNode]) -> Iterator[cst.EmptyLine]:
+    # pyright can't use hasattr to narrow the type, so need a bunch of casts
+    if hasattr(node, "__iter__"):
+        for n in cast("Iterable[cst.CSTNode]", node):
+            yield from get_comments(n)
+        return
+    yield from (
+        cst.EmptyLine(comment=ensure_type(c, cst.Comment))
+        for c in m.findall(cast("cst.CSTNode", node), m.Comment())
+    )
+    return
+
+
+# used in TRIO100
+def flatten_preserving_comments(node: cst.BaseCompoundStatement):
+    # add leading lines (comments and empty lines) for the node to be removed
+    new_leading_lines = list(node.leading_lines)
+
+    # add other comments belonging to the node as empty lines with comments
+    for attr in "lpar", "items", "rpar":
+        # pragma, since this is currently only used to flatten `With` statements
+        if comment_nodes := getattr(node, attr, None):  # pragma: no cover
+            new_leading_lines.extend(get_comments(comment_nodes))
+
+    # node.body is a BaseSuite, whose subclasses are SimpleStatementSuite
+    # and IndentedBlock
+    if isinstance(node.body, cst.SimpleStatementSuite):
+        # `with ...: pass;pass;pass` -> pass;pass;pass
+        return cst.SimpleStatementLine(node.body.body, leading_lines=new_leading_lines)
+
+    assert isinstance(node.body, cst.IndentedBlock)
+    nodes = list(node.body.body)
+
+    # nodes[0] is a BaseStatement, whose subclasses are SimpleStatementLine
+    # and BaseCompoundStatement - both of which has leading_lines
+    assert isinstance(nodes[0], (cst.SimpleStatementLine, cst.BaseCompoundStatement))
+
+    # add body header comment - i.e. comments on the same/last line of the statement
+    if node.body.header and node.body.header.comment:
+        new_leading_lines.append(
+            cst.EmptyLine(indent=True, comment=node.body.header.comment)
+        )
+    # add the leading lines of the first node
+    new_leading_lines.extend(nodes[0].leading_lines)
+    # update the first node with all the above constructed lines
+    nodes[0] = nodes[0].with_changes(leading_lines=new_leading_lines)
+
+    # if there's comments in the footer of the indented block, add a pass
+    # statement with the comments as leading lines
+    if node.body.footer:
+        nodes.append(
+            cst.SimpleStatementLine(
+                [cst.Pass()],
+                node.body.footer,
+            )
+        )
+    return cst.FlattenSentinel(nodes)
