@@ -17,7 +17,6 @@ from libcst.metadata import PositionProvider
 from ..base import Statement
 from .flake8triovisitor import Flake8TrioVisitor_cst
 from .helpers import (
-    cst_literal_eval,
     disabled_by_default,
     error_class_cst,
     fnmatch_qualified_name_cst,
@@ -30,20 +29,11 @@ ARTIFICIAL_STATEMENT = Statement("artificial", -1)
 
 def func_empty_body(node: cst.FunctionDef) -> bool:
     # Does the function body consist solely of `pass`, `...`, and (doc)string literals?
+    empty_statement = m.Pass() | m.Expr(m.Ellipsis() | m.SimpleString())
     return m.matches(
         node.body,
         m.IndentedBlock(
-            body=[
-                m.ZeroOrMore(
-                    m.SimpleStatementLine(
-                        body=[
-                            m.ZeroOrMore(
-                                m.Pass() | m.Expr(m.Ellipsis() | m.SimpleString())
-                            )
-                        ]
-                    )
-                )
-            ]
+            [m.ZeroOrMore(m.SimpleStatementLine([m.ZeroOrMore(empty_statement)]))]
         ),
     )
 
@@ -220,6 +210,10 @@ class Visitor91X(Flake8TrioVisitor_cst):
     def error_91x(
         self, node: cst.Return | cst.FunctionDef | cst.Yield, statement: Statement
     ):
+        # artificial statement is injected in visit_While_body to make sure errors
+        # are raised on multiple loops, if e.g. the end of a loop is uncheckpointed.
+        # Here we add it to artificial errors, so loop logic can later turn it into
+        # a real error if needed.
         if statement == ARTIFICIAL_STATEMENT:
             self.loop_state.artificial_errors.add(node)
             return
@@ -405,8 +399,10 @@ class Visitor91X(Flake8TrioVisitor_cst):
     # state after the loop same as above, and in addition the state at any break
     def visit_While_test(self, node: cst.While):
         # save state in case of nested loops
-        # ugly workaround since cst doesn't have literal_eval
-        if cst_literal_eval(node.test):
+        # One could plausibly just check for True here
+        if (m.matches(node.test, m.Name("True"))) or (
+            getattr(node.test, "evaluated_value", False)
+        ):
             self.infinite_loop = self.body_guaranteed_once = True
 
     def visit_For_iter(self, node: cst.For):

@@ -147,10 +147,11 @@ class Plugin:
     @staticmethod
     def add_options(option_manager: OptionManager | ArgumentParser):
         if isinstance(option_manager, ArgumentParser):
+            # TODO: disable TRIO9xx calls by default
             # if run as standalone
             add_argument = option_manager.add_argument
         else:  # if run as a flake8 plugin
-            # Disable TRIO9xx calls
+            # Disable TRIO9xx calls by default
             option_manager.extend_default_ignore(default_disabled_error_codes)
             # add parameter to parse from flake8 config
             add_argument = functools.partial(

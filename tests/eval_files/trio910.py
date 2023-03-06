@@ -1,13 +1,19 @@
-# type: ignore
 import typing
 from typing import Any, overload
 
+import pytest
 import trio
 
 _ = ""
 
+custom_disabled_decorator: Any = ...
 
-def __() -> Any:
+
+async def foo() -> Any:
+    await foo()
+
+
+def bar() -> Any:
     ...
 
 
@@ -35,12 +41,8 @@ async def foo_empty_4():
     """comment2"""
 
 
-async def foo() -> Any:
-    await foo()
-
-
 async def foo1():  # error: 0, "exit", Statement("function definition", lineno)
-    __()
+    bar()
 
 
 # If
@@ -84,7 +86,7 @@ async def foo_func_1():
     await foo()
 
     async def foo_func_2():  # error: 4, "exit", Statement("function definition", lineno)
-        __()
+        bar()
 
 
 async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
@@ -95,7 +97,7 @@ async def foo_func_3():  # error: 0, "exit", Statement("function definition", li
 async def foo_func_5():  # error: 0, "exit", Statement("function definition", lineno)
     def foo_func_6():  # safe
         async def foo_func_7():  # error: 8, "exit", Statement("function definition", lineno)
-            __()
+            bar()
 
 
 async def foo_func_8():  # error: 0, "exit", Statement("function definition", lineno)
@@ -177,6 +179,11 @@ async def foo_while_3():  # safe
         ...
 
 
+async def foo_while_4():  # error: 0, "exit", Statement("function definition", lineno)
+    while False:
+        await foo()
+
+
 # for
 async def foo_for_1():  # error: 0, "exit", Statement("function definition", lineno)
     for _ in "":
@@ -191,7 +198,7 @@ async def foo_for_2():  # now safe
 
 
 async def foo_while_break_1():  # safe
-    while foo():
+    while bar():
         await foo()
         break
     else:
@@ -199,14 +206,14 @@ async def foo_while_break_1():  # safe
 
 
 async def foo_while_break_2():  # error: 0, "exit", Statement("function definition", lineno)
-    while foo():
+    while bar():
         break
     else:
         await foo()
 
 
 async def foo_while_break_3():  # error: 0, "exit", Statement("function definition", lineno)
-    while foo():
+    while bar():
         await foo()
         break
     else:
@@ -214,14 +221,14 @@ async def foo_while_break_3():  # error: 0, "exit", Statement("function definiti
 
 
 async def foo_while_break_4():  # error: 0, "exit", Statement("function definition", lineno)
-    while foo():
+    while bar():
         break
     else:
         ...
 
 
 async def foo_while_continue_1():  # safe
-    while foo():
+    while bar():
         await foo()
         continue
     else:
@@ -229,14 +236,14 @@ async def foo_while_continue_1():  # safe
 
 
 async def foo_while_continue_2():  # safe
-    while foo():
+    while bar():
         continue
     else:
         await foo()
 
 
 async def foo_while_continue_3():  # error: 0, "exit", Statement("function definition", lineno)
-    while foo():
+    while bar():
         await foo()
         continue
     else:
@@ -244,21 +251,21 @@ async def foo_while_continue_3():  # error: 0, "exit", Statement("function defin
 
 
 async def foo_while_continue_4():  # error: 0, "exit", Statement("function definition", lineno)
-    while foo():
+    while bar():
         continue
     else:
         ...
 
 
 async def foo_async_for_1():
-    async for _ in trio.trick_pyright:
+    async for _ in bar():
         ...
 
 
 # async with
 # async with guarantees checkpoint on at least one of entry or exit
 async def foo_async_with():
-    async with trio.trick_pyright:
+    async with bar():
         ...
 
 
@@ -276,7 +283,7 @@ async def foo_raise_2():  # safe
 
 # try
 # safe only if (try or else) and all except bodies either await or raise
-# if foo() raises a ValueError it's not checkpointed
+# if `foo()` raises a ValueError it's not checkpointed
 async def foo_try_1():  # error: 0, "exit", Statement("function definition", lineno)
     try:
         await foo()
@@ -453,7 +460,7 @@ async def foo_range_4():  # error: 0, "exit", Statement("function definition", l
 
 # error on complex parameters
 async def foo_range_5():  # error: 0, "exit", Statement("function definition", lineno)
-    for i in range(2 - 2):
+    for i in range(3 - 2):
         await foo()
 
 
@@ -464,8 +471,8 @@ async def f():
             await trio.sleep(0)
             return
         # If you delete this loop, no warning.
-        while foo():
-            await __()
+        while bar():
+            await foo()
 
 
 async def f1():
@@ -497,7 +504,7 @@ def foo_sync():
             break
 
     # boolop in sync function
-    True and True
+    True and True  # type: ignore
 
 
 # don't warn on pytest.fixture
@@ -537,4 +544,9 @@ async def foo_comprehension_1():
 
 # should error
 async def foo_comprehension_2():
-    [await foo() for x in range(10) if foo()]
+    [await foo() for x in range(10) if bar()]
+
+
+# should not error, see https://github.com/Zac-HD/flake8-trio/issues/144
+async def foo_comprehension_3():  # error: 0, "exit", Statement("function definition", lineno)
+    [... async for x in bar()]

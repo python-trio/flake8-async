@@ -1,6 +1,6 @@
-# type: ignore
 from typing import Any
 
+import pytest
 import trio
 
 _: Any = ""
@@ -790,6 +790,19 @@ async def foo_loop_static():
             break
     yield
 
+    while False:
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    while "hello":
+        await foo()
+    yield
+
+    # false positive on containers
+    while [1, 2]:
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-5)
+
     # will get caught by any number of linters, but trio911 will also complain
     for _ in 5:  # type: ignore
         await foo()
@@ -799,6 +812,77 @@ async def foo_loop_static():
     for i in range(5):
         await foo()
     yield
+
+    for i in range(0x23):
+        await foo()
+    yield
+
+    for i in range(0b01):
+        await foo()
+    yield
+
+    # malformed range calls
+    for i in range(5, 2, 3, 4):  # type: ignore
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-5)
+
+    # is not caught by type checkers
+    for i in range(1, 10, 0):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-5)
+
+    for i in range(1 + 1):  # not handled
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for i in range(None):  # type: ignore
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    for i in range(+3):
+        await foo()
+    yield
+
+    for i in range(-3.5):  # type: ignore
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # duplicated from 910 to have all range tests in one place
+    for i in range(5, 10):
+        await foo()
+    yield
+
+    for i in range(10, 5, -1):
+        await foo()
+    yield
+
+    # ~0 == -1
+    for i in range(10, 5, ~0):
+        await foo()
+    yield
+
+    # length > sys.maxsize
+    for i in range(27670116110564327421):
+        await foo()
+    yield
+
+    for i in range(10, 5):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # binary operations are not handled
+    for i in range(3 - 2):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-5)
+
+    for i in range(10**3):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # nor nested unary operations
+    for i in range(--3):
+        await foo()
+    yield  # error: 4, "yield", Stmt("yield", line-5)
 
     await foo()
 
