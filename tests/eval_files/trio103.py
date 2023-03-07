@@ -252,6 +252,12 @@ except BaseException:
 
 try:
     ...
+except BaseException:
+    for i in range(27670116110564327421):
+        raise
+
+try:
+    ...
 except BaseException:  # TRIO103_trio: 7, "BaseException"
     for i in range(foo()):
         raise

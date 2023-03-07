@@ -137,9 +137,24 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
         and iterable.func.id == "range"
     ):
         try:
-            return len(range(*[ast.literal_eval(a) for a in iterable.args])) > 0
+            values = [ast.literal_eval(a) for a in iterable.args]
         except Exception:  # noqa: PIE786
+            # parameters aren't literal
             return False
+
+        try:
+            evaluated_range = range(*values)
+        except (ValueError, TypeError):
+            str_values = ", ".join(map(str, values))
+            raise RuntimeError(
+                f"Invalid literal values to range function: `range({str_values})`"
+            )
+
+        try:
+            return len(evaluated_range) > 0
+        # if the length is > sys.maxsize
+        except OverflowError:
+            return True
     return False
 
 
@@ -186,7 +201,10 @@ def iter_guaranteed_once_cst(iterable: cst.BaseExpression) -> bool:
         try:
             evaluated_range = range(*values)
         except (ValueError, TypeError):
-            return False
+            str_values = ", ".join(map(str, values))
+            raise RuntimeError(
+                f"Invalid literal values to range function: `range({str_values})`"
+            )
         try:
             return len(evaluated_range) > 0
         # if the length is > sys.maxsize

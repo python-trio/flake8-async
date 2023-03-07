@@ -821,16 +821,6 @@ async def foo_loop_static():
         await foo()
     yield
 
-    # malformed range calls
-    for i in range(5, 2, 3, 4):  # type: ignore
-        await foo()
-    yield  # error: 4, "yield", Stmt("yield", line-5)
-
-    # is not caught by type checkers
-    for i in range(1, 10, 0):
-        await foo()
-    yield  # error: 4, "yield", Stmt("yield", line-5)
-
     for i in range(1 + 1):  # not handled
         await foo()
     yield  # error: 4, "yield", Stmt("yield", line-4)
