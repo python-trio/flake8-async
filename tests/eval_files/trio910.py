@@ -543,10 +543,9 @@ async def foo_comprehension_1():
 
 
 # should error
-async def foo_comprehension_2():
+async def foo_comprehension_2():  # error: 0, "exit", Statement("function definition", lineno)
     [await foo() for x in range(10) if bar()]
 
 
-# should not error, see https://github.com/Zac-HD/flake8-trio/issues/144
-async def foo_comprehension_3():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_comprehension_3():
     [... async for x in bar()]

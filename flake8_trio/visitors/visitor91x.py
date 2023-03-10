@@ -97,6 +97,7 @@ class Visitor91X(Flake8TrioVisitor_cst):
         self.safe_decorator = False
         self.async_function = False
         self.uncheckpointed_statements: set[Statement] = set()
+        self.comp_unknown = False
 
         self.loop_state = LoopState()
         self.try_state = TryState()
@@ -522,3 +523,70 @@ class Visitor91X(Flake8TrioVisitor_cst):
         self.uncheckpointed_statements.update(
             self.outer[node]["uncheckpointed_statements"]
         )
+
+    # comprehensions are simpler than loops, since they cannot contain yields
+    # or many other complicated statements, but their subfields are not in the order
+    # they're logically executed, so we manually visit each field in execution order,
+    # as long as the effect of the statement is not known. Once we know the comprehension
+    # will checkpoint, we stop visiting, or once we are no longer guaranteed to execute
+    # code deeper in the comprehension.
+    # Functions return `False` so libcst doesn't iterate subnodes [again].
+    def visit_ListComp(self, node: cst.DictComp | cst.SetComp | cst.ListComp):
+        if not self.async_function or not self.uncheckpointed_statements:
+            return False
+
+        outer = self.comp_unknown
+        self.comp_unknown = True
+
+        # visit `for` and `if`s
+        node.for_in.visit(self)
+
+        # if still unknown, visit the expression
+        if self.comp_unknown and self.uncheckpointed_statements:
+            if isinstance(node, cst.DictComp):
+                node.key.visit(self)
+                node.value.visit(self)
+            else:
+                node.elt.visit(self)
+
+        self.comp_unknown = outer
+        return False
+
+    visit_SetComp = visit_ListComp
+    visit_DictComp = visit_ListComp
+
+    def visit_CompFor(self, node: cst.CompFor):
+        # should only ever be visited manually, when inside an async function
+        assert self.async_function
+
+        if not self.uncheckpointed_statements:
+            return False
+
+        # if async comprehension, checkpoint
+        if node.asynchronous:
+            self.uncheckpointed_statements = set()
+            self.comp_unknown = False
+            return False
+
+        # visit the iter call, which might have await's
+        node.iter.visit(self)
+
+        # stop checking if the loop is not guaranteed to execute
+        if not iter_guaranteed_once_cst(node.iter):
+            self.comp_unknown = False
+
+        # only the first `if` is guaranteed to execute
+        # and if there's any, don't check inner loop
+        elif node.ifs:
+            self.comp_unknown = False
+            node.ifs[0].visit(self)
+        elif node.inner_for_in:
+            # visit nested loops (and ifs), if any
+            node.inner_for_in.visit(self)
+
+        return False
+
+    # We don't have any logic on if generators are guaranteed to unroll, so always
+    # ignore their content
+    def visit_GeneratorExp(self, node: cst.GeneratorExp):
+        return False

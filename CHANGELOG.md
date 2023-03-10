@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- TRIO91X now supports comprehensions
+
 ## 23.2.5
 - Fix false alarms for `@pytest.fixture`-decorated functions in TRIO101, TRIO910 and TRIO911
 
