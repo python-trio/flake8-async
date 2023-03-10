@@ -16,8 +16,17 @@ def test_all_visitors_imported():
         f.stem for f in visitor_dir.iterdir() if f.stem.startswith("visitor")
     }
     visited_files: set[str] = set()
+    in_import: bool | None = None
     with open(visitor_dir / "__init__.py") as f:
         for line in f:
-            if m := re.match(r"from \. import (?P<module>\w*)", line):
+            if m := re.fullmatch(r"from \. import \(\n", line):
+                in_import = True
+            elif in_import and (m := re.fullmatch(r" *(?P<module>\w*),\n", line)):
                 visited_files.add(m.group("module"))
+            elif in_import and re.fullmatch(r"\)\n", line):
+                in_import = False
+
+    # check that parsing succeeded
+    assert in_import is False
+
     assert visitor_files == visited_files
