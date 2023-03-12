@@ -12,6 +12,10 @@ async def foo() -> Any:
     await foo()
 
 
+def bar(*args) -> Any:
+    ...
+
+
 async def foo_yield_1():
     await foo()
     yield 5
@@ -886,3 +890,97 @@ async def foo_test():
 @pytest.fixture()
 async def foo_test2():
     yield
+
+
+async def comprehensions():
+    # guaranteed iteration with await in test
+    [... for x in range(10) if await foo()]
+    yield  # safe
+
+    # guaranteed iteration and await in value, but test is not guaranteed
+    [await foo() for x in range(10) if bar()]
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # guaranteed iteration and await in value
+    [await foo() for x in range(10)]
+    yield  # safe
+
+    # not guaranteed to iter
+    [await foo() for x in bar()]
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # await statement in loop expression
+    [... for x in bar(await foo())]
+    yield
+
+    # set comprehensions use same logic as list
+    {await foo() for x in range(10)}
+    yield  # safe
+
+    {await foo() for x in bar()}
+    yield  # error: 4, "yield", Stmt("yield", line-3)
+
+    # dict comprehensions use same logic as list
+    {await foo(): 5 for x in bar()}
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # other than `await` can be in both key&val
+    {await foo(): 5 for x in range(10)}
+    yield
+
+    {5: await foo() for x in range(10)}
+    yield
+
+    # generator expressions are never treated as safe
+    (await foo() for x in range(10))
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    (await foo() for x in bar() if await foo())
+    yield  # error: 4, "yield", Stmt("yield", line-3)
+
+    # async for always safe
+    [... async for x in bar()]
+    yield  # safe
+    {... async for x in bar()}
+    yield  # safe
+    {...: ... async for x in bar()}
+    yield  # safe
+
+    # other than in generator expression
+    (... async for x in bar())
+    yield  # error: 4, "yield", Stmt("yield", line-4)
+
+    # multiple loops
+    [... for x in range(10) for y in range(10) if await foo()]
+    yield
+    [... for x in range(10) for y in bar() if await foo()]
+    yield  # error: 4, "yield", Stmt("yield", line-2)
+    [... for x in bar() for y in range(10) if await foo()]
+    yield  # error: 4, "yield", Stmt("yield", line-2)
+
+    [await foo() for x in range(10) for y in range(10)]
+    yield
+    [await foo() for x in range(10) for y in bar()]
+    yield  # error: 4, "yield", Stmt("yield", line-2)
+    [await foo() for x in bar() for y in range(10)]
+    yield  # error: 4, "yield", Stmt("yield", line-2)
+
+    # trip loops!
+    [... for x in range(10) for y in range(10) async for z in bar()]
+    yield
+    [... for x in range(10) for y in range(10) for z in range(10)]
+    yield  # error: 4, "yield", Stmt("yield", line-2)
+
+    # multiple ifs
+    [... for x in range(10) for y in range(10) if await foo() if await foo()]
+    yield
+
+    [... for x in range(10) for y in bar() if await foo() if await foo()]
+    yield  # error: 4, "yield", Stmt("yield", line-3)
+
+    # nested comprehensions
+    [[await foo() for x in range(10)] for y in range(10)]
+    yield
+
+    # code coverage: inner comprehension with no checkpointed statements
+    [... for x in [await foo()] for y in x]
