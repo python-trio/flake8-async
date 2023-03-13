@@ -1,13 +1,30 @@
-[tool.pyright]
-strict = ["*.py", "tests/*.py", "flake8_trio/**/*.py"]
-exclude = ["**/node_modules", "**/__pycache__", "**/.*"]
-reportUnusedCallResult=false
-reportUninitializedInstanceVariable=true
-reportPropertyTypeMismatch=true
-reportMissingSuperCall=true
-reportImplicitStringConcatenation=true
-reportCallInDefaultInitializer=true
-reportShadowedImports=true
+[tool.autoflake]
+exclude = ["tests/autofix_files/*.py", "tests/eval_files/*.py"]
+ignore-init-module-imports = true
+in-place = true
+quiet = true
+remove-all-unused-imports = true
+remove-duplicate-keys = true
+remove-unused-variables = true
 
 [tool.codespell]
 ignore-words-list = 'spawnve'
+
+[tool.isort]
+only_modified = true
+profile = "black"
+py_version = "311"
+quiet = true
+skip_gitignore = true
+skip_glob = "tests/eval_files/*"
+
+[tool.pyright]
+exclude = ["**/node_modules", "**/__pycache__", "**/.*"]
+reportCallInDefaultInitializer = true
+reportImplicitStringConcatenation = true
+reportMissingSuperCall = true
+reportPropertyTypeMismatch = true
+reportShadowedImports = true
+reportUninitializedInstanceVariable = true
+reportUnusedCallResult = false
+strict = ["*.py", "tests/*.py", "flake8_trio/**/*.py"]
