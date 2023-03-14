@@ -82,11 +82,12 @@ except ValueError as e:
     except BaseException:
         raise e  # error: 8
 
-# check for avoiding re-raise by returning from function
 def foo():
     if True:  # for code coverage
         return
 
+# check for avoiding re-raise by returning from function
+def foo2():
     try:
         ...
     except BaseException:  # TRIO103_trio: 11, "BaseException"
@@ -101,27 +102,29 @@ def foo():
         except ValueError:
             return  # error: 12
         else:
-            return  # error: 12
+            return  # type: ignore[unreachable] # error: 12
         finally:
             return  # error: 12
 
 
 # don't avoid re-raise with continue/break
-while True:
-    try:
-        ...
-    except BaseException:
-        if True:
-            continue  # error: 12
-        raise
+def foo3():
+    while True:
+        try:
+            ...
+        except BaseException:
+            if True:
+                continue  # error: 16
+            raise
 
-while True:
-    try:
-        ...
-    except BaseException:
-        if True:
-            break  # error: 12
-        raise
+def foo4():
+    while True:
+        try:
+            ...
+        except BaseException:
+            if True:
+                break  # error: 16
+            raise
 
 try:
     ...

@@ -95,8 +95,7 @@ class test_messages_documented(unittest.TestCase):
                             # but afaict it should be something like str|Tuple[str,...]
                             # depending on whether there's a group in the pattern or not.
                             # (or bytes, if both inputs are bytes)
-                            assert isinstance(m, str)
-                            documented_errors["eval_files"].add(m)
+                            documented_errors["eval_files"].add(m)  # type: ignore
                         break
 
         for errset in documented_errors.values():

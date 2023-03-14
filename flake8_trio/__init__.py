@@ -162,7 +162,7 @@ class Plugin:
             # Disable TRIO9xx calls by default
             option_manager.extend_default_ignore(default_disabled_error_codes)
             # add parameter to parse from flake8 config
-            add_argument = functools.partial(
+            add_argument = functools.partial(  # type: ignore
                 option_manager.add_option, parse_from_config=True
             )
         add_argument("--autofix", action="store_true", required=False)
@@ -207,7 +207,7 @@ class Plugin:
         )
         add_argument(
             "--enable-visitor-codes-regex",
-            type=re.compile,
+            type=re.compile,  # type: ignore[arg-type]
             default=".*",
             required=False,
             help=(

@@ -731,7 +731,7 @@ async def foo_loop_static():
         await foo()
     yield
 
-    for _ in {**{}, **{1: 2}}:
+    for _ in {**{}, **{1: 2}}:  # type: ignore[arg-type]
         await foo()
     yield
 
@@ -795,7 +795,7 @@ async def foo_loop_static():
     yield
 
     while False:
-        await foo()
+        await foo()  # type: ignore[unreachable]
     yield  # error: 4, "yield", Stmt("yield", line-4)
 
     while "hello":

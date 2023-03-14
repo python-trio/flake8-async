@@ -18,6 +18,13 @@ quiet = true
 skip_gitignore = true
 skip_glob = "tests/eval_files/*"
 
+[tool.mypy]
+check_untyped_defs = true
+disable_error_code = ["no-untyped-def", "misc", "no-untyped-call", "no-any-return"]
+strict = true
+warn_unreachable = true
+warn_unused_ignores = false
+
 [tool.pyright]
 exclude = ["**/node_modules", "**/__pycache__", "**/.*"]
 reportCallInDefaultInitializer = true

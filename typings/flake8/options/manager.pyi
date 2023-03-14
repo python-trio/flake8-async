@@ -5,14 +5,17 @@ Generated for flake8 5, so OptionManager signature is incorrect for flake8 6
 """
 
 import argparse
+import enum
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import Any, TypeAlias
 
 from flake8.plugins.finder import Plugins
 
 """Option handling and Option management logic."""
 LOG = ...
-_ARG = ...
+
+class _ARG(enum.Enum): ...
+
 _optparse_callable_map: dict[str, type[Any] | _ARG] = ...
 
 class _CallbackAction(argparse.Action):
