@@ -10,6 +10,12 @@ def pytest_addoption(parser: pytest.Parser):
         "--runfuzz", action="store_true", default=False, help="run fuzz tests"
     )
     parser.addoption(
+        "--generate-autofix",
+        action="store_true",
+        default=False,
+        help="generate autofix file content",
+    )
+    parser.addoption(
         "--enable-visitor-codes-regex",
         default=".*",
         help="select error codes whose visitors to run.",
@@ -30,6 +36,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     for item in items:
         if "fuzz" in item.keywords:
             item.add_marker(skip_fuzz)
+
+
+@pytest.fixture()
+def generate_autofix(request: pytest.FixtureRequest):
+    return request.config.getoption("generate_autofix")
 
 
 @pytest.fixture()

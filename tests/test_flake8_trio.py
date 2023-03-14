@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import difflib
 import itertools
 import os
 import re
@@ -33,6 +34,11 @@ if TYPE_CHECKING:
 test_files: list[tuple[str, Path]] = sorted(
     (f.stem.upper(), f) for f in (Path(__file__).parent / "eval_files").iterdir()
 )
+autofix_files: dict[str, Path] = {
+    f.stem.upper(): f for f in (Path(__file__).parent / "autofix_files").iterdir()
+}
+# check that there's an eval file for each autofix file
+assert set(autofix_files.keys()) - {f[0] for f in test_files} == set()
 
 
 class ParseError(Exception):
@@ -65,18 +71,40 @@ ERROR_CODES = {
 }
 
 
+def check_autofix(test: str, plugin: Plugin, generate_autofix: bool):
+    if test not in autofix_files:
+        return
+    visited_code = plugin.module.code
+    current_generated = autofix_files[test].read_text()
+    if generate_autofix:
+        if visited_code != current_generated:
+            print(f"\nregenerating {test}")
+            sys.stdout.writelines(
+                difflib.unified_diff(
+                    current_generated.splitlines(keepends=True),
+                    visited_code.splitlines(keepends=True),
+                )
+            )
+        autofix_files[test].write_text(visited_code)
+        return
+    assert visited_code == current_generated
+
+
 @pytest.mark.parametrize(("test", "path"), test_files)
-def test_eval(test: str, path: Path):
+def test_eval(test: str, path: Path, generate_autofix: bool):
     content = path.read_text()
     if "# NOTRIO" in content:
         pytest.skip("file marked with NOTRIO")
 
     expected, parsed_args = _parse_eval_file(test, content)
+    parsed_args.append("--autofix")
     if "# TRIO_NO_ERROR" in content:
         expected = []
 
     plugin = Plugin.from_source(content)
     _ = assert_expected_errors(plugin, *expected, args=parsed_args)
+
+    check_autofix(test, plugin, generate_autofix)
 
 
 @pytest.mark.parametrize(("test", "path"), test_files)
