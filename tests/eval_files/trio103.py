@@ -48,9 +48,9 @@ except BaseException:  # TRIO103_trio: 7, "BaseException"
 try:
     ...
 except BaseException as e:  # TRIO103_trio: 7, "BaseException"
-    if True:
+    if ...:
         raise e
-    elif True:
+    elif ...:
         ...
     else:
         raise e
@@ -64,9 +64,9 @@ except BaseException:  # TRIO103_trio: 7, "BaseException"
 try:
     ...
 except BaseException:  # safe
-    if True:
+    if ...:
         raise
-    elif True:
+    elif ...:
         raise
     else:
         raise
@@ -121,7 +121,7 @@ try:
     ...
 except BaseException:
     raise
-    for _ in "":
+    for _ in "": # type: ignore[unreachable]
         if ...:
             break
         raise
@@ -241,7 +241,7 @@ except BaseException:
 try:
     ...
 except BaseException:
-    for ii in {**{}, **{1: 2}}:
+    for i in {**{}, **{1: 2}}: # type: ignore[arg-type]
         raise
 
 try:

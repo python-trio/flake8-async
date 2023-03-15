@@ -30,6 +30,8 @@ from flake8_trio.visitors import ERROR_CLASSES, ERROR_CLASSES_CST
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
+    from flake8_trio.visitors.flake8triovisitor import Flake8TrioVisitor
+
 
 test_files: list[tuple[str, Path]] = sorted(
     (f.stem.upper(), f) for f in (Path(__file__).parent / "eval_files").iterdir()
@@ -64,10 +66,11 @@ def check_version(test: str):
             pytest.skip(f"python version {v_i} smaller than {major}, {minor}")
 
 
-ERROR_CODES = {
-    err_code: err_class
+# mypy does not see that both types have error_codes
+ERROR_CODES: dict[str, Flake8TrioVisitor] = {
+    err_code: err_class  # type: ignore[misc]
     for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
-    for err_code in err_class.error_codes.keys()
+    for err_code in err_class.error_codes.keys()  # type: ignore[attr-defined]
 }
 
 
