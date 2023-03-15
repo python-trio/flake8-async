@@ -5,8 +5,11 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from .flake8triovisitor import Flake8TrioVisitor
-from .helpers import utility_visitor
+import libcst as cst
+import libcst.matchers as m
+
+from .flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst
+from .helpers import utility_visitor, utility_visitor_cst
 
 
 @utility_visitor
@@ -116,3 +119,22 @@ class VisitorLibraryHandler(Flake8TrioVisitor):
             name = alias.name
             if name in ("trio", "anyio") and alias.asname is None:
                 self.add_library(name)
+
+
+@utility_visitor_cst
+class VisitorLibraryHandler_cst(Flake8TrioVisitor_cst):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        # check whether library we're working towards has been explicitly
+        # specified with --anyio, otherwise assume Trio - but we update if we
+        # see imports
+        if self.options.anyio:
+            self.add_library("anyio")
+
+    def visit_Import(self, node: cst.Import):
+        for alias in node.names:
+            if m.matches(
+                alias, m.ImportAlias(name=m.Name("trio") | m.Name("anyio"), asname=None)
+            ):
+                assert isinstance(alias.name.value, str)
+                self.add_library(alias.name.value)

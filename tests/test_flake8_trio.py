@@ -37,7 +37,9 @@ test_files: list[tuple[str, Path]] = sorted(
     (f.stem.upper(), f) for f in (Path(__file__).parent / "eval_files").iterdir()
 )
 autofix_files: dict[str, Path] = {
-    f.stem.upper(): f for f in (Path(__file__).parent / "autofix_files").iterdir()
+    f.stem.upper(): f
+    for f in (Path(__file__).parent / "autofix_files").iterdir()
+    if f.suffix == ".py"
 }
 # check that there's an eval file for each autofix file
 assert set(autofix_files.keys()) - {f[0] for f in test_files} == set()
@@ -74,23 +76,88 @@ ERROR_CODES: dict[str, Flake8TrioVisitor] = {
 }
 
 
-def check_autofix(test: str, plugin: Plugin, generate_autofix: bool):
+# difflib generates lots of lines with one trailing space, which is an eyesore
+# and trips up pre-commit, git diffs, etc. If there actually was diff trailing
+# space in the content it's picked up elsewhere and by pre-commit.
+def strip_difflib_space(s: str) -> str:
+    if s[-2:] == " \n":
+        return s[:-2] + "\n"
+    return s
+
+
+def diff_strings(first: str, second: str, /) -> str:
+    return "".join(
+        map(
+            strip_difflib_space,
+            difflib.unified_diff(
+                first.splitlines(keepends=True),
+                second.splitlines(keepends=True),
+            ),
+        )
+    )
+
+
+# replaces all instances of `original` with `new` in string
+# unless it's preceded by a `-`, which indicates it's part of a command-line flag
+def replace_library(string: str, original: str = "trio", new: str = "anyio") -> str:
+    return re.sub(rf"(?<!-){original}", new, string)
+
+
+def check_autofix(
+    test: str,
+    plugin: Plugin,
+    unfixed_code: str,
+    generate_autofix: bool,
+    anyio: bool = False,
+):
     if test not in autofix_files:
         return
+    # the source code after it's been visited by current transformers
     visited_code = plugin.module.code
-    current_generated = autofix_files[test].read_text()
-    if generate_autofix:
-        if visited_code != current_generated:
-            print(f"\nregenerating {test}")
-            sys.stdout.writelines(
-                difflib.unified_diff(
-                    current_generated.splitlines(keepends=True),
-                    visited_code.splitlines(keepends=True),
-                )
-            )
+    # the full generated source code, saved from a previous run
+    previous_autofixed = autofix_files[test].read_text()
+
+    # file contains a previous diff showing what's added/removed by the autofixer
+    # i.e. a diff between "eval_files/{test}.py" and "autofix_files/{test}.py"
+    autofix_diff_file = (
+        Path(__file__).parent / "autofix_files" / f"{test.lower()}.py.diff"
+    )
+    if not autofix_diff_file.exists():
+        assert generate_autofix, "autofix diff file doesn't exist"
+        # if generate_autofix is set, the diff content isn't used and the file
+        # content will be created
+        autofix_diff_content = ""
+    else:
+        autofix_diff_content = autofix_diff_file.read_text()
+
+    # if running against anyio, since "eval_files/{test.py}" have replaced trio->anyio,
+    # meaning it's replaced in visited_code, we also replace it in previous generated code
+    # and in the previous diff
+    if anyio:
+        previous_autofixed = replace_library(previous_autofixed)
+        autofix_diff_content = replace_library(autofix_diff_content)
+
+    # save any difference in the autofixed code
+    diff = diff_strings(previous_autofixed, visited_code)
+
+    # generate diff between unfixed and visited code, i.e. what's added/removed
+    added_autofix_diff = diff_strings(unfixed_code, visited_code)
+
+    # print diff, mainly helpful during development
+    if diff:
+        print("\n", diff)
+
+    # if --generate-autofix is specified, which it may be during development,
+    # just silently overwrite the content.
+    if generate_autofix and not anyio:
         autofix_files[test].write_text(visited_code)
+        autofix_diff_file.write_text(added_autofix_diff)
         return
-    assert visited_code == current_generated
+
+    # assert that there's no difference in the autofixed code from before
+    assert visited_code == previous_autofixed
+    # and assert that the diff is the same, which it should be if the above passes
+    assert added_autofix_diff == autofix_diff_content
 
 
 @pytest.mark.parametrize(("test", "path"), test_files)
@@ -107,11 +174,11 @@ def test_eval(test: str, path: Path, generate_autofix: bool):
     plugin = Plugin.from_source(content)
     _ = assert_expected_errors(plugin, *expected, args=parsed_args)
 
-    check_autofix(test, plugin, generate_autofix)
+    check_autofix(test, plugin, content, generate_autofix)
 
 
 @pytest.mark.parametrize(("test", "path"), test_files)
-def test_eval_anyio(test: str, path: Path):
+def test_eval_anyio(test: str, path: Path, generate_autofix: bool):
     # read content, replace instances of trio with anyio, and write to tmp_file
     content = path.read_text()
 
@@ -120,9 +187,7 @@ def test_eval_anyio(test: str, path: Path):
 
     # if test is marked NOTRIO, it's not written to require substitution
     if "# NOTRIO" not in content:
-        # replace instances of trio with anyio, unless it's part of a flag
-        # (which all conveniently start with --trio... atm)
-        content = re.sub(r"(?<!-)trio", "anyio", content)
+        content = replace_library(content)
 
         # if substituting we're messing up columns
         ignore_column = True
@@ -133,6 +198,7 @@ def test_eval_anyio(test: str, path: Path):
     expected, parsed_args = _parse_eval_file(test, content)
 
     parsed_args.insert(0, "--anyio")
+    parsed_args.append("--autofix")
 
     # initialize plugin and check errors, ignoring columns since they occasionally are
     # wrong due to len("anyio") > len("trio")
@@ -149,6 +215,8 @@ def test_eval_anyio(test: str, path: Path):
     for error in errors:
         message = error.message.format(*error.args)
         assert "anyio" in message or "trio" not in message
+
+    check_autofix(test, plugin, content, generate_autofix, anyio=True)
 
 
 def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
@@ -341,9 +409,9 @@ def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
     for err, exp in zip(errors, expected):
         if err == exp:
             continue
-        if not first_error_line or err.line == first_error_line[0]:
+        if not first_error_line or err.line == first_error_line[0].line:
             first_error_line.append(err)
-        if not first_expected_line or exp.line == first_expected_line[0]:
+        if not first_expected_line or exp.line == first_expected_line[0].line:
             first_expected_line.append(exp)
 
     if first_expected_line != first_error_line:

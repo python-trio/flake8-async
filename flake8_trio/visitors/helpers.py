@@ -19,6 +19,7 @@ from . import (
     ERROR_CLASSES_CST,
     default_disabled_error_codes,
     utility_visitors,
+    utility_visitors_cst,
 )
 
 if TYPE_CHECKING:
@@ -55,6 +56,13 @@ def utility_visitor(c: type[T]) -> type[T]:
     assert not hasattr(c, "error_codes")
     c.error_codes = {}
     utility_visitors.add(c)
+    return c
+
+
+def utility_visitor_cst(c: type[T_CST]) -> type[T_CST]:
+    assert not hasattr(c, "error_codes")
+    c.error_codes = {}
+    utility_visitors_cst.add(c)
     return c
 
 
