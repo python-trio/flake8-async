@@ -7,6 +7,7 @@ each yield.
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -32,7 +33,7 @@ ARTIFICIAL_STATEMENT = Statement("artificial", -1)
 
 
 def func_empty_body(node: cst.FunctionDef) -> bool:
-    # Does the function body consist solely of `pass`, `...`, and (doc)string literals?
+    """Check if function body consist of `pass`, `...`, and/or (doc)string literals."""
     empty_statement = m.Pass() | m.Expr(m.Ellipsis() | m.SimpleString())
     return m.matches(
         node.body,
@@ -90,9 +91,125 @@ def checkpoint_statement(library: str) -> cst.SimpleStatementLine:
     )
 
 
+class CommonVisitors(cst.CSTTransformer, ABC):
+    """Base class for InsertCheckpointsInLoopBody and Visitor91X.
+
+    Contains the transform methods used to actually insert the checkpoints, as well
+    as making sure that the library used will get imported. Adding the library import
+    is done in Visitor91X.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.noautofix: bool = False
+        self.add_statement: cst.SimpleStatementLine | None = None
+
+        self.explicitly_imported_library: dict[str, bool] = {
+            "trio": False,
+            "anyio": False,
+        }
+        self.add_import: set[str] = set()
+
+        self.__booldepth = 0
+
+    @property
+    @abstractmethod
+    def library(self) -> tuple[str, ...]:
+        ...
+
+    # instead of trying to exclude yields found in all the weird places from
+    # setting self.add_statement, we instead clear it upon each new line.
+    # Several of them *could* be handled, e.g. `if ...: yield`, but
+    # that's uncommon enough we don't care about it.
+    def visit_SimpleStatementLine(self, node: cst.SimpleStatementLine):
+        self.add_statement = None
+
+    # insert checkpoint before yield with a flattensentinel, if indicated
+    def leave_SimpleStatementLine(
+        self,
+        original_node: cst.SimpleStatementLine,
+        updated_node: cst.SimpleStatementLine,
+    ) -> cst.SimpleStatementLine | cst.FlattenSentinel[cst.SimpleStatementLine]:
+        # possible TODO: generate an error if transforming+visiting is done in a
+        # single pass and emit-error-on-transform can be enabled/disabled. The error can't
+        # be generated in the yield/return since it doesn't know if it will be autofixed.
+        if self.add_statement is None:
+            return updated_node
+        curr_add_statement = self.add_statement
+        self.add_statement = None
+
+        # multiple statements on a single line is not handled
+        if len(updated_node.body) > 1:
+            return updated_node
+
+        self.ensure_imported_library()
+        return cst.FlattenSentinel([curr_add_statement, updated_node])
+
+    def visit_BooleanOperation(self, node: cst.BooleanOperation):
+        self.__booldepth += 1
+        self.noautofix = True
+
+    def leave_BooleanOperation(
+        self, original_node: cst.BooleanOperation, updated_node: cst.BooleanOperation
+    ):
+        assert self.__booldepth
+        self.__booldepth -= 1
+        if not self.__booldepth:
+            self.noautofix = False
+        return updated_node
+
+    def ensure_imported_library(self) -> None:
+        """Mark library for import.
+
+        Check that the library we'd use to insert checkpoints
+        is imported - if not, mark it to be inserted later.
+        """
+        assert self.library
+        if not self.explicitly_imported_library[self.library[0]]:
+            self.add_import.add(self.library[0])
+
+
+class InsertCheckpointsInLoopBody(CommonVisitors):
+    """Insert checkpoints in loop bodies.
+
+    This inserts checkpoints that it was not known on the first pass whether a
+    checkpoint would be necessary, i.e. no uncheckpointed statements as we started to
+    parse the loop, but then there's uncheckpointed statements on continue or as loop
+    body finishes.
+    Called from `leave_While` and `leave_For` in Visitor91X.
+    """
+
+    def __init__(
+        self,
+        nodes_needing_checkpoint: Sequence[cst.Yield | cst.Return],
+        library: tuple[str, ...],
+    ):
+        super().__init__()
+        self.nodes_needing_checkpoint = nodes_needing_checkpoint
+        self.__library = library
+
+    @property
+    def library(self) -> tuple[str, ...]:
+        return self.__library if self.__library else ("trio",)
+
+    def leave_Yield(
+        self,
+        original_node: cst.Yield,
+        updated_node: cst.Yield,
+    ) -> cst.Yield:
+        # Needs to be passed *original* node, since updated node is a copy
+        # which loses identity equality
+        if original_node in self.nodes_needing_checkpoint and not self.noautofix:
+            self.add_statement = checkpoint_statement(self.library[0])
+        return updated_node
+
+    # returns handled same as yield, but ofc needs to ignore types
+    leave_Return = leave_Yield  # type: ignore
+
+
 @error_class_cst
 @disabled_by_default
-class Visitor91X(Flake8TrioVisitor_cst):
+class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
     error_codes = {
         "TRIO910": (
             "{0} from async function with no guaranteed checkpoint or exception "
@@ -112,69 +229,18 @@ class Visitor91X(Flake8TrioVisitor_cst):
         self.uncheckpointed_statements: set[Statement] = set()
         self.comp_unknown = False
 
-        # these are file-wide, so intentionally not save-stated upon entry/exit
-        # of functions/loops/etc
-        self.explicitly_imported_library: dict[str, bool] = {
-            "trio": False,
-            "anyio": False,
-        }
-        self.add_import: set[str] = set()
-
-        # this one is not save-stated, but I fail to come up with any scenario
-        # where that matters
-        self.add_statement: cst.SimpleStatementLine | None = None
-
         self.loop_state = LoopState()
         self.try_state = TryState()
 
-    @property
-    def infinite_loop(self) -> bool:
-        return self.loop_state.infinite_loop
-
-    @infinite_loop.setter
-    def infinite_loop(self, value: bool):
-        self.loop_state.infinite_loop = value
-
-    @property
-    def body_guaranteed_once(self) -> bool:
-        return self.loop_state.body_guaranteed_once
-
-    @body_guaranteed_once.setter
-    def body_guaranteed_once(self, value: bool):
-        self.loop_state.body_guaranteed_once = value
-
-    @property
-    def has_break(self) -> bool:
-        return self.loop_state.has_break
-
-    @has_break.setter
-    def has_break(self, value: bool):
-        self.loop_state.has_break = value
-
-    @property
-    def uncheckpointed_before_continue(self) -> set[Statement]:
-        return self.loop_state.uncheckpointed_before_continue
-
-    @uncheckpointed_before_continue.setter
-    def uncheckpointed_before_continue(self, value: set[Statement]):
-        self.loop_state.uncheckpointed_before_continue = value
-
-    @property
-    def uncheckpointed_before_break(self) -> set[Statement]:
-        return self.loop_state.uncheckpointed_before_break
-
-    @uncheckpointed_before_break.setter
-    def uncheckpointed_before_break(self, value: set[Statement]):
-        self.loop_state.uncheckpointed_before_break = value
-
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
-        self.ensure_imported_library()
         return checkpoint_statement(self.library[0])
 
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         # don't lint functions whose bodies solely consist of pass or ellipsis
+        # @overload functions are also guaranteed to be empty
+        # we also ignore pytest fixtures
         if func_has_decorator(node, "overload", "fixture") or func_empty_body(node):
-            return
+            return False  # subnodes can be ignored
 
         self.save_state(
             node,
@@ -197,12 +263,15 @@ class Visitor91X(Flake8TrioVisitor_cst):
             )
         )
         if not self.async_function:
-            return
+            # only visit subnodes if there is an async function defined inside
+            # this should improve performance on codebases with many sync functions
+            return any(m.findall(node, m.FunctionDef(asynchronous=m.Asynchronous())))
 
         pos = self.get_metadata(PositionProvider, node).start
         self.uncheckpointed_statements = {
             Statement("function definition", pos.line, pos.column)
         }
+        return True
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -248,7 +317,7 @@ class Visitor91X(Flake8TrioVisitor_cst):
             # Add this as a node potentially needing checkpoints only if it
             # missing checkpoints solely depends on whether the artificial statement is
             # "real"
-            if len(self.uncheckpointed_statements) == 1:
+            if len(self.uncheckpointed_statements) == 1 and not self.noautofix:
                 self.loop_state.nodes_needing_checkpoints.append(original_node)
                 return False
 
@@ -273,38 +342,6 @@ class Visitor91X(Flake8TrioVisitor_cst):
         # return original node to avoid problems with identity equality
         assert original_node.deep_equals(updated_node)
         return original_node
-
-    # TODO: generate an error in these two if transforming+visiting is done in a single
-    # pass and emit-error-on-transform can be enabled/disabled. The error can't be
-    # generated in the yield/return since it doesn't know if it will be autofixed.
-
-    # SimpleStatementSuite and multi-statement lines can probably be autofixed, but
-    # for now just don't insert checkpoints in the wrong place.
-    def leave_SimpleStatementSuite(
-        self,
-        original_node: cst.SimpleStatementSuite,
-        updated_node: cst.SimpleStatementSuite,
-    ) -> cst.SimpleStatementSuite:
-        self.add_statement = None
-        return updated_node
-
-    # insert checkpoint before yield with a flattensentinel, if indicated
-    def leave_SimpleStatementLine(
-        self,
-        original_node: cst.SimpleStatementLine,
-        updated_node: cst.SimpleStatementLine,
-    ) -> cst.SimpleStatementLine | cst.FlattenSentinel[cst.SimpleStatementLine]:
-        if self.add_statement is None:
-            return updated_node
-
-        # multiple statements on a single line is not handled
-        if len(updated_node.body) > 1:
-            self.add_statement = None
-            return updated_node
-
-        res = cst.FlattenSentinel([self.add_statement, updated_node])
-        self.add_statement = None
-        return res  # noqa: R504
 
     def error_91x(
         self,
@@ -356,7 +393,7 @@ class Visitor91X(Flake8TrioVisitor_cst):
             return updated_node
         self.has_yield = True
 
-        if self.check_function_exit(original_node):
+        if self.check_function_exit(original_node) and not self.noautofix:
             self.add_statement = self.checkpoint_statement()
 
         # mark as requiring checkpoint after
@@ -482,7 +519,7 @@ class Visitor91X(Flake8TrioVisitor_cst):
         self.leave_If_body(node)
         _ = node.orelse.visit(self)
         self.leave_If(node, node)  # type: ignore
-        return False
+        return False  # libcst shouldn't visit subnodes again
 
     def visit_While(self, node: cst.While | cst.For):
         self.save_state(
@@ -491,7 +528,7 @@ class Visitor91X(Flake8TrioVisitor_cst):
             copy=True,
         )
         self.loop_state = LoopState()
-        self.infinite_loop = self.body_guaranteed_once = False
+        self.loop_state.infinite_loop = self.loop_state.body_guaranteed_once = False
 
     visit_For = visit_While
 
@@ -505,10 +542,10 @@ class Visitor91X(Flake8TrioVisitor_cst):
         if (m.matches(node.test, m.Name("True"))) or (
             getattr(node.test, "evaluated_value", False)
         ):
-            self.infinite_loop = self.body_guaranteed_once = True
+            self.loop_state.infinite_loop = self.loop_state.body_guaranteed_once = True
 
     def visit_For_iter(self, node: cst.For):
-        self.body_guaranteed_once = iter_guaranteed_once_cst(node.iter)
+        self.loop_state.body_guaranteed_once = iter_guaranteed_once_cst(node.iter)
 
     def visit_While_body(self, node: cst.For | cst.While):
         if not self.async_function:
@@ -528,8 +565,8 @@ class Visitor91X(Flake8TrioVisitor_cst):
         else:
             self.uncheckpointed_statements = {ARTIFICIAL_STATEMENT}
 
-        self.uncheckpointed_before_continue = set()
-        self.uncheckpointed_before_break = set()
+        self.loop_state.uncheckpointed_before_continue = set()
+        self.loop_state.uncheckpointed_before_break = set()
 
     visit_For_body = visit_While_body
 
@@ -545,7 +582,7 @@ class Visitor91X(Flake8TrioVisitor_cst):
             for stmt in (
                 self.outer[node]["uncheckpointed_statements"]
                 | self.uncheckpointed_statements
-                | self.uncheckpointed_before_continue
+                | self.loop_state.uncheckpointed_before_continue
             ):
                 if stmt == ARTIFICIAL_STATEMENT:
                     continue
@@ -560,8 +597,8 @@ class Visitor91X(Flake8TrioVisitor_cst):
         # replace artificial statements in else with prebody uncheckpointed statements
         # non-artificial stmts before continue/break/at body end will already be in them
         for stmts in (
-            self.uncheckpointed_before_continue,
-            self.uncheckpointed_before_break,
+            self.loop_state.uncheckpointed_before_continue,
+            self.loop_state.uncheckpointed_before_break,
             self.uncheckpointed_statements,
         ):
             if ARTIFICIAL_STATEMENT in stmts:
@@ -577,14 +614,14 @@ class Visitor91X(Flake8TrioVisitor_cst):
             # loop body might execute fully before entering orelse
             # (current state of self.uncheckpointed_statements)
             # or not at all
-            if not self.body_guaranteed_once:
+            if not self.loop_state.body_guaranteed_once:
                 self.uncheckpointed_statements.update(
                     self.outer[node]["uncheckpointed_statements"]
                 )
             # or at a continue, unless it's an infinite loop
-            if not self.infinite_loop:
+            if not self.loop_state.infinite_loop:
                 self.uncheckpointed_statements.update(
-                    self.uncheckpointed_before_continue
+                    self.loop_state.uncheckpointed_before_continue
                 )
 
     leave_For_body = leave_While_body
@@ -594,13 +631,15 @@ class Visitor91X(Flake8TrioVisitor_cst):
             return
         # if this is an infinite loop, with no break in it, don't raise
         # alarms about the state after it.
-        if self.infinite_loop and not self.has_break:
+        if self.loop_state.infinite_loop and not self.loop_state.has_break:
             self.uncheckpointed_statements = set()
         else:
             # We may exit from:
             # orelse (covering: no body, body until continue, and all body)
             # break
-            self.uncheckpointed_statements.update(self.uncheckpointed_before_break)
+            self.uncheckpointed_statements.update(
+                self.loop_state.uncheckpointed_before_break
+            )
 
         # reset break & continue in case of nested loops
         self.outer[node]["uncheckpointed_statements"] = self.uncheckpointed_statements
@@ -616,9 +655,8 @@ class Visitor91X(Flake8TrioVisitor_cst):
         | cst.RemovalSentinel
     ):
         if self.loop_state.nodes_needing_checkpoints:
-            self.ensure_imported_library()
             transformer = InsertCheckpointsInLoopBody(
-                self.loop_state.nodes_needing_checkpoints, self.library[0]
+                self.loop_state.nodes_needing_checkpoints, self.library
             )
             # type of updated_node expanded to the return type
             updated_node = updated_node.visit(transformer)  # type: ignore
@@ -633,16 +671,20 @@ class Visitor91X(Flake8TrioVisitor_cst):
     def visit_Continue(self, node: cst.Continue):
         if not self.async_function:
             return
-        self.uncheckpointed_before_continue.update(self.uncheckpointed_statements)
+        self.loop_state.uncheckpointed_before_continue.update(
+            self.uncheckpointed_statements
+        )
 
     def visit_Break(self, node: cst.Break):
-        self.has_break = True
+        self.loop_state.has_break = True
         if not self.async_function:
             return
-        self.uncheckpointed_before_break.update(self.uncheckpointed_statements)
+        self.loop_state.uncheckpointed_before_break.update(
+            self.uncheckpointed_statements
+        )
 
-    # first node in a condition is always evaluated, but may shortcut at any point
-    # after that so we track worst-case checkpoint (i.e. after yield)
+    # we visit BooleanOperation_left as usual, but ignore checkpoints in the
+    # right-hand side while still adding any yields in it.
     def visit_BooleanOperation_right(self, node: cst.BooleanOperation):
         if not self.async_function:
             return
@@ -718,7 +760,7 @@ class Visitor91X(Flake8TrioVisitor_cst):
         return False
 
     # We don't have any logic on if generators are guaranteed to unroll, so always
-    # ignore their content
+    # ignore their content by not visiting subnodes.
     def visit_GeneratorExp(self, node: cst.GeneratorExp):
         return False
 
@@ -734,15 +776,6 @@ class Visitor91X(Flake8TrioVisitor_cst):
             ):
                 assert isinstance(alias.name.value, str)
                 self.explicitly_imported_library[alias.name.value] = True
-
-    def ensure_imported_library(self) -> None:
-        """Mark library for import.
-
-        Check that the library we'd use to insert checkpoints
-        is imported - if not, mark it to be inserted later.
-        """
-        if not self.explicitly_imported_library[self.library[0]]:
-            self.add_import.add(self.library[0])
 
     def leave_Module(self, original_node: cst.Module, updated_node: cst.Module):
         """Add needed library import, if any, to the module."""
@@ -765,33 +798,3 @@ class Visitor91X(Flake8TrioVisitor_cst):
         assert len(self.add_import) == 1
         new_body.insert(index, cst.parse_statement(f"import {self.library[0]}"))
         return updated_node.with_changes(body=new_body)
-
-
-# necessary as we don't know whether to insert checkpoints on the first pass of a loop
-# so we transform the loop body afterwards
-class InsertCheckpointsInLoopBody(cst.CSTTransformer):
-    def __init__(
-        self, nodes_needing_checkpoint: Sequence[cst.Yield | cst.Return], library: str
-    ):
-        super().__init__()
-        self.nodes_needing_checkpoint = nodes_needing_checkpoint
-        self.add_statement: cst.SimpleStatementLine | None = None
-        self.library = library
-
-    # insert checkpoint before yield with a flattensentinel, if indicated
-    # type checkers don't like going across classes, esp as the method accesses
-    # and modifies self.add_statement, but #YOLO
-    leave_SimpleStatementLine = Visitor91X.leave_SimpleStatementLine  # type: ignore
-
-    def leave_Yield(
-        self,
-        original_node: cst.Yield,
-        updated_node: cst.Yield,
-    ) -> cst.Yield:
-        # we need to check *original* node here, since updated node is a copy
-        # which loses identity equality
-        if original_node in self.nodes_needing_checkpoint:
-            self.add_statement = checkpoint_statement(self.library)
-        return updated_node
-
-    leave_Return = leave_Yield  # type: ignore

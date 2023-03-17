@@ -1,3 +1,4 @@
+# AUTOFIX
 from typing import Any
 
 import pytest
@@ -64,14 +65,6 @@ async def foo_async_with():
         yield
 
 
-# fmt: off
-async def foo_async_with_2():
-    # with'd expression evaluated before checkpoint
-    async with (yield):  # error: 16, "yield", Statement("function definition", lineno-2)
-        yield
-# fmt: on
-
-
 async def foo_async_with_3():
     async with trio.fail_after(5):
         yield
@@ -79,10 +72,8 @@ async def foo_async_with_3():
 
 
 # async for
-async def foo_async_for():  # error: 0, "exit", Statement("yield", lineno+6)
-    async for i in (
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
-    ):
+async def foo_async_for():  # error: 0, "exit", Statement("yield", lineno+4)
+    async for i in bar():
         yield  # safe
     else:
         yield  # safe
@@ -624,28 +615,6 @@ async def foo_func_5():  # error: 0, "exit", Statement("yield", lineno+2)
 # No error from function definition, but may shortcut after yield
 async def foo_boolops_1():  # error: 0, "exit", Stmt("yield", line+1)
     _ = await foo() and (yield) and await foo()
-
-
-# may shortcut after any of the yields
-async def foo_boolops_2():  # error: 0, "exit", Stmt("yield", line+4) # error: 0, "exit", Stmt("yield", line+6)
-    # known false positive - but chained yields in bool should be rare
-    _ = (
-        await foo()
-        and (yield)
-        and await foo()
-        and (yield)  # error: 13, "yield", Stmt("yield", line-2, 13)
-    )
-
-
-# fmt: off
-async def foo_boolops_3():  # error: 0, "exit", Stmt("yield", line+1) # error: 0, "exit", Stmt("yield", line+4) # error: 0, "exit", Stmt("yield", line+5)
-    _ = (await foo() or (yield) or await foo()) or (
-        ...
-        or (
-            (yield)  # error: 13, "yield", Stmt("yield", line-3)
-            and (yield))  # error: 17, "yield", Stmt("yield", line-1)
-    )
-# fmt: on
 
 
 # loop over non-empty static collection

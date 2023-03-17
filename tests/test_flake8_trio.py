@@ -32,14 +32,13 @@ if TYPE_CHECKING:
 
     from flake8_trio.visitors.flake8triovisitor import Flake8TrioVisitor
 
+AUTOFIX_DIR = Path(__file__).parent / "autofix_files"
 
 test_files: list[tuple[str, Path]] = sorted(
     (f.stem.upper(), f) for f in (Path(__file__).parent / "eval_files").iterdir()
 )
 autofix_files: dict[str, Path] = {
-    f.stem.upper(): f
-    for f in (Path(__file__).parent / "autofix_files").iterdir()
-    if f.suffix == ".py"
+    f.stem.upper(): f for f in AUTOFIX_DIR.iterdir() if f.suffix == ".py"
 }
 # check that there's an eval file for each autofix file
 assert set(autofix_files.keys()) - {f[0] for f in test_files} == set()
@@ -110,18 +109,22 @@ def check_autofix(
     generate_autofix: bool,
     anyio: bool = False,
 ):
-    if test not in autofix_files:
-        return
     # the source code after it's been visited by current transformers
     visited_code = plugin.module.code
+
+    if "# AUTOFIX" not in unfixed_code:
+        assert unfixed_code == visited_code
+        return
+
     # the full generated source code, saved from a previous run
+    if test not in autofix_files:
+        autofix_files[test] = AUTOFIX_DIR / (test.lower() + ".py")
+        autofix_files[test].write_text("")
     previous_autofixed = autofix_files[test].read_text()
 
     # file contains a previous diff showing what's added/removed by the autofixer
     # i.e. a diff between "eval_files/{test}.py" and "autofix_files/{test}.py"
-    autofix_diff_file = (
-        Path(__file__).parent / "autofix_files" / f"{test.lower()}.py.diff"
-    )
+    autofix_diff_file = AUTOFIX_DIR / f"{test.lower()}.py.diff"
     if not autofix_diff_file.exists():
         assert generate_autofix, "autofix diff file doesn't exist"
         # if generate_autofix is set, the diff content isn't used and the file
@@ -219,6 +222,26 @@ def test_eval_anyio(test: str, path: Path, generate_autofix: bool):
     check_autofix(test, plugin, content, generate_autofix, anyio=True)
 
 
+# check that autofixed files raise no errors and doesn't get autofixed (again)
+@pytest.mark.parametrize("test", autofix_files)
+def test_autofix(test: str):
+    content = autofix_files[test].read_text()
+    if "# NOTRIO" in content:
+        pytest.skip("file marked with NOTRIO")
+
+    _, parsed_args = _parse_eval_file(test, content)
+    parsed_args.append("--autofix")
+
+    plugin = Plugin.from_source(content)
+    # not passing any expected errors
+    _ = assert_expected_errors(plugin, args=parsed_args)
+
+    diff = diff_strings(plugin.module.code, content)
+    if diff:
+        print(diff)
+    assert plugin.module.code == content, "autofixed file changed when autofixed again"
+
+
 def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
     # version check
     check_version(test)
@@ -298,6 +321,7 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
                 )
                 raise ParseError(msg) from e
 
+    assert visitor_codes_regex, "no visitors enabled"
     for error in expected:
         assert re.match(
             visitor_codes_regex, error.code

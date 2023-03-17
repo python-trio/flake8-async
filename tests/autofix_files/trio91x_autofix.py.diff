@@ -1,6 +1,6 @@
 ---
 +++
-@@ -8,6 +8,7 @@
+@@ -9,6 +9,7 @@
  # ARG --enable-visitor-codes-regex=(TRIO910)|(TRIO911)
 
  from typing import Any
@@ -8,7 +8,7 @@
 
 
  def bar() -> Any:
-@@ -20,30 +21,38 @@
+@@ -21,30 +22,38 @@
 
  async def foo1():  # TRIO910: 0, "exit", Statement("function definition", lineno)
      bar()
@@ -47,7 +47,7 @@
          yield  # TRIO911: 8, "yield", Statement("yield", lineno)
 
 
-@@ -66,8 +75,10 @@
+@@ -67,8 +76,10 @@
  async def foo_while4():
      while True:
          if ...:
@@ -58,7 +58,7 @@
              yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno-2)  # TRIO911: 12, "yield", Statement("function definition", lineno-5) # TRIO911: 12, "yield", Statement("yield", lineno-2)
              # this warns about the yield on lineno-2 twice, since it can arrive here from it in two different ways
 
-@@ -75,15 +86,19 @@
+@@ -76,15 +87,19 @@
  # check state management of nested loops
  async def foo_nested_while():
      while True:

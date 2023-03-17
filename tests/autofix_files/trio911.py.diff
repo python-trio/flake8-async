@@ -1,6 +1,6 @@
 ---
 +++
-@@ -23,7 +23,9 @@
+@@ -24,7 +24,9 @@
 
 
  async def foo_yield_2():
@@ -10,7 +10,7 @@
      yield  # error: 4, "yield", Statement("yield", lineno-1)
      await foo()
 
-@@ -31,22 +33,29 @@
+@@ -32,22 +34,29 @@
  async def foo_yield_3():  # error: 0, "exit", Statement("yield", lineno+2)
      await foo()
      yield
@@ -41,14 +41,6 @@
 
 
 @@ -68,6 +77,7 @@
- async def foo_async_with_2():
-     # with'd expression evaluated before checkpoint
-     async with (yield):  # error: 16, "yield", Statement("function definition", lineno-2)
-+        await trio.lowlevel.checkpoint()
-         yield
- # fmt: on
-
-@@ -75,6 +85,7 @@
  async def foo_async_with_3():
      async with trio.fail_after(5):
          yield
@@ -56,11 +48,7 @@
          yield  # error: 8, "yield", Statement("yield", lineno-1)
 
 
-@@ -83,9 +94,11 @@
-     async for i in (
-         yield  # error: 8, "yield", Statement("function definition", lineno-2)
-     ):
-+        await trio.lowlevel.checkpoint()
+@@ -77,6 +87,7 @@
          yield  # safe
      else:
          yield  # safe
@@ -68,7 +56,7 @@
 
 
  # await anext(iter) is not called on break
-@@ -94,6 +107,7 @@
+@@ -85,6 +96,7 @@
          yield
          if ...:
              break
@@ -76,7 +64,7 @@
 
 
  async def foo_async_for_3():  # safe
-@@ -111,13 +125,16 @@
+@@ -102,13 +114,16 @@
  async def foo_for():  # error: 0, "exit", Statement("yield", lineno+3)
      await foo()
      for i in "":
@@ -93,7 +81,7 @@
 
 
  # while
-@@ -130,13 +147,16 @@
+@@ -121,13 +136,16 @@
      else:
          await foo()  # will always run
      yield  # safe
@@ -110,7 +98,7 @@
 
 
  # no checkpoint after yield if else is entered
-@@ -145,39 +165,52 @@
+@@ -136,39 +154,52 @@
          await foo()
          yield
      else:
@@ -163,7 +151,7 @@
 
      await foo()
 
-@@ -187,16 +220,19 @@
+@@ -178,16 +209,19 @@
  async def foo_while_continue_1():  # error: 0, "exit", Statement("yield", lineno+3)
      await foo()
      while foo():
@@ -183,7 +171,7 @@
          yield  # error: 8, "yield", Statement("yield", lineno)
          if foo():
              continue
-@@ -206,6 +242,7 @@
+@@ -197,6 +231,7 @@
          while foo():
              yield  # safe
              await foo()
@@ -191,7 +179,7 @@
 
 
  # --- while + break ---
-@@ -216,7 +253,9 @@
+@@ -207,7 +242,9 @@
              break
      else:
          await foo()
@@ -201,7 +189,7 @@
 
 
  # no checkpoint on break
-@@ -227,6 +266,7 @@
+@@ -218,6 +255,7 @@
          if ...:
              break
          await foo()
@@ -209,7 +197,7 @@
 
 
  # guaranteed if else and break
-@@ -238,6 +278,7 @@
+@@ -229,6 +267,7 @@
      else:
          await foo()  # runs if 0-iter
      yield  # safe
@@ -217,7 +205,7 @@
 
 
  # break at non-guaranteed checkpoint
-@@ -248,7 +289,9 @@
+@@ -239,7 +278,9 @@
          await foo()  # might not run
      else:
          await foo()  # might not run
@@ -227,7 +215,7 @@
 
 
  # check break is reset on nested
-@@ -264,7 +307,9 @@
+@@ -255,7 +296,9 @@
              await foo()
          yield  # safe
          await foo()
@@ -237,7 +225,7 @@
 
 
  # check multiple breaks
-@@ -279,7 +324,9 @@
+@@ -270,7 +313,9 @@
          await foo()
          if ...:
              break
@@ -247,7 +235,7 @@
 
 
  async def foo_while_break_7():  # error: 0, "exit", Statement("function definition", lineno)# error: 0, "exit", Statement("yield", lineno+5)
-@@ -289,6 +336,7 @@
+@@ -280,6 +325,7 @@
              break
          yield
          break
@@ -255,7 +243,7 @@
 
 
  async def foo_while_endless_1():
-@@ -301,6 +349,7 @@
+@@ -292,6 +338,7 @@
      while foo():
          await foo()
          yield
@@ -263,7 +251,7 @@
 
 
  async def foo_while_endless_3():
-@@ -322,9 +371,11 @@
+@@ -313,9 +360,11 @@
  # try
  async def foo_try_1():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+2)
      try:
@@ -275,7 +263,7 @@
 
 
  # no checkpoint after yield in ValueError
-@@ -332,12 +383,14 @@
+@@ -323,12 +372,14 @@
      try:
          await foo()
      except ValueError:
@@ -290,7 +278,7 @@
 
 
  async def foo_try_3():  # error: 0, "exit", Statement("yield", lineno+6)
-@@ -346,13 +399,16 @@
+@@ -337,13 +388,16 @@
      except:
          await foo()
      else:
@@ -307,7 +295,7 @@
          yield  # error: 8, "yield", Statement("function definition", lineno-4)
      finally:
          await foo()
-@@ -362,6 +418,7 @@
+@@ -353,6 +407,7 @@
      try:
          await foo()
      finally:
@@ -315,7 +303,7 @@
          # try might crash before checkpoint
          yield  # error: 8, "yield", Statement("function definition", lineno-5)
          await foo()
-@@ -372,7 +429,9 @@
+@@ -363,7 +418,9 @@
          await foo()
      except ValueError:
          pass
@@ -325,7 +313,7 @@
 
 
  async def foo_try_7():  # error: 0, "exit", Statement("yield", lineno+17)
-@@ -385,6 +444,7 @@
+@@ -376,6 +433,7 @@
          yield
          await foo()
      except SyntaxError:
@@ -333,7 +321,7 @@
          yield  # error: 8, "yield", Statement("yield", lineno-7)
          await foo()
      finally:
-@@ -393,6 +453,7 @@
+@@ -384,6 +442,7 @@
      # by any of the excepts, jumping straight to the finally.
      # Then the error will be propagated upwards
      yield  # safe
@@ -341,7 +329,7 @@
 
 
  ## safe only if (try or else) and all except bodies either await or raise
-@@ -408,6 +469,7 @@
+@@ -399,6 +458,7 @@
          raise
      else:
          await foo()
@@ -349,7 +337,7 @@
 
 
  # no checkpoint after yield in else
-@@ -418,6 +480,7 @@
+@@ -409,6 +469,7 @@
          await foo()
      else:
          yield
@@ -357,7 +345,7 @@
 
 
  # bare except means we'll jump to finally after full execution of either try or the except
-@@ -448,6 +511,7 @@
+@@ -439,6 +500,7 @@
      except ValueError:
          await foo()
      finally:
@@ -365,7 +353,7 @@
          yield  # error: 8, "yield", Statement("function definition", lineno-6)
          await foo()
 
-@@ -456,6 +520,7 @@
+@@ -447,6 +509,7 @@
      try:
          await foo()
      finally:
@@ -373,7 +361,7 @@
          # try might crash before checkpoint
          yield  # error: 8, "yield", Statement("function definition", lineno-5)
          await foo()
-@@ -464,9 +529,11 @@
+@@ -455,9 +518,11 @@
  # if
  async def foo_if_1():
      if ...:
@@ -385,7 +373,7 @@
          yield  # error: 8, "yield", Statement("function definition", lineno-5)
          await foo()
 
-@@ -477,7 +544,9 @@
+@@ -468,7 +533,9 @@
          ...
      else:
          yield
@@ -395,7 +383,7 @@
 
 
  async def foo_if_3():  # error: 0, "exit", Statement("yield", lineno+6)
-@@ -486,7 +555,9 @@
+@@ -477,7 +544,9 @@
          yield
      else:
          ...
@@ -405,7 +393,7 @@
 
 
  async def foo_if_4():  # error: 0, "exit", Statement("yield", lineno+7)
-@@ -496,7 +567,9 @@
+@@ -487,7 +556,9 @@
          await foo()
      else:
          ...
@@ -415,7 +403,7 @@
 
 
  async def foo_if_5():  # error: 0, "exit", Statement("yield", lineno+8)
-@@ -507,7 +580,9 @@
+@@ -498,7 +569,9 @@
      else:
          yield
          ...
@@ -425,7 +413,7 @@
 
 
  async def foo_if_6():  # error: 0, "exit", Statement("yield", lineno+8)
-@@ -518,7 +593,9 @@
+@@ -509,7 +582,9 @@
          yield
          await foo()
          ...
@@ -435,7 +423,7 @@
 
 
  async def foo_if_7():  # error: 0, "exit", Statement("function definition", lineno)
-@@ -526,6 +603,7 @@
+@@ -517,6 +592,7 @@
          await foo()
          yield
          await foo()
@@ -443,7 +431,7 @@
 
 
  async def foo_if_8():  # error: 0, "exit", Statement("function definition", lineno)
-@@ -535,21 +613,25 @@
+@@ -526,21 +602,25 @@
          await foo()
          yield
          await foo()
@@ -469,7 +457,7 @@
 
 
  # normal function
-@@ -594,7 +676,9 @@
+@@ -585,7 +665,9 @@
      await foo()
 
      async def foo_func_2():  # error: 4, "exit", Statement("yield", lineno+1)
@@ -479,7 +467,7 @@
 
 
  # autofix doesn't insert newline after nested function def and before checkpoint
-@@ -606,6 +690,7 @@
+@@ -597,6 +679,7 @@
 
      async def foo_func_4():
          await foo()
@@ -487,7 +475,7 @@
 
 
  async def foo_func_5():  # error: 0, "exit", Statement("yield", lineno+2)
-@@ -618,16 +703,19 @@
+@@ -609,12 +692,14 @@
          async def foo_func_7():
              await foo()
              ...
@@ -501,33 +489,8 @@
 +    await trio.lowlevel.checkpoint()
 
 
- # may shortcut after any of the yields
- async def foo_boolops_2():  # error: 0, "exit", Stmt("yield", line+4) # error: 0, "exit", Stmt("yield", line+6)
-+    await trio.lowlevel.checkpoint()
-     # known false positive - but chained yields in bool should be rare
-     _ = (
-         await foo()
-@@ -635,16 +723,19 @@
-         and await foo()
-         and (yield)  # error: 13, "yield", Stmt("yield", line-2, 13)
-     )
-+    await trio.lowlevel.checkpoint()
-
-
- # fmt: off
- async def foo_boolops_3():  # error: 0, "exit", Stmt("yield", line+1) # error: 0, "exit", Stmt("yield", line+4) # error: 0, "exit", Stmt("yield", line+5)
-+    await trio.lowlevel.checkpoint()
-     _ = (await foo() or (yield) or await foo()) or (
-         ...
-         or (
-             (yield)  # error: 13, "yield", Stmt("yield", line-3)
-             and (yield))  # error: 17, "yield", Stmt("yield", line-1)
-     )
-+    await trio.lowlevel.checkpoint()
- # fmt: on
-
-
-@@ -672,6 +763,7 @@
+ # loop over non-empty static collection
+@@ -641,6 +726,7 @@
          if ...:
              continue
          await foo()
@@ -535,7 +498,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-7)
 
      # continue/else
-@@ -680,6 +772,7 @@
+@@ -649,6 +735,7 @@
              continue
          await foo()
      else:
@@ -543,7 +506,7 @@
          yield  # error: 8, "yield", Stmt("yield", line-8)
      await foo()
      yield
-@@ -724,6 +817,7 @@
+@@ -693,6 +780,7 @@
 
      for _ in ():
          await foo()
@@ -551,7 +514,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in {1: 2, 3: 4}:
-@@ -732,14 +826,17 @@
+@@ -701,14 +789,17 @@
 
      for _ in "   ".strip():
          await foo()
@@ -569,7 +532,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in (*(1, 2),):
-@@ -748,10 +845,12 @@
+@@ -717,10 +808,12 @@
 
      for _ in {**{}}:
          await foo()
@@ -582,7 +545,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in {**{1: 2}}:
-@@ -777,31 +876,38 @@
+@@ -746,31 +839,38 @@
 
      for _ in {}:
          await foo()
@@ -621,7 +584,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      # while
-@@ -815,6 +921,7 @@
+@@ -784,6 +884,7 @@
          if ...:
              break
          await foo()
@@ -629,7 +592,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-6)
 
      while True:
-@@ -827,6 +934,7 @@
+@@ -796,6 +897,7 @@
 
      while False:
          await foo()  # type: ignore[unreachable]
@@ -637,7 +600,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      while "hello":
-@@ -836,11 +944,13 @@
+@@ -805,11 +907,13 @@
      # false positive on containers
      while [1, 2]:
          await foo()
@@ -651,7 +614,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-5)
 
      # range with constant arguments also handled, see more extensive tests in 910
-@@ -858,10 +968,12 @@
+@@ -827,10 +931,12 @@
 
      for i in range(1 + 1):  # not handled
          await foo()
@@ -664,7 +627,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for i in range(+3):
-@@ -870,6 +982,7 @@
+@@ -839,6 +945,7 @@
 
      for i in range(-3.5):  # type: ignore
          await foo()
@@ -672,7 +635,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      # duplicated from 910 to have all range tests in one place
-@@ -893,20 +1006,24 @@
+@@ -862,20 +969,24 @@
 
      for i in range(10, 5):
          await foo()
@@ -697,7 +660,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-5)
 
      await foo()
-@@ -930,6 +1047,7 @@
+@@ -899,6 +1010,7 @@
 
      # guaranteed iteration and await in value, but test is not guaranteed
      [await foo() for x in range(10) if bar()]
@@ -705,7 +668,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      # guaranteed iteration and await in value
-@@ -938,6 +1056,7 @@
+@@ -907,6 +1019,7 @@
 
      # not guaranteed to iter
      [await foo() for x in bar()]
@@ -713,7 +676,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      # await statement in loop expression
-@@ -949,10 +1068,12 @@
+@@ -918,10 +1031,12 @@
      yield  # safe
 
      {await foo() for x in bar()}
@@ -726,7 +689,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      # other than `await` can be in both key&val
-@@ -964,9 +1085,11 @@
+@@ -933,9 +1048,11 @@
 
      # generator expressions are never treated as safe
      (await foo() for x in range(10))
@@ -738,7 +701,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-3)
 
      # async for always safe
-@@ -979,27 +1102,33 @@
+@@ -948,27 +1065,33 @@
 
      # other than in generator expression
      (... async for x in bar())
@@ -772,7 +735,7 @@
      yield  # error: 4, "yield", Stmt("yield", line-2)
 
      # multiple ifs
-@@ -1007,6 +1136,7 @@
+@@ -976,6 +1099,7 @@
      yield
 
      [... for x in range(10) for y in bar() if await foo() if await foo()]

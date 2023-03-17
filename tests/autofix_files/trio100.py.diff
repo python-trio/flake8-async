@@ -1,6 +1,6 @@
 ---
 +++
-@@ -2,24 +2,24 @@
+@@ -3,24 +3,24 @@
 
  import trio
 
@@ -38,7 +38,7 @@
 
      with trio.move_on_after(10):
          await trio.sleep(1)
-@@ -36,8 +36,8 @@
+@@ -37,8 +37,8 @@
      with open("filename") as _:
          ...
 
@@ -49,7 +49,7 @@
 
      send_channel, receive_channel = trio.open_memory_channel(0)
      async with trio.fail_after(10):
-@@ -48,22 +48,22 @@
+@@ -49,22 +49,22 @@
          async for _ in receive_channel:
              ...
 

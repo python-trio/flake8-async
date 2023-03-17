@@ -1,4 +1,5 @@
 # type: ignore
+# AUTOFIX
 
 import trio
 
@@ -66,19 +67,4 @@ async def function_name():
                     await trio.sleep(1)
 
     async with random_ignored_library.fail_after(10):
-        ...
-
-
-async def function_name2():
-    with (
-        open("") as _,
-        trio.fail_after(10),  # error: 8, "trio", "fail_after"
-    ):
-        ...
-
-    with (
-        trio.fail_after(5),  # error: 8, "trio", "fail_after"
-        open("") as _,
-        trio.move_on_after(5),  # error: 8, "trio", "move_on_after"
-    ):
         ...

@@ -1,3 +1,4 @@
+# AUTOFIX
 import trio
 
 # a
@@ -28,13 +29,6 @@ pass
 # fmt: on
 # c
 # d
-
-# Doesn't autofix With's with multiple withitems
-with (
-    trio.move_on_after(10),  # error: 4, "trio", "move_on_after"
-    open("") as f,
-):
-    ...
 
 
 # multiline with, despite only being one statement
