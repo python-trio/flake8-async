@@ -13,7 +13,12 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
-from .visitors import ERROR_CLASSES, ERROR_CLASSES_CST, utility_visitors
+from .visitors import (
+    ERROR_CLASSES,
+    ERROR_CLASSES_CST,
+    utility_visitors,
+    utility_visitors_cst,
+)
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -104,6 +109,13 @@ class Flake8TrioRunner_cst:
         super().__init__()
         self.state = SharedState(options)
         self.options = options
+
+        # Could possibly enable/disable utility visitors here, if visitors declared
+        # dependencies
+        self.utility_visitors: tuple[Flake8TrioVisitor_cst, ...] = tuple(
+            v(self.state) for v in utility_visitors_cst
+        )
+
         self.visitors: tuple[Flake8TrioVisitor_cst, ...] = tuple(
             v(self.state) for v in ERROR_CLASSES_CST if self.selected(v.error_codes)
         )
@@ -112,7 +124,7 @@ class Flake8TrioRunner_cst:
     def run(self) -> Iterable[Error]:
         if not self.visitors:
             return
-        for v in self.visitors:
+        for v in (*self.utility_visitors, *self.visitors):
             self.module = cst.MetadataWrapper(self.module).visit(v)
         yield from self.state.problems
 

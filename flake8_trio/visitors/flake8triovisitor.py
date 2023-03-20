@@ -227,3 +227,13 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
                 *args,
             )
         )
+
+    @property
+    def library(self) -> tuple[str, ...]:
+        return self.__state.library if self.__state.library else ("trio",)
+
+    # library_str not used in cst yet
+
+    def add_library(self, name: str) -> None:
+        if name not in self.__state.library:
+            self.__state.library = self.__state.library + (name,)
