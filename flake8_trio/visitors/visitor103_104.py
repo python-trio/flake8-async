@@ -31,9 +31,9 @@ class Visitor103_104(Flake8TrioVisitor):
         "TRIO104": "Cancelled (and therefore BaseException) must be re-raised.",
     }
     for poss_library in _suggestion_dict:
-        error_codes[
-            f"TRIO103_{'_'.join(poss_library)}"
-        ] = _trio103_common_msg + _suggestion.format(_suggestion_dict[poss_library])
+        error_codes[f"TRIO103_{'_'.join(poss_library)}"] = (
+            _trio103_common_msg + _suggestion.format(_suggestion_dict[poss_library])
+        )
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)

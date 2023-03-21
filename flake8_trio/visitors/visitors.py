@@ -268,7 +268,7 @@ DEPRECATED_ERRORS = ("MultiError", "NonBaseMultiError")
 @error_class
 class Visitor117(Flake8TrioVisitor):
     error_codes = {
-        "TRIO117": ("Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup."),
+        "TRIO117": "Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup.",
     }
 
     # This should never actually happen given TRIO106
@@ -285,7 +285,7 @@ class Visitor117(Flake8TrioVisitor):
 @disabled_by_default
 class Visitor900(Flake8TrioVisitor):
     error_codes = {
-        "TRIO900": ("Async generator without `@asynccontextmanager` not allowed.")
+        "TRIO900": "Async generator without `@asynccontextmanager` not allowed."
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
