@@ -226,8 +226,8 @@ class Visitor22X(Visitor200):
 @error_class
 class Visitor23X(Visitor200):
     error_codes = {
-        "TRIO230": ("Sync call {0} in async function, use `{1}.open_file(...)`."),
-        "TRIO231": ("Sync call {0} in async function, use `{1}.wrap_file({0})`."),
+        "TRIO230": "Sync call {0} in async function, use `{1}.open_file(...)`.",
+        "TRIO231": "Sync call {0} in async function, use `{1}.wrap_file({0})`.",
     }
 
     def visit_Call(self, node: ast.Call):
@@ -282,7 +282,7 @@ class Visitor232(Visitor200):
 @error_class
 class Visitor24X(Visitor200):
     error_codes = {
-        "TRIO240": ("Avoid using os.path, prefer using {1}.Path objects."),
+        "TRIO240": "Avoid using os.path, prefer using {1}.Path objects.",
     }
 
     def __init__(self, *args: Any, **kwargs: Any):

@@ -293,9 +293,7 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
             try:
                 expected.append(Error(err_code, lineno, int(col), message, *args))
             except AttributeError as e:
-                msg = (
-                    f"Line {lineno}: Failed to format\n {message!r}\n" f'"with\n{args}'
-                )
+                msg = f'Line {lineno}: Failed to format\n {message!r}\n"with\n{args}'
                 raise ParseError(msg) from e
 
     for error in expected:

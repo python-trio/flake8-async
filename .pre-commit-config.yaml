@@ -11,6 +11,7 @@ repos:
       rev: 23.1.0
       hooks:
           - id: black
+            args: [--preview]
 
     - repo: https://github.com/PyCQA/autoflake
       rev: v2.0.1
