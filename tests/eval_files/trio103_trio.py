@@ -1,4 +1,4 @@
-# ARG --enable-visitor-codes-regex=(TRIO103)|(TRIO104)
+# ARG --enable=TRIO103,TRIO104
 # NOANYIO
 
 from typing import Any

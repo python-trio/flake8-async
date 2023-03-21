@@ -1,5 +1,5 @@
 # type: ignore
-# ARG --enable-visitor-codes-regex=(TRIO220)
+# ARG --enable=TRIO220
 # NOTRIO
 
 # anyio eval will automatically prepend this test with `--anyio`

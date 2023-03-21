@@ -1,5 +1,5 @@
 # type: ignore
-# ARG --enable-visitor-codes-regex=(TRIO220)
+# ARG --enable=TRIO220
 # NOANYIO
 import trio  # isort: skip
 import anyio  # isort: skip

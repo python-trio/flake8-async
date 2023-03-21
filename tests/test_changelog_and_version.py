@@ -88,7 +88,7 @@ class test_messages_documented(unittest.TestCase):
 
             with open(file_path) as file:
                 for line in file:
-                    if line.startswith("# ARG --enable-visitor-codes-regex"):
+                    if line.startswith("# ARG --enable"):
                         for m in re.findall(r"trio\d\d\d", line, re.IGNORECASE):
                             # pyright types m as `Any` (as it is in typeshed)
                             # mypy types it as Optional[Match[str]]

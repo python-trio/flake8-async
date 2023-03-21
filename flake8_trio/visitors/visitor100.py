@@ -58,7 +58,7 @@ class Visitor100_libcst(Flake8TrioVisitor_cst):
             for res in self.node_dict[original_node]:
                 self.error(res.node, res.base, res.function)
 
-            if self.options.autofix and len(updated_node.items) == 1:
+            if self.should_autofix() and len(updated_node.items) == 1:
                 return flatten_preserving_comments(updated_node)
 
         return updated_node

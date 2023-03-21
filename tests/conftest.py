@@ -16,8 +16,8 @@ def pytest_addoption(parser: pytest.Parser):
         help="generate autofix file content",
     )
     parser.addoption(
-        "--enable-visitor-codes-regex",
-        default=".*",
+        "--enable-codes",
+        default="TRIO",
         help="select error codes whose visitors to run.",
     )
 
@@ -44,5 +44,5 @@ def generate_autofix(request: pytest.FixtureRequest):
 
 
 @pytest.fixture()
-def enable_visitor_codes_regex(request: pytest.FixtureRequest):
-    return request.config.getoption("--enable-visitor-codes-regex")
+def enable_codes(request: pytest.FixtureRequest):
+    return request.config.getoption("--enable-codes")

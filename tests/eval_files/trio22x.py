@@ -1,5 +1,5 @@
 # type: ignore
-# ARG --enable-visitor-codes-regex=(TRIO220|TRIO221|TRIO222)
+# ARG --enable=TRIO220,TRIO221,TRIO222
 
 
 async def foo():

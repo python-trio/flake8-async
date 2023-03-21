@@ -6,7 +6,7 @@ import trio
 
 _: Any = ""
 
-# ARG --enable-visitor-codes-regex=(TRIO910)|(TRIO911)
+# ARG --enable=TRIO910,TRIO911
 
 
 async def foo() -> Any:

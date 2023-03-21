@@ -1,4 +1,4 @@
-# ARG --enable-visitor-codes-regex=(TRIO103)|(TRIO104)
+# ARG --enable=TRIO103,TRIO104
 
 from typing import Any
 
@@ -210,6 +210,16 @@ try:
     ...
 except BaseException as e:
     for i in [1, 2, 3]:
+        raise
+try:
+    ...
+except BaseException as e:
+    for i in (1, 2, 3):
+        raise
+try:
+    ...
+except BaseException as e:
+    for i in {1, 2, 3}:
         raise
 
 try:

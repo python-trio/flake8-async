@@ -1,4 +1,4 @@
-# ARG --enable-visitor-codes-regex=TRIO103
+# ARG --enable=TRIO103
 # check that partly disabling a visitor works
 from typing import Any
 

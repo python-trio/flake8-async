@@ -6,7 +6,7 @@ from __future__ import annotations
 So we make sure that import is added after it.
 """
 # isort: skip_file
-# ARG --enable-visitor-codes-regex=(TRIO910)|(TRIO911)
+# ARG --enable=TRIO910,TRIO911
 
 from typing import Any
 import trio

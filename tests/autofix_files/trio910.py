@@ -19,7 +19,7 @@ def bar() -> Any:
     ...
 
 
-# ARG --enable-visitor-codes-regex=(TRIO910)|(TRIO911)
+# ARG --enable=TRIO910,TRIO911
 # ARG --no-checkpoint-warning-decorator=custom_disabled_decorator
 
 

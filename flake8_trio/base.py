@@ -2,7 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Any, NamedTuple
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, NamedTuple
+
+if TYPE_CHECKING:
+    from collections.abc import Collection
+
+
+@dataclass
+class Options:
+    # error codes to give errors for
+    enabled_codes: set[str]
+    # error codes to autofix
+    autofix_codes: set[str]
+    # whether to print an error message even when autofixed
+    error_on_autofix: bool
+    no_checkpoint_warning_decorators: Collection[str]
+    startable_in_context_manager: Collection[str]
+    trio200_blocking_calls: dict[str, str]
+    anyio: bool
 
 
 class Statement(NamedTuple):

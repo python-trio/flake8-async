@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import ast
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, NamedTuple, TypeVar, cast
+from typing import TYPE_CHECKING, NamedTuple, TypeVar
 
 import libcst as cst
 import libcst.matchers as m
@@ -114,10 +114,8 @@ def fnmatch_qualified_name_cst(
 # used in 103/104
 def iter_guaranteed_once(iterable: ast.expr) -> bool:
     # static container with an "elts" attribute
-    if hasattr(iterable, "elts"):
-        elts: Iterable[ast.expr] = iterable.elts  # type: ignore
-        for elt in elts:
-            assert isinstance(elt, ast.expr)
+    if isinstance(iterable, (ast.List, ast.Tuple, ast.Set)):
+        for elt in iterable.elts:
             # recurse starred expression
             if isinstance(elt, ast.Starred):
                 if iter_guaranteed_once(elt.value):
@@ -354,16 +352,14 @@ def func_has_decorator(func: cst.FunctionDef, *names: str) -> bool:
 
 
 def get_comments(node: cst.CSTNode | Iterable[cst.CSTNode]) -> Iterator[cst.EmptyLine]:
-    # pyright can't use hasattr to narrow the type, so need a bunch of casts
-    if hasattr(node, "__iter__"):
-        for n in cast("Iterable[cst.CSTNode]", node):
+    if isinstance(node, (cst.CSTNode, cst.MaybeSentinel)):
+        yield from (
+            cst.EmptyLine(comment=ensure_type(c, cst.Comment))
+            for c in m.findall(node, m.Comment())
+        )
+    else:
+        for n in node:
             yield from get_comments(n)
-        return
-    yield from (
-        cst.EmptyLine(comment=ensure_type(c, cst.Comment))
-        for c in m.findall(cast("cst.CSTNode", node), m.Comment())
-    )
-    return
 
 
 # used in TRIO100
