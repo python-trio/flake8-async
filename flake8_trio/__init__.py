@@ -74,7 +74,7 @@ def cst_parse_module_native(source: str) -> cst.Module:
     return mod
 
 
-def main():
+def main() -> int:
     parser = ArgumentParser(prog="flake8_trio")
     parser.add_argument(
         nargs="*",
@@ -105,17 +105,20 @@ def main():
                 "Doesn't seem to be a git repo; pass filenames to format.",
                 file=sys.stderr,
             )
-            sys.exit(1)
+            return 1
         all_filenames = [
             os.path.join(root, f) for f in all_filenames if _should_format(f)
         ]
+    any_error = False
     for file in all_filenames:
         plugin = Plugin.from_filename(file)
         for error in sorted(plugin.run()):
             print(f"{file}:{error}")
+            any_error = True
         if plugin.options.autofix:
             with open(file, "w") as file:
                 file.write(plugin.module.code)
+    return 1 if any_error else 0
 
 
 class Plugin:
