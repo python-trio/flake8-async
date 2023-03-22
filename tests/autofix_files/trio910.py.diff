@@ -1,6 +1,6 @@
 ---
 +++
-@@ -44,12 +44,14 @@
+@@ -45,12 +45,14 @@
 
  async def foo1():  # error: 0, "exit", Statement("function definition", lineno)
      bar()
@@ -15,7 +15,7 @@
 
 
  async def foo_if_2():
-@@ -80,6 +82,7 @@
+@@ -81,6 +83,7 @@
 
  async def foo_ifexp_2():  # error: 0, "exit", Statement("function definition", lineno)
      print(_ if False and await foo() else await foo())
@@ -23,7 +23,7 @@
 
 
  # nested function definition
-@@ -88,6 +91,7 @@
+@@ -89,6 +92,7 @@
 
      async def foo_func_2():  # error: 4, "exit", Statement("function definition", lineno)
          bar()
@@ -31,7 +31,7 @@
 
 
  # we don't get a newline after the nested function definition before the checkpoint
-@@ -96,17 +100,21 @@
+@@ -97,17 +101,21 @@
  async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
      async def foo_func_4():
          await foo()
@@ -53,7 +53,7 @@
  # fmt: on
 
 
-@@ -143,11 +151,13 @@
+@@ -144,11 +152,13 @@
  async def foo_condition_2():  # error: 0, "exit", Statement("function definition", lineno)
      if False and await foo():
          ...
@@ -67,7 +67,7 @@
 
 
  async def foo_condition_4():  # safe
-@@ -169,6 +179,7 @@
+@@ -170,6 +180,7 @@
  async def foo_while_1():  # error: 0, "exit", Statement("function definition", lineno)
      while _:
          await foo()
@@ -75,7 +75,7 @@
 
 
  async def foo_while_2():  # now safe
-@@ -187,12 +198,14 @@
+@@ -188,12 +199,14 @@
  async def foo_while_4():  # error: 0, "exit", Statement("function definition", lineno)
      while False:
          await foo()
@@ -90,7 +90,7 @@
 
 
  async def foo_for_2():  # now safe
-@@ -215,6 +228,7 @@
+@@ -216,6 +229,7 @@
          break
      else:
          await foo()
@@ -98,7 +98,7 @@
 
 
  async def foo_while_break_3():  # error: 0, "exit", Statement("function definition", lineno)
-@@ -223,6 +237,7 @@
+@@ -224,6 +238,7 @@
          break
      else:
          ...
@@ -106,7 +106,7 @@
 
 
  async def foo_while_break_4():  # error: 0, "exit", Statement("function definition", lineno)
-@@ -230,6 +245,7 @@
+@@ -231,6 +246,7 @@
          break
      else:
          ...
@@ -114,7 +114,7 @@
 
 
  async def foo_while_continue_1():  # safe
-@@ -253,6 +269,7 @@
+@@ -254,6 +270,7 @@
          continue
      else:
          ...
@@ -122,7 +122,7 @@
 
 
  async def foo_while_continue_4():  # error: 0, "exit", Statement("function definition", lineno)
-@@ -260,6 +277,7 @@
+@@ -261,6 +278,7 @@
          continue
      else:
          ...
@@ -130,7 +130,7 @@
 
 
  async def foo_async_for_1():
-@@ -298,6 +316,7 @@
+@@ -299,6 +317,7 @@
          raise
      else:
          await foo()
@@ -138,7 +138,7 @@
 
 
  async def foo_try_2():  # safe
-@@ -348,6 +367,7 @@
+@@ -349,6 +368,7 @@
          pass
      else:
          pass
@@ -146,7 +146,7 @@
 
 
  async def foo_try_7():  # safe
-@@ -389,6 +409,7 @@
+@@ -390,6 +410,7 @@
          await trio.sleep(0)
      except:
          ...
@@ -154,7 +154,7 @@
 
 
  # safe
-@@ -416,16 +437,19 @@
+@@ -417,16 +438,19 @@
      except:
          ...
      finally:
@@ -174,7 +174,7 @@
          return  # error: 8, "return", Statement("function definition", lineno-2)
      await foo()
 
-@@ -434,6 +458,7 @@
+@@ -435,6 +459,7 @@
      if _:
          await foo()
          return  # safe
@@ -182,7 +182,7 @@
 
 
  # loop over non-empty static collection
-@@ -461,12 +486,14 @@
+@@ -462,12 +487,14 @@
  async def foo_range_4():  # error: 0, "exit", Statement("function definition", lineno)
      for i in range(10, 5):
          await foo()
@@ -197,7 +197,7 @@
 
 
  # https://github.com/Zac-HD/flake8-trio/issues/47
-@@ -550,6 +577,7 @@
+@@ -551,6 +578,7 @@
  # should error
  async def foo_comprehension_2():  # error: 0, "exit", Statement("function definition", lineno)
      [await foo() for x in range(10) if bar()]

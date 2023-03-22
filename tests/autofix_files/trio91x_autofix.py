@@ -1,3 +1,4 @@
+# AUTOFIX
 from __future__ import annotations
 
 """Docstring for file
@@ -107,25 +108,21 @@ async def foo_while_nested_func():
             await foo()
 
 
-# not handled, but at least doesn't insert an unnecessary checkpoint
-async def foo_singleline():
-    await foo()
-    # fmt: off
-    yield; yield  # TRIO911: 11, "yield", Statement("yield", lineno, 4)
-    # fmt: on
-    await foo()
+# Code coverage: visitors run when inside a sync function that has an async function.
+# When sync funcs don't contain an async func the body is not visited.
+def sync_func():
+    async def async_func():
+        ...
 
-
-# not autofixed
-async def foo_singleline2():
-    # fmt: off
-    yield; await foo()  # TRIO911: 4, "yield", Statement("function definition", lineno-2)
-    # fmt: on
-
-
-# not autofixed
-async def foo_singleline3():
-    # fmt: off
-    if ...: yield  # TRIO911: 12, "yield", Statement("function definition", lineno-2)
-    # fmt: on
-    await foo()
+    try:
+        ...
+    except:
+        ...
+    if ... and ...:
+        ...
+    while ...:
+        if ...:
+            continue
+        break
+    [... for i in range(5)]
+    return

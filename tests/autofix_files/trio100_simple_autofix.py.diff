@@ -1,6 +1,6 @@
 ---
 +++
-@@ -2,28 +2,29 @@
+@@ -3,50 +3,51 @@
 
  # a
  # b
@@ -45,7 +45,6 @@
  # fmt: on
  # c
  # d
-@@ -37,22 +38,22 @@
 
 
  # multiline with, despite only being one statement
