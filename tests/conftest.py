@@ -10,6 +10,9 @@ def pytest_addoption(parser: pytest.Parser):
         "--runfuzz", action="store_true", default=False, help="run fuzz tests"
     )
     parser.addoption(
+        "--onlyfuzz", action="store_true", default=False, help="only run fuzz tests"
+    )
+    parser.addoption(
         "--generate-autofix",
         action="store_true",
         default=False,
@@ -32,6 +35,13 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     if config.getoption("--runfuzz"):
         # --runfuzz given in cli: do not skip fuzz tests
         return
+
+    if config.getoption("--onlyfuzz"):
+        for item in items.copy():
+            if "fuzz" not in item.keywords:
+                items.remove(item)
+        return
+
     skip_fuzz = pytest.mark.skip(reason="need --runfuzz option to run")
     for item in items:
         if "fuzz" in item.keywords:
