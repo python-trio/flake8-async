@@ -1,4 +1,6 @@
 """Entry file when executed with `python -m`."""
+import sys
+
 from . import main
 
-main()
+sys.exit(main())

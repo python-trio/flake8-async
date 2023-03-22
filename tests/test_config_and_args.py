@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from flake8_trio import Plugin
+from flake8_trio import Plugin, main
 
 from .test_flake8_trio import initialize_options
 
@@ -36,8 +36,42 @@ def test_run_flake8_trio(tmp_path: Path):
         cwd=tmp_path,
         capture_output=True,
     )
+    assert res.returncode == 1
     assert not res.stderr
     assert res.stdout == err_msg.encode("ascii")
+
+
+def test_systemexit_0(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8_trio", "./example.py"])
+
+    tmp_path.joinpath("example.py").write_text("")
+
+    with pytest.raises(SystemExit) as exc_info:
+        from flake8_trio import __main__  # noqa
+
+    assert exc_info.value.code == 0
+    out, err = capsys.readouterr()
+    assert not out
+    assert not err
+
+
+def test_systemexit_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    err_msg = _common_error_setup(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8_trio", "./example.py"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        from flake8_trio import __main__  # noqa
+
+    assert exc_info.value.code == 1
+    out, err = capsys.readouterr()
+    assert out == err_msg
+    assert not err
 
 
 def test_run_in_git_repo(tmp_path: Path):
@@ -51,6 +85,7 @@ def test_run_in_git_repo(tmp_path: Path):
         cwd=tmp_path,
         capture_output=True,
     )
+    assert res.returncode == 1
     assert not res.stderr
     assert res.stdout == err_msg.encode("ascii")
 
@@ -60,8 +95,7 @@ def test_run_no_git_repo(
 ):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", [tmp_path / "flake8_trio"])
-    with pytest.raises(SystemExit):
-        from flake8_trio import __main__  # noqa
+    assert main() == 1
     out, err = capsys.readouterr()
     assert err == "Doesn't seem to be a git repo; pass filenames to format.\n"
     assert not out
@@ -75,7 +109,7 @@ def test_run_100_autofix(
     monkeypatch.setattr(
         sys, "argv", [tmp_path / "flake8_trio", "--autofix", "./example.py"]
     )
-    from flake8_trio import __main__  # noqa
+    assert main() == 1
 
     out, err = capsys.readouterr()
     assert out == err_msg
@@ -189,6 +223,7 @@ def test_200_from_config_flake8_internals(
 def test_200_from_config_subprocess(tmp_path: Path):
     err_msg = _test_trio200_from_config_common(tmp_path)
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True)
+    assert res.returncode == 1
     assert not res.stderr
     assert res.stdout == err_msg.encode("ascii")
 

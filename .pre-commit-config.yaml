@@ -14,7 +14,7 @@ repos:
             args: [--preview]
 
     - repo: https://github.com/PyCQA/autoflake
-      rev: v2.0.1
+      rev: v2.0.2
       hooks:
           - id: autoflake
 
@@ -35,7 +35,7 @@ repos:
           - id: mypy
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.298
+      rev: v1.1.299
       hooks:
           - id: pyright
             entry: env PYRIGHT_PYTHON_FORCE_VERSION=latest pyright
@@ -110,7 +110,7 @@ repos:
           - id: yamlfmt
 
     - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-      rev: v2.7.0
+      rev: v2.8.0
       hooks:
           - id: pretty-format-toml
             args: [--autofix]
