@@ -3,6 +3,9 @@
 
 ## Future
 - TRIO91X now supports comprehensions
+- TRIO100 and TRIO91X now supports autofixing
+- Renamed `--enable-visitor-codes-regex` to `--enable`
+- Added `--disable`, `--autofix` and `--error-on-autofix`
 
 ## 23.2.5
 - Fix false alarms for `@pytest.fixture`-decorated functions in TRIO101, TRIO910 and TRIO911

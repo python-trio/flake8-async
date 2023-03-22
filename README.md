@@ -65,7 +65,23 @@ pip install flake8-trio
 
 ## Configuration
 [You can configure `flake8` with command-line options](https://flake8.pycqa.org/en/latest/user/configuration.html),
-but we prefer using a config file. The file needs to start with a section marker `[flake8]` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.
+but we prefer using a config file. The file needs to start with a section marker `[flake8]` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.  
+Note that it's not currently possible to use a configuration file when running flake8_trio standalone.
+
+### `--enable`
+Comma-separated list of error codes to enable, similar to flake8 --select but is additionally more performant as it will disable non-enabled visitors from running instead of just silencing their errors.
+
+### `--disable`
+Comma-separated list of error codes to disable, similar to flake8 --ignore but is additionally more performant as it will disable non-enabled visitors from running instead of just silencing their errors.
+
+### `--autofix`
+Comma-separated list of error-codes to enable autofixing for if implemented. Requires running as a standalone program.
+
+### `--error-on-autofix`
+Whether to also print an error message for autofixed errors.
+
+### `--anyio`
+Change the default library to be anyio instead of trio. If trio is imported it will assume both are available and print suggestions with [anyio|trio].
 
 ### `no-checkpoint-warning-decorators`
 Specify a list of decorators to disable checkpointing checks for, turning off TRIO910 and TRIO911 warnings for functions decorated with any decorator matching any in the list. Matching is done with [fnmatch](https://docs.python.org/3/library/fnmatch.html). Defaults to disabling for `asynccontextmanager`.
@@ -120,3 +136,21 @@ async def my_function():
 
     arbitrary_other_function(my_blocking_call=None)
 ```
+
+
+### Using flake8_trio with pre-commit
+If you use [pre-commit](https://pre-commit.com/), you can use it with flake8_trio by
+adding the following to your `.pre-commit-config.yaml`:
+
+```yaml
+minimum_pre_commit_version: '2.9.0'
+repos:
+- repo: https://github.com/Zac-HD/flake8-trio
+  rev: 23.2.5
+  hooks:
+    - id: flake8-trio
+      # args: [--enable=TRIO, --disable=TRIO9, --autofix=TRIO]
+```
+
+This is often considerably faster for large projects, because `pre-commit`
+can avoid running `flake8_trio` on unchanged files.

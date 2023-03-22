@@ -44,6 +44,7 @@ repos:
           # Required for pyright strict mode
                 - anyio
                 - flake8
+                - GitPython
                 - hypothesis
                 - hypothesmith
                 - pytest

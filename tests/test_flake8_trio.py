@@ -66,10 +66,13 @@ ERROR_CODES: dict[str, Flake8TrioVisitor] = {
 }
 
 
-# difflib generates lots of lines with one trailing space, which is an eyesore
-# and trips up pre-commit, git diffs, etc. If there actually was diff trailing
-# space in the content it's picked up elsewhere and by pre-commit.
-def strip_difflib_space(s: str) -> str:
+def format_difflib_line(s: str) -> str:
+    # replace line markers with x's, to not generate massive diffs when lines get moved
+    s = re.sub(r"(?<= )[+-]\d*(?=,)", "x", s)
+
+    # difflib generates lots of lines with one trailing space, which is an eyesore
+    # and trips up pre-commit, git diffs, etc. If there actually was diff trailing
+    # space in the content it's picked up elsewhere and by pre-commit.
     if s[-2:] == " \n":
         return s[:-2] + "\n"
     return s
@@ -78,7 +81,7 @@ def strip_difflib_space(s: str) -> str:
 def diff_strings(first: str, second: str, /) -> str:
     return "".join(
         map(
-            strip_difflib_space,
+            format_difflib_line,
             difflib.unified_diff(
                 first.splitlines(keepends=True),
                 second.splitlines(keepends=True),
@@ -314,7 +317,7 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
             try:
                 expected.append(Error(err_code, lineno, int(col), message, *args))
             except AttributeError as e:
-                msg = f'Line {lineno}: Failed to format\n {message!r}\n"with\n{args}'
+                msg = f"Line {lineno}: Failed to format\n {message!r}\nwith\n{args}"
                 raise ParseError(msg) from e
 
     enabled_codes_list = enabled_codes.split(",")
