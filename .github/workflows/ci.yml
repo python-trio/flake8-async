@@ -57,5 +57,5 @@ jobs:
                   TWINE_USERNAME: __token__
                   TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
               run: |
-                  python tests/test_version_and_changelog.py --ensure-tag
+                  python tests/test_changelog_and_version.py --ensure-tag
                   python -m build && twine upload --skip-existing dist/*
