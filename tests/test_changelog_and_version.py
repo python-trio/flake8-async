@@ -1,11 +1,13 @@
+#!/usr/bin/env python
 """Tests for flake8-trio package metadata."""
 
 from __future__ import annotations
 
 import re
+import sys
 import unittest
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, TypeVar
 
 import flake8_trio
 
@@ -14,7 +16,11 @@ from .test_flake8_trio import ERROR_CODES
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-root_path = Path(__file__).parent.parent
+ROOT_PATH = Path(__file__).parent.parent
+CHANGELOG = ROOT_PATH / "CHANGELOG.md"
+README = CHANGELOG.parent / "README.md"
+
+T = TypeVar("T", bound="Version")
 
 
 class Version(NamedTuple):
@@ -23,13 +29,19 @@ class Version(NamedTuple):
     patch: int
 
     @classmethod
-    def from_string(cls, string: str):
+    def from_string(cls: type[T], string: str) -> T:
         return cls(*map(int, string.split(".")))
+
+    def __str__(self) -> str:
+        return ".".join(map(str, self))
+
+
+VERSION = Version.from_string(flake8_trio.__version__)
 
 
 def get_releases() -> Iterable[Version]:
     valid_pattern = re.compile(r"^## (\d\d\.\d?\d\.\d?\d)$")
-    with open(root_path / "CHANGELOG.md", encoding="utf-8") as f:
+    with open(CHANGELOG, encoding="utf-8") as f:
         lines = f.readlines()
     for line in lines:
         version_match = valid_pattern.match(line)
@@ -37,13 +49,13 @@ def get_releases() -> Iterable[Version]:
             yield Version.from_string(version_match.group(1))
 
 
-def test_last_release_against_changelog():
+def test_last_release_against_changelog() -> None:
     """Ensure we have the latest version covered in 'CHANGELOG.md'."""
-    latest_release, *_ = get_releases()
-    assert latest_release == Version.from_string(flake8_trio.__version__)
+    latest_release = next(iter(get_releases()))
+    assert latest_release == VERSION
 
 
-def test_version_increments_are_correct():
+def test_version_increments_are_correct() -> None:
     versions = list(get_releases())
     for prev, current in zip(versions[1:], versions):
         assert prev < current  # remember that `versions` is newest-first
@@ -56,18 +68,57 @@ def test_version_increments_are_correct():
             assert current == prev._replace(patch=prev.patch + 1), msg
 
 
+def ensure_tagged() -> None:
+    from git.repo import Repo
+
+    last_version = next(iter(get_releases()))
+    repo = Repo(ROOT_PATH)
+    if last_version not in repo.tags:
+        # create_tag is partially unknown in pyright, which kinda looks like
+        # https://github.com/gitpython-developers/GitPython/issues/1473
+        # which should be resolved?
+        repo.create_tag(str(last_version))  # type: ignore
+        repo.remotes.origin.push(str(last_version))
+
+
+def update_version() -> None:
+    # If we've added a new version to the changelog, update __version__ to match
+    last_version = next(iter(get_releases()))
+    if VERSION != last_version:
+        INIT_FILE = ROOT_PATH / "flake8_trio" / "__init__.py"
+        subs = (f'__version__ = "{VERSION}"', f'__version__ = "{last_version}"')
+        INIT_FILE.write_text(INIT_FILE.read_text().replace(*subs))
+
+    # Similarly, update the pre-commit config example in the README
+    current = README.read_text()
+    wanted = re.sub(
+        pattern=r"^  rev: (\d+\.\d+\.\d+)$",
+        repl=f"  rev: {last_version}",
+        string=current,
+        flags=re.MULTILINE,
+    )
+    if current != wanted:
+        README.write_text(wanted)
+
+
+if __name__ == "__main__":
+    update_version()
+    if "--ensure-tag" in sys.argv:
+        ensure_tagged()
+
+
+# I wanted to move this test to a separate file, but that'd lead to merge conflicts,
+# so will have to wait with that
 IGNORED_CODES_REGEX = r"TRIO107|TRIO108|TRIO\d\d\d_.*"
 
 
 class test_messages_documented(unittest.TestCase):
     def runTest(self):
         documented_errors: dict[str, set[str]] = {}
-        for filename in (
-            "CHANGELOG.md",
-            "README.md",
-        ):
-            with open(root_path / filename, encoding="utf-8") as f:
+        for path in (CHANGELOG, README):
+            with open(path, encoding="utf-8") as f:
                 lines = f.readlines()
+            filename = path.name
             documented_errors[filename] = set()
             for line in lines:
                 for error_msg in re.findall(r"TRIO\d\d\d", line):
