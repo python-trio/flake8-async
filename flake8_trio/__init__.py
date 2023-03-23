@@ -15,7 +15,6 @@ import ast
 import functools
 import keyword
 import os
-import re
 import subprocess
 import sys
 import tokenize
@@ -24,8 +23,9 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
+from .base import Options
 from .runner import Flake8TrioRunner, Flake8TrioRunner_cst
-from .visitors import default_disabled_error_codes
+from .visitors import ERROR_CLASSES, ERROR_CLASSES_CST, default_disabled_error_codes
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -76,12 +76,6 @@ def cst_parse_module_native(source: str) -> cst.Module:
 
 def main() -> int:
     parser = ArgumentParser(prog="flake8_trio")
-    parser.add_argument(
-        nargs="*",
-        metavar="file",
-        dest="files",
-        help="Files(s) to format, instead of autodetection.",
-    )
     Plugin.add_options(parser)
     args = parser.parse_args()
     Plugin.parse_options(args)
@@ -115,7 +109,7 @@ def main() -> int:
         for error in sorted(plugin.run()):
             print(f"{file}:{error}")
             any_error = True
-        if plugin.options.autofix:
+        if plugin.options.autofix_codes:
             with open(file, "w") as file:
                 file.write(plugin.module.code)
     return 1 if any_error else 0
@@ -124,7 +118,13 @@ def main() -> int:
 class Plugin:
     name = __name__
     version = __version__
-    options: Namespace = Namespace()
+    standalone = True
+    _options: Options | None = None
+
+    @property
+    def options(self) -> Options:
+        assert self._options is not None
+        return self._options
 
     def __init__(self, tree: ast.AST, lines: Sequence[str]):
         super().__init__()
@@ -158,18 +158,64 @@ class Plugin:
     @staticmethod
     def add_options(option_manager: OptionManager | ArgumentParser):
         if isinstance(option_manager, ArgumentParser):
-            # TODO: disable TRIO9xx calls by default
-            # if run as standalone
+            Plugin.standalone = True
             add_argument = option_manager.add_argument
+            add_argument(
+                nargs="*",
+                metavar="file",
+                dest="files",
+                help="Files(s) to format, instead of autodetection.",
+            )
         else:  # if run as a flake8 plugin
+            Plugin.standalone = False
             # Disable TRIO9xx calls by default
             option_manager.extend_default_ignore(default_disabled_error_codes)
             # add parameter to parse from flake8 config
             add_argument = functools.partial(  # type: ignore
                 option_manager.add_option, parse_from_config=True
             )
-        add_argument("--autofix", action="store_true", required=False)
 
+        add_argument(
+            "--enable",
+            type=comma_separated_list,
+            default="TRIO",
+            required=False,
+            help=(
+                "Comma-separated list of error codes to enable, similar to flake8"
+                " --select but is additionally more performant as it will disable"
+                " non-enabled visitors from running instead of just silencing their"
+                " errors."
+            ),
+        )
+        add_argument(
+            "--disable",
+            type=comma_separated_list,
+            default="TRIO9" if Plugin.standalone else "",
+            required=False,
+            help=(
+                "Comma-separated list of error codes to disable, similar to flake8"
+                " --ignore but is additionally more performant as it will disable"
+                " non-enabled visitors from running instead of just silencing their"
+                " errors."
+            ),
+        )
+        add_argument(
+            "--autofix",
+            type=comma_separated_list,
+            default="",
+            required=False,
+            help=(
+                "Comma-separated list of error-codes to enable autofixing for"
+                "if implemented. Requires running as a standalone program."
+            ),
+        )
+        add_argument(
+            "--error-on-autofix",
+            action="store_true",
+            required=False,
+            default=False,
+            help="Whether to also print an error message for autofixed errors",
+        )
         add_argument(
             "--no-checkpoint-warning-decorators",
             default="asynccontextmanager",
@@ -209,19 +255,6 @@ class Plugin:
             ),
         )
         add_argument(
-            "--enable-visitor-codes-regex",
-            type=re.compile,  # type: ignore[arg-type]
-            default=".*",
-            required=False,
-            help=(
-                "Regex string of visitors to enable. Can be used to disable broken "
-                "visitors, or instead of --select/--disable to select error codes "
-                "in a way that is more performant. If a visitor raises multiple codes "
-                "it will not be disabled unless all codes are disabled, but it will "
-                "not report codes matching this regex."
-            ),
-        )
-        add_argument(
             "--anyio",
             # action=store_true + parse_from_config does seem to work here, despite
             # https://github.com/PyCQA/flake8/issues/1770
@@ -237,7 +270,45 @@ class Plugin:
 
     @staticmethod
     def parse_options(options: Namespace):
-        Plugin.options = options
+        def get_matching_codes(
+            patterns: Iterable[str], codes: Iterable[str]
+        ) -> Iterable[str]:
+            for pattern in patterns:
+                for code in codes:
+                    if code.lower().startswith(pattern.lower()):
+                        yield code
+
+        all_codes: set[str] = {
+            err_code
+            for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
+            for err_code in err_class.error_codes.keys()  # type: ignore[attr-defined]
+            if len(err_code) == 7  # exclude e.g. TRIO103_anyio_trio
+        }
+
+        if options.autofix and not Plugin.standalone:
+            print("Cannot autofix when run as a flake8 plugin.", file=sys.stderr)
+            sys.exit(1)
+        autofix_codes = set(get_matching_codes(options.autofix, all_codes))
+
+        # enable codes
+        enabled_codes = set(get_matching_codes(options.enable, all_codes))
+
+        # disable codes
+        enabled_codes -= set(get_matching_codes(options.disable, enabled_codes))
+
+        # if disable has default value, re-enable explicitly enabled codes
+        if options.disable == ["TRIO9"]:
+            enabled_codes.update(code for code in options.enable if len(code) == 7)
+
+        Plugin._options = Options(
+            enabled_codes=enabled_codes,
+            autofix_codes=autofix_codes,
+            error_on_autofix=options.error_on_autofix,
+            no_checkpoint_warning_decorators=options.no_checkpoint_warning_decorators,
+            startable_in_context_manager=options.startable_in_context_manager,
+            trio200_blocking_calls=options.trio200_blocking_calls,
+            anyio=options.anyio,
+        )
 
 
 def comma_separated_list(raw_value: str) -> list[str]:

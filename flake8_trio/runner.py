@@ -7,7 +7,6 @@ the AST and letting all registered ERROR_CLASSES do their visit'ing on them.
 from __future__ import annotations
 
 import ast
-import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -21,29 +20,40 @@ from .visitors import (
 )
 
 if TYPE_CHECKING:
-    from argparse import Namespace
     from collections.abc import Iterable
 
     from libcst import Module
 
-    from .base import Error
+    from .base import Error, Options
     from .visitors.flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst
 
 
 @dataclass
 class SharedState:
-    options: Namespace
+    options: Options
     problems: list[Error] = field(default_factory=list)
     library: tuple[str, ...] = ()
     typed_calls: dict[str, str] = field(default_factory=dict)
     variables: dict[str, str] = field(default_factory=dict)
 
 
-class Flake8TrioRunner(ast.NodeVisitor):
-    def __init__(self, options: Namespace):
+class __CommonRunner:
+    """Common functionality used in both runners."""
+
+    def __init__(self, options: Options):
         super().__init__()
         self.state = SharedState(options)
 
+    def selected(self, error_codes: dict[str, str]) -> bool:
+        enabled_or_autofix = (
+            self.state.options.enabled_codes | self.state.options.autofix_codes
+        )
+        return bool(set(error_codes) & enabled_or_autofix)
+
+
+class Flake8TrioRunner(ast.NodeVisitor, __CommonRunner):
+    def __init__(self, options: Options):
+        super().__init__(options)
         # utility visitors that need to run before the error-checking visitors
         self.utility_visitors = {v(self.state) for v in utility_visitors}
 
@@ -51,14 +61,8 @@ class Flake8TrioRunner(ast.NodeVisitor):
             v(self.state) for v in ERROR_CLASSES if self.selected(v.error_codes)
         }
 
-    def selected(self, error_codes: dict[str, str]) -> bool:
-        return any(
-            re.match(self.state.options.enable_visitor_codes_regex, code)
-            for code in error_codes
-        )
-
     @classmethod
-    def run(cls, tree: ast.AST, options: Namespace) -> Iterable[Error]:
+    def run(cls, tree: ast.AST, options: Options) -> Iterable[Error]:
         runner = cls(options)
         runner.visit(tree)
         yield from runner.state.problems
@@ -104,10 +108,9 @@ class Flake8TrioRunner(ast.NodeVisitor):
             subclass.set_state(subclass.outer.pop(node, {}))
 
 
-class Flake8TrioRunner_cst:
-    def __init__(self, options: Namespace, module: Module):
-        super().__init__()
-        self.state = SharedState(options)
+class Flake8TrioRunner_cst(__CommonRunner):
+    def __init__(self, options: Options, module: Module):
+        super().__init__(options)
         self.options = options
 
         # Could possibly enable/disable utility visitors here, if visitors declared
@@ -127,9 +130,3 @@ class Flake8TrioRunner_cst:
         for v in (*self.utility_visitors, *self.visitors):
             self.module = cst.MetadataWrapper(self.module).visit(v)
         yield from self.state.problems
-
-    def selected(self, error_codes: dict[str, str]) -> bool:
-        return any(
-            re.match(self.state.options.enable_visitor_codes_regex, code)
-            for code in error_codes
-        )

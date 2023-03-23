@@ -12,22 +12,31 @@ from flake8_trio import Plugin, main
 
 from .test_flake8_trio import initialize_options
 
-
-def _common_error_setup(tmp_path: Path) -> str:
-    assert tmp_path.joinpath("example.py").write_text(
-        """import trio
+EXAMPLE_PY_TEXT = """import trio
 with trio.move_on_after(10):
     ...
 """
-    )
-    return (
-        "./example.py:2:6: TRIO100 trio.move_on_after context contains no checkpoints,"
-        " remove the context or add `await trio.lowlevel.checkpoint()`.\n"
-    )
+EXAMPLE_PY_AUTOFIXED_TEXT = "import trio\n...\n"
+EXAMPLE_PY_ERROR = (
+    "./example.py:2:6: TRIO100 trio.move_on_after context contains no checkpoints,"
+    " remove the context or add `await trio.lowlevel.checkpoint()`.\n"
+)
+
+
+def write_examplepy(tmp_path: Path) -> None:
+    assert tmp_path.joinpath("example.py").write_text(EXAMPLE_PY_TEXT)
+
+
+def assert_autofixed(tmp_path: Path) -> None:
+    assert tmp_path.joinpath("example.py").read_text() == EXAMPLE_PY_AUTOFIXED_TEXT
+
+
+def assert_unchanged(tmp_path: Path) -> None:
+    assert tmp_path.joinpath("example.py").read_text() == EXAMPLE_PY_TEXT
 
 
 def test_run_flake8_trio(tmp_path: Path):
-    err_msg = _common_error_setup(tmp_path)
+    write_examplepy(tmp_path)
     res = subprocess.run(
         [
             "flake8_trio",
@@ -38,7 +47,7 @@ def test_run_flake8_trio(tmp_path: Path):
     )
     assert res.returncode == 1
     assert not res.stderr
-    assert res.stdout == err_msg.encode("ascii")
+    assert res.stdout == EXAMPLE_PY_ERROR.encode("ascii")
 
 
 def test_systemexit_0(
@@ -61,7 +70,7 @@ def test_systemexit_0(
 def test_systemexit_1(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
-    err_msg = _common_error_setup(tmp_path)
+    write_examplepy(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", [tmp_path / "flake8_trio", "./example.py"])
 
@@ -70,12 +79,12 @@ def test_systemexit_1(
 
     assert exc_info.value.code == 1
     out, err = capsys.readouterr()
-    assert out == err_msg
+    assert out == EXAMPLE_PY_ERROR
     assert not err
 
 
 def test_run_in_git_repo(tmp_path: Path):
-    err_msg = _common_error_setup(tmp_path)
+    write_examplepy(tmp_path)
     assert subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
     assert subprocess.run(["git", "add", "example.py"], cwd=tmp_path)
     res = subprocess.run(
@@ -87,7 +96,7 @@ def test_run_in_git_repo(tmp_path: Path):
     )
     assert res.returncode == 1
     assert not res.stderr
-    assert res.stdout == err_msg.encode("ascii")
+    assert res.stdout == EXAMPLE_PY_ERROR.encode("ascii")
 
 
 def test_run_no_git_repo(
@@ -104,17 +113,17 @@ def test_run_no_git_repo(
 def test_run_100_autofix(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
-    err_msg = _common_error_setup(tmp_path)
+    write_examplepy(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
-        sys, "argv", [tmp_path / "flake8_trio", "--autofix", "./example.py"]
+        sys, "argv", [tmp_path / "flake8_trio", "--autofix=TRIO", "./example.py"]
     )
     assert main() == 1
 
     out, err = capsys.readouterr()
-    assert out == err_msg
+    assert out == EXAMPLE_PY_ERROR
     assert not err
-    assert tmp_path.joinpath("example.py").read_text() == "import trio\n...\n"
+    assert_autofixed(tmp_path)
 
 
 def test_114_raises_on_invalid_parameter(capsys: pytest.CaptureFixture[str]):
@@ -201,9 +210,9 @@ def test_200_from_config_flake8_internals(
     # which breaks breakpoints and hinders debugging
     # TODO: fixture (?) to change working directory
 
-    err_msg = _test_trio200_from_config_common(tmp_path)
+    EXAMPLE_PY_TEXT = _test_trio200_from_config_common(tmp_path)
     # replace ./ with tmp_path/
-    err_msg = str(tmp_path) + err_msg[1:]
+    err_msg = str(tmp_path) + EXAMPLE_PY_TEXT[1:]
 
     from flake8.main.cli import main
 
@@ -240,3 +249,81 @@ def test_900_default_off(capsys: pytest.CaptureFixture[str]):
     assert returnvalue == 1
     assert not err
     assert "TRIO900" not in out
+
+
+def test_enable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    write_examplepy(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    argv = [tmp_path / "flake8_trio", "./example.py"]
+    monkeypatch.setattr(sys, "argv", argv)
+
+    def _helper(*args: str, error: bool = False, autofix: bool = False) -> None:
+        for arg in args:
+            argv.append(arg)
+        main()
+        out, err = capsys.readouterr()
+        if error:
+            assert out == EXAMPLE_PY_ERROR
+        else:
+            assert not out
+        if autofix:
+            assert_autofixed(tmp_path)
+            write_examplepy(tmp_path)
+        else:
+            assert_unchanged(tmp_path)
+        assert not err
+        for _ in args:
+            argv.pop()
+
+    # default enable
+    _helper(error=True)
+
+    # explicit enable
+    _helper("--enable=TRIO100", error=True)
+
+    # explicit enable other
+    _helper("--enable=TRIO101")
+
+    # make sure commas don't enable others
+    _helper("--enable=TRIO101,")
+    _helper("--enable=,")
+    _helper("--enable=TRIO101,,TRIO102")
+
+    # disable
+    _helper("--disable=TRIO100")
+
+    # disable enabled code
+    _helper("--disable=TRIO100", "--enable=TRIO100")
+
+    # don't enable, but autofix
+    _helper(
+        "--enable=''",
+        "--autofix=TRIO100",
+        error=True,  # TODO: should be False
+        autofix=True,
+    )
+
+    _helper(
+        "--enable=''",
+        "--autofix=TRIO100",
+        "--error-on-autofix",
+        error=True,
+        autofix=True,
+    )
+
+
+def test_flake8_plugin_with_autofix_fails(tmp_path: Path):
+    write_examplepy(tmp_path)
+    res = subprocess.run(
+        [
+            "flake8",
+            "./example.py",
+            "--autofix=TRIO",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+    )
+    assert not res.stdout
+    assert res.stderr == b"Cannot autofix when run as a flake8 plugin.\n"

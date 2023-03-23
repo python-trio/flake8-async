@@ -12,14 +12,13 @@ import site
 import sys
 import tokenize
 import unittest
+from argparse import ArgumentParser
 from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, DefaultDict
 
 import libcst as cst
 import pytest
-from flake8 import __version_info__ as flake8_version_info
-from flake8.options.manager import OptionManager
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
@@ -46,14 +45,6 @@ assert set(autofix_files.keys()) - {f[0] for f in test_files} == set()
 
 class ParseError(Exception):
     ...
-
-
-# flake8 6 added a required named parameter formatter_names
-def _default_option_manager():
-    kwargs = {}
-    if flake8_version_info[0] >= 6:
-        kwargs["formatter_names"] = ["default"]
-    return OptionManager(version="", plugin_versions="", parents=[], **kwargs)
 
 
 # check for presence of _pyXX, skip if version is later, and prune parameter
@@ -163,21 +154,28 @@ def check_autofix(
     assert added_autofix_diff == autofix_diff_content
 
 
+# TODO: merge with test_eval_anyio with a parametrize
 @pytest.mark.parametrize(("test", "path"), test_files)
-def test_eval(test: str, path: Path, generate_autofix: bool):
+@pytest.mark.parametrize("autofix", [False, True])
+def test_eval(test: str, path: Path, autofix: bool, generate_autofix: bool):
     content = path.read_text()
     if "# NOTRIO" in content:
         pytest.skip("file marked with NOTRIO")
 
-    expected, parsed_args = _parse_eval_file(test, content)
-    parsed_args.append("--autofix")
+    expected, parsed_args, enable = _parse_eval_file(test, content)
+    if autofix:
+        parsed_args.append(f"--autofix={enable}")
     if "# TRIO_NO_ERROR" in content:
         expected = []
 
     plugin = Plugin.from_source(content)
     _ = assert_expected_errors(plugin, *expected, args=parsed_args)
 
-    check_autofix(test, plugin, content, generate_autofix)
+    if autofix:
+        check_autofix(test, plugin, content, generate_autofix)
+    else:
+        # make sure content isn't modified
+        assert content == plugin.module.code
 
 
 @pytest.mark.parametrize(("test", "path"), test_files)
@@ -198,10 +196,10 @@ def test_eval_anyio(test: str, path: Path, generate_autofix: bool):
         ignore_column = False
 
     # parse args and expected errors
-    expected, parsed_args = _parse_eval_file(test, content)
+    expected, parsed_args, enable = _parse_eval_file(test, content)
 
     parsed_args.insert(0, "--anyio")
-    parsed_args.append("--autofix")
+    parsed_args.append(f"--autofix={enable}")
 
     # initialize plugin and check errors, ignoring columns since they occasionally are
     # wrong due to len("anyio") > len("trio")
@@ -229,8 +227,8 @@ def test_autofix(test: str):
     if "# NOTRIO" in content:
         pytest.skip("file marked with NOTRIO")
 
-    _, parsed_args = _parse_eval_file(test, content)
-    parsed_args.append("--autofix")
+    _, parsed_args, enable = _parse_eval_file(test, content)
+    parsed_args.append(f"--autofix={enable}")
 
     plugin = Plugin.from_source(content)
     # not passing any expected errors
@@ -242,7 +240,7 @@ def test_autofix(test: str):
     assert plugin.module.code == content, "autofixed file changed when autofixed again"
 
 
-def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
+def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], str]:
     # version check
     check_version(test)
     test = test.split("_")[0]
@@ -252,10 +250,10 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
     # only enable the tested visitor to save performance and ease debugging
     # if a test requires enabling multiple visitors they specify a
     # `# ARG --enable-vis...` that comes later in the arg list, overriding this
-    visitor_codes_regex = ""
+    enabled_codes = ""
     if test in ERROR_CODES:
-        parsed_args = [f"--enable-visitor-codes-regex={test}"]
-        visitor_codes_regex = f"{test}"
+        parsed_args = [f"--enable={test}"]
+        enabled_codes = f"{test}"
 
     expected: list[Error] = []
 
@@ -269,8 +267,8 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
         if reg_match := re.search(r"(?<=ARG ).*", line):
             argument = reg_match.group().strip()
             parsed_args.append(argument)
-            if m := re.match(r"--enable-visitor-codes-regex=(.*)", argument):
-                visitor_codes_regex = m.groups()[0]
+            if m := re.match(r"--enable=(.*)", argument):
+                enabled_codes = m.groups()[0]
 
         # skip commented out lines
         if not line or line[0] == "#":
@@ -319,13 +317,18 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str]]:
                 msg = f'Line {lineno}: Failed to format\n {message!r}\n"with\n{args}'
                 raise ParseError(msg) from e
 
-    assert visitor_codes_regex, "no visitors enabled"
-    for error in expected:
-        assert re.match(
-            visitor_codes_regex, error.code
-        ), "Expected error code not enabled"
+    enabled_codes_list = enabled_codes.split(",")
+    for code in enabled_codes_list:
+        assert re.fullmatch(r"TRIO\d\d\d", code)
 
-    return expected, parsed_args
+    for error in expected:
+        for code in enabled_codes.split(","):
+            if error.code.startswith(code):
+                break
+        else:
+            assert error.code in enabled_codes_list, "Expected error code not enabled"
+
+    return expected, parsed_args, enabled_codes
 
 
 # Codes that are supposed to also raise errors when run on sync code, and should
@@ -376,21 +379,19 @@ def test_noerror_on_sync_code(test: str, path: Path):
         source = f.read()
     tree = SyncTransformer().visit(ast.parse(source))
 
-    ignored_codes_regex = (
-        "(?!("
-        + "|".join(error_codes_ignored_when_checking_transformed_sync_code)
-        + "))"
-    )
     _ = assert_expected_errors(
         Plugin(tree, [ast.unparse(tree)]),
-        args=[f"--enable-visitor-codes-regex={ignored_codes_regex}"],
+        args=[
+            "--disable="
+            + ",".join(error_codes_ignored_when_checking_transformed_sync_code)
+        ],
     )
 
 
 def initialize_options(plugin: Plugin, args: list[str] | None = None):
-    om = _default_option_manager()
-    plugin.add_options(om)
-    plugin.parse_options(om.parse_args(args=(args if args else [])))
+    parser = ArgumentParser(prog="flake8_trio")
+    Plugin.add_options(parser)
+    Plugin.parse_options(parser.parse_args(args))
 
 
 def assert_expected_errors(
@@ -568,7 +569,7 @@ def test_910_permutations():
             await foo() | ... | return | None
     """
     plugin = Plugin(ast.AST(), [])
-    initialize_options(plugin, args=["--enable-visitor-codes-regex=TRIO910"])
+    initialize_options(plugin, args=["--enable=TRIO910"])
 
     check = "await foo()"
 
@@ -603,9 +604,7 @@ def test_910_permutations():
 
         module = cst.parse_module(function_str)
 
-        # not a type error per se, but it's pyright warning about assigning to a
-        # protected class member - hence we silence it with a `type: ignore`.
-        plugin._module = module  # type: ignore
+        plugin.module = module
         errors = list(plugin.run())
 
         if (
@@ -636,18 +635,16 @@ class TestFuzz(unittest.TestCase):
     @given((from_grammar() | from_node()).map(ast.parse))
     def test_does_not_crash_on_any_valid_code(self, syntax_tree: ast.AST):
         # TODO: figure out how to get unittest to play along with pytest options
-        # so `--enable-visitor-codes-regex` can be passed through.
+        # so `--enable-codes` can be passed through.
         # Though I barely notice a difference manually changing this value, or even
         # not running the plugin at all, so overhead looks to be vast majority of runtime
-        enable_visitor_codes_regex = ".*"
+        enabled_codes = "TRIO"
 
         # Given any syntatically-valid source code, the checker should
         # not crash.  This tests doesn't check that we do the *right* thing,
         # just that we don't crash on valid-if-poorly-styled code!
         plugin = Plugin(syntax_tree, [ast.unparse(syntax_tree)])
-        initialize_options(
-            plugin, [f"--enable-visitor-codes-regex={enable_visitor_codes_regex}"]
-        )
+        initialize_options(plugin, [f"--enable={enabled_codes}"])
 
         consume(plugin.run())
 
@@ -664,13 +661,11 @@ def _iter_python_files():
 
 
 @pytest.mark.fuzz()
-def test_does_not_crash_on_site_code(enable_visitor_codes_regex: str):
+def test_does_not_crash_on_site_code(enable_codes: str):
     for path in _iter_python_files():
         try:
             plugin = Plugin.from_filename(str(path))
-            initialize_options(
-                plugin, [f"--enable-visitor-codes-regex={enable_visitor_codes_regex}"]
-            )
+            initialize_options(plugin, [f"--enable={enable_codes}"])
             consume(plugin.run())
         except Exception as err:
             raise AssertionError(f"Failed on {path}") from err

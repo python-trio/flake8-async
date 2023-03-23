@@ -1,4 +1,4 @@
-# ARG --enable-visitor-codes-regex=(TRIO910)|(TRIO911)
+# ARG --enable=TRIO910,TRIO911
 from typing import Any
 
 

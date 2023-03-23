@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import re
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Union
 
@@ -99,7 +98,7 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
             ), "No error code defined, but class has multiple codes"
             error_code = next(iter(self.error_codes))
         # don't emit an error if this code is disabled in a multi-code visitor
-        elif not re.match(self.options.enable_visitor_codes_regex, error_code):
+        elif error_code[:7] not in self.options.enabled_codes:
             return
 
         self.__state.problems.append(
@@ -190,9 +189,7 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
     def save_state(self, node: cst.CSTNode, *attrs: str, copy: bool = False):
         state = self.get_state(*attrs, copy=copy)
         if node in self.outer:
-            # not currently used, and not gonna bother adding dedicated test
-            # visitors atm
-            self.outer[node].update(state)  # pragma: no cover
+            self.outer[node].update(state)
         else:
             self.outer[node] = state
 
@@ -211,10 +208,9 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
             ), "No error code defined, but class has multiple codes"
             error_code = next(iter(self.error_codes))
         # don't emit an error if this code is disabled in a multi-code visitor
-        elif not re.match(
-            self.options.enable_visitor_codes_regex, error_code
-        ):  # pragma: no cover
-            return
+        # TODO: write test for only one of 910/911 enabled/autofixed
+        elif error_code[:7] not in self.options.enabled_codes:
+            return  # pragma: no cover
         pos = self.get_metadata(PositionProvider, node).start
 
         self.__state.problems.append(
@@ -227,6 +223,12 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
                 *args,
             )
         )
+
+    def should_autofix(self, code: str | None = None):
+        if code is None:
+            assert len(self.error_codes) == 1
+            code = next(iter(self.error_codes))
+        return code in self.options.autofix_codes
 
     @property
     def library(self) -> tuple[str, ...]:
