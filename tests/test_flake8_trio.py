@@ -15,7 +15,7 @@ import unittest
 from argparse import ArgumentParser
 from collections import deque
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, DefaultDict
+from typing import TYPE_CHECKING, Any, DefaultDict, Literal
 
 import libcst as cst
 import pytest
@@ -157,70 +157,68 @@ def check_autofix(
     assert added_autofix_diff == autofix_diff_content
 
 
-# TODO: merge with test_eval_anyio with a parametrize
+MAGIC_MARKERS = ("NOANYIO", "NOTRIO", "TRIO_NO_ERROR", "ANYIO_NO_ERROR")
+
+
+def find_magic_markers(
+    content: str,
+) -> dict[Literal["NOANYIO", "NOTRIO", "TRIO_NO_ERROR", "ANYIO_NO_ERROR"], bool]:
+    found_markers: dict[str, bool] = {m: False for m in MAGIC_MARKERS}
+    for f in re.findall(rf'# ({"|".join(MAGIC_MARKERS)})', content):
+        found_markers[f] = True
+    return found_markers  # type: ignore
+
+
 @pytest.mark.parametrize(("test", "path"), test_files)
 @pytest.mark.parametrize("autofix", [False, True])
-def test_eval(test: str, path: Path, autofix: bool, generate_autofix: bool):
+@pytest.mark.parametrize("anyio", [False, True])
+def test_eval(
+    test: str, path: Path, autofix: bool, anyio: bool, generate_autofix: bool
+):
     content = path.read_text()
-    if "# NOTRIO" in content:
-        pytest.skip("file marked with NOTRIO")
-
-    expected, parsed_args, enable = _parse_eval_file(test, content)
-    if autofix:
-        parsed_args.append(f"--autofix={enable}")
-    if "# TRIO_NO_ERROR" in content:
-        expected = []
-
-    plugin = Plugin.from_source(content)
-    _ = assert_expected_errors(plugin, *expected, args=parsed_args)
-
-    if autofix:
-        check_autofix(test, plugin, content, generate_autofix)
-    else:
-        # make sure content isn't modified
-        assert content == plugin.module.code
-
-
-@pytest.mark.parametrize(("test", "path"), test_files)
-def test_eval_anyio(test: str, path: Path, generate_autofix: bool):
-    # read content, replace instances of trio with anyio, and write to tmp_file
-    content = path.read_text()
-
-    if "# NOANYIO" in content:
+    magic_markers = find_magic_markers(content)
+    if anyio and magic_markers["NOANYIO"]:
         pytest.skip("file marked with NOANYIO")
 
-    # if test is marked NOTRIO, it's not written to require substitution
-    if "# NOTRIO" not in content:
+    ignore_column = False
+    if magic_markers["NOTRIO"]:
+        if not anyio:
+            pytest.skip("file marked with NOTRIO")
+
+        # if test is marked NOTRIO, it's not written to require substitution
+    elif anyio:
         content = replace_library(content)
 
         # if substituting we're messing up columns
         ignore_column = True
-    else:
-        ignore_column = False
 
-    # parse args and expected errors
     expected, parsed_args, enable = _parse_eval_file(test, content)
+    if anyio:
+        parsed_args.insert(0, "--anyio")
+    if autofix:
+        parsed_args.append(f"--autofix={enable}")
 
-    parsed_args.insert(0, "--anyio")
-    parsed_args.append(f"--autofix={enable}")
-
-    # initialize plugin and check errors, ignoring columns since they occasionally are
-    # wrong due to len("anyio") > len("trio")
-    plugin = Plugin.from_source(content)
-
-    if "# ANYIO_NO_ERROR" in content:
+    if (anyio and magic_markers["ANYIO_NO_ERROR"]) or (
+        not anyio and magic_markers["TRIO_NO_ERROR"]
+    ):
         expected = []
 
+    plugin = Plugin.from_source(content)
     errors = assert_expected_errors(
         plugin, *expected, args=parsed_args, ignore_column=ignore_column
     )
 
-    # check that error messages refer to 'anyio', or to neither library
-    for error in errors:
-        message = error.message.format(*error.args)
-        assert "anyio" in message or "trio" not in message
+    if anyio:
+        # check that error messages refer to 'anyio', or to neither library
+        for error in errors:
+            message = error.message.format(*error.args)
+            assert "anyio" in message or "trio" not in message
 
-    check_autofix(test, plugin, content, generate_autofix, anyio=True)
+    if autofix:
+        check_autofix(test, plugin, content, generate_autofix, anyio=anyio)
+    else:
+        # make sure content isn't modified
+        assert content == plugin.module.code
 
 
 # check that autofixed files raise no errors and doesn't get autofixed (again)
@@ -250,9 +248,9 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
 
     parsed_args = []
 
-    # only enable the tested visitor to save performance and ease debugging
-    # if a test requires enabling multiple visitors they specify a
-    # `# ARG --enable-vis...` that comes later in the arg list, overriding this
+    # Only enable the tested visitor to save performance and ease debugging.
+    # If a test requires enabling multiple visitors they specify a
+    # `# ARG --enable=` that comes later in the arg list, overriding this.
     enabled_codes = ""
     if test in ERROR_CODES:
         parsed_args = [f"--enable={test}"]
@@ -282,8 +280,6 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
 
         for err_code, alt_code, err_args in k:
             try:
-                # Append a bunch of empty strings so string formatting gives garbage
-                # instead of throwing an exception
                 try:
                     args = eval(
                         f"[{err_args}]",
