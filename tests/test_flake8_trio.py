@@ -14,8 +14,9 @@ import tokenize
 import unittest
 from argparse import ArgumentParser
 from collections import deque
+from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, DefaultDict, Literal
+from typing import TYPE_CHECKING, Any, DefaultDict
 
 import libcst as cst
 import pytest
@@ -157,18 +158,30 @@ def check_autofix(
     assert added_autofix_diff == autofix_diff_content
 
 
-MAGIC_MARKERS = ("NOANYIO", "NOTRIO", "TRIO_NO_ERROR", "ANYIO_NO_ERROR")
+# This can be further cleaned up by adding the other return values from
+# parse_eval_file (Errors, args and enabled_codes) to this class - and find magic
+# markers in the same pass as we parse out errors etc.
+@dataclass
+class MagicMarkers:
+    NOANYIO: bool = False
+    NOTRIO: bool = False
+    ANYIO_NO_ERROR: bool = False
+    TRIO_NO_ERROR: bool = False
 
 
 def find_magic_markers(
     content: str,
-) -> dict[Literal["NOANYIO", "NOTRIO", "TRIO_NO_ERROR", "ANYIO_NO_ERROR"], bool]:
-    found_markers: dict[str, bool] = {m: False for m in MAGIC_MARKERS}
-    for f in re.findall(rf'# ({"|".join(MAGIC_MARKERS)})', content):
-        found_markers[f] = True
-    return found_markers  # type: ignore
+) -> MagicMarkers:
+    found_markers = MagicMarkers()
+    markers = (f.name for f in fields(found_markers))
+    pattern = rf'# ({"|".join(markers)})'
+    for f in re.findall(pattern, content):
+        setattr(found_markers, f, True)
+    return found_markers
 
 
+# This could be optimized not to reopen+reread+reparse the same file over and over
+# when testing the same file
 @pytest.mark.parametrize(("test", "path"), test_files)
 @pytest.mark.parametrize("autofix", [False, True])
 @pytest.mark.parametrize("anyio", [False, True])
@@ -177,11 +190,11 @@ def test_eval(
 ):
     content = path.read_text()
     magic_markers = find_magic_markers(content)
-    if anyio and magic_markers["NOANYIO"]:
+    if anyio and magic_markers.NOANYIO:
         pytest.skip("file marked with NOANYIO")
 
     ignore_column = False
-    if magic_markers["NOTRIO"]:
+    if magic_markers.NOTRIO:
         if not anyio:
             pytest.skip("file marked with NOTRIO")
 
@@ -198,8 +211,8 @@ def test_eval(
     if autofix:
         parsed_args.append(f"--autofix={enable}")
 
-    if (anyio and magic_markers["ANYIO_NO_ERROR"]) or (
-        not anyio and magic_markers["TRIO_NO_ERROR"]
+    if (anyio and magic_markers.ANYIO_NO_ERROR) or (
+        not anyio and magic_markers.TRIO_NO_ERROR
     ):
         expected = []
 
