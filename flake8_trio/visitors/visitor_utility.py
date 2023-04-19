@@ -68,13 +68,13 @@ class VisitorTypeTracker(Flake8TrioVisitor):
 
         # `f = open(...)`
         if isinstance(node.value, ast.Call) and (
-            vartype := self.typed_calls.get(ast.unparse(node.value.func), None)
+            vartype := self.typed_calls.get(ast.unparse(node.value.func))
         ):
             self.variables[node.targets[0].id] = vartype
 
         # f = ff (and ff is a variable with known type)
         elif isinstance(node.value, ast.Name) and (
-            value := self.variables.get(node.value.id, None)
+            value := self.variables.get(node.value.id)
         ):
             self.variables[node.targets[0].id] = value
 
@@ -85,11 +85,7 @@ class VisitorTypeTracker(Flake8TrioVisitor):
         if (
             isinstance(item.context_expr, ast.Call)
             and isinstance(item.optional_vars, ast.Name)
-            and (
-                vartype := self.typed_calls.get(
-                    ast.unparse(item.context_expr.func), None
-                )
-            )
+            and (vartype := self.typed_calls.get(ast.unparse(item.context_expr.func)))
         ):
             self.variables[item.optional_vars.id] = vartype
 
