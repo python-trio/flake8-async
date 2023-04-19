@@ -68,3 +68,48 @@ async def function_name():
 
     async with random_ignored_library.fail_after(10):
         ...
+
+
+# Seems like the inner context manager 'hides' the checkpoint.
+async def does_contain_checkpoints():
+    with trio.fail_after(1):  # false-alarm TRIO100
+        with trio.CancelScope():  # or any other context manager
+            await trio.sleep_forever()
+
+
+async def more_nested_tests():
+    with trio.fail_after(1):
+        with trio.CancelScope():
+            await trio.sleep_forever()
+        # error: 13, "trio", "CancelScope"
+        ...
+        with trio.CancelScope():
+            await trio.sleep_forever()
+        # error: 13, "trio", "CancelScope"
+        ...
+
+    # error: 9, "trio", "fail_after"
+    # error: 13, "trio", "CancelScope"
+    ...
+    # error: 13, "trio", "CancelScope"
+    ...
+
+    with trio.fail_after(1):
+        with trio.CancelScope():
+            with trio.CancelScope():
+                with trio.CancelScope():
+                    await trio.sleep_forever()
+
+    # don't remove other scopes
+    with contextlib.suppress(Exception):
+        print("foo")
+    # error: 9, "trio", "fail_after"
+    with contextlib.suppress(Exception):
+        print("foo")
+    with contextlib.suppress(Exception):
+        # error: 13, "trio", "fail_after"
+        print("foo")
+
+    with contextlib.suppress(Exception):
+        with open("blah") as file:
+            print("foo")

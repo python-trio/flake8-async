@@ -36,8 +36,8 @@ class Visitor100_libcst(Flake8TrioVisitor_cst):
         self.node_dict: dict[cst.With, list[AttributeCall]] = {}
 
     def checkpoint(self) -> None:
-        if self.has_checkpoint_stack:
-            self.has_checkpoint_stack[-1] = True
+        # Set the whole stack to True.
+        self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
 
     def visit_With(self, node: cst.With) -> None:
         if m.matches(node, m.With(asynchronous=m.Asynchronous())):
