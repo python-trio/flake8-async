@@ -643,7 +643,9 @@ def consume(iterator: Iterable[Any]):
 
 @pytest.mark.fuzz()
 class TestFuzz(unittest.TestCase):
-    @settings(max_examples=1_000, suppress_health_check=[HealthCheck.too_slow])
+    @settings(
+        max_examples=1_000, deadline=None, suppress_health_check=[HealthCheck.too_slow]
+    )
     @given((from_grammar() | from_node()).map(ast.parse))
     def test_does_not_crash_on_any_valid_code(self, syntax_tree: ast.AST):
         # TODO: figure out how to get unittest to play along with pytest options
