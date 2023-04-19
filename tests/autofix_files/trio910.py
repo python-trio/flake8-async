@@ -583,3 +583,19 @@ async def foo_comprehension_2():  # error: 0, "exit", Statement("function defini
 
 async def foo_comprehension_3():
     [... async for x in bar()]
+
+
+# Issue #714
+# (await x async for y in await z)
+#  ^       ^              ^ this always runs!
+#  ^       ^ this might not run
+#  ^ this might not run
+
+
+async def await_in_gen_target():
+    (print(x) for x in await foo())
+
+
+async def await_everywhere_except_gen_target():  # error: 0, "exit", Statement("function definition", lineno)
+    (await x async for x in bar())
+    await trio.lowlevel.checkpoint()
