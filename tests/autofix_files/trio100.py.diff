@@ -84,3 +84,49 @@
 
      async with random_ignored_library.fail_after(10):
          ...
+@@ x,18 x,18 @@
+     with trio.fail_after(1):
+         with trio.CancelScope():
+             await trio.sleep_forever()
+-        with trio.CancelScope():  # error: 13, "trio", "CancelScope"
+-            ...
++        # error: 13, "trio", "CancelScope"
++        ...
+         with trio.CancelScope():
+             await trio.sleep_forever()
+-        with trio.CancelScope():  # error: 13, "trio", "CancelScope"
+-            ...
++        # error: 13, "trio", "CancelScope"
++        ...
+
+-    with trio.fail_after(1):  # error: 9, "trio", "fail_after"
+-        with trio.CancelScope():  # error: 13, "trio", "CancelScope"
+-            ...
+-        with trio.CancelScope():  # error: 13, "trio", "CancelScope"
+-            ...
++    # error: 9, "trio", "fail_after"
++    # error: 13, "trio", "CancelScope"
++    ...
++    # error: 13, "trio", "CancelScope"
++    ...
+
+     with trio.fail_after(1):
+         with trio.CancelScope():
+@@ x,12 x,12 @@
+     # don't remove other scopes
+     with contextlib.suppress(Exception):
+         print("foo")
+-    with trio.fail_after(1):  # error: 9, "trio", "fail_after"
+-        with contextlib.suppress(Exception):
+-            print("foo")
++    # error: 9, "trio", "fail_after"
+     with contextlib.suppress(Exception):
+-        with trio.fail_after(1):  # error: 13, "trio", "fail_after"
+-            print("foo")
++        print("foo")
++    with contextlib.suppress(Exception):
++        # error: 13, "trio", "fail_after"
++        print("foo")
+
+     with contextlib.suppress(Exception):
+         with open("blah") as file:

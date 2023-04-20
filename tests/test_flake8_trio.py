@@ -153,7 +153,10 @@ def check_autofix(
         return
 
     # assert that there's no difference in the autofixed code from before
-    assert visited_code == previous_autofixed
+    assert visited_code == previous_autofixed, (
+        "autofix diff, run with --generate-autofix if the test file has changed to"
+        " update the autofix files."
+    )
     # and assert that the diff is the same, which it should be if the above passes
     assert added_autofix_diff == autofix_diff_content
 
