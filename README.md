@@ -39,7 +39,7 @@ pip install flake8-trio
 - **TRIO113**: Using `nursery.start_soon` in `__aenter__` doesn't wait for the task to begin. Consider replacing with `nursery.start`.
 - **TRIO114**: Startable function (i.e. has a `task_status` keyword parameter) not in `--startable-in-context-manager` parameter list, please add it so TRIO113 can catch errors when using it.
 - **TRIO115**: Replace `trio.sleep(0)` with the more suggestive `trio.lowlevel.checkpoint()`.
-- **TRIO116**: `trio.sleep()` with >24 hour interval should usually be`trio.sleep_forever()`.
+- **TRIO116**: `trio.sleep()` with >24 hour interval should usually be `trio.sleep_forever()`.
 - **TRIO117**: Don't raise or catch `trio.[NonBase]MultiError`, prefer `[exceptiongroup.]BaseExceptionGroup`. Even if Trio still raises `MultiError` for legacy code, it can be caught with `BaseExceptionGroup` so it's fully redundant.
 - **TRIO118**: Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable, since that breaks linter checks and multi-backend programs.
 
