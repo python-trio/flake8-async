@@ -769,9 +769,11 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
 
         return False
 
-    # We don't have any logic on if generators are guaranteed to unroll, so always
-    # ignore their content by not visiting subnodes.
+    # The generator target will be immediately evaluated, but the other
+    # elements will be lazily evaluated as the generator is consumed so we don't
+    # visit them as any checkpoints in them are not guaranteed to execute.
     def visit_GeneratorExp(self, node: cst.GeneratorExp):
+        node.for_in.iter.visit(self)
         return False
 
     def visit_Import(self, node: cst.Import):
