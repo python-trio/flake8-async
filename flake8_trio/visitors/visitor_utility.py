@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import ast
-from typing import Any
+import functools
+import re
+from typing import TYPE_CHECKING, Any
 
 import libcst as cst
 import libcst.matchers as m
+from libcst.metadata import PositionProvider
 
 from .flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst
 from .helpers import utility_visitor, utility_visitor_cst
+
+if TYPE_CHECKING:
+    from re import Match
 
 
 @utility_visitor
@@ -134,3 +140,59 @@ class VisitorLibraryHandler_cst(Flake8TrioVisitor_cst):
             ):
                 assert isinstance(alias.name.value, str)
                 self.add_library(alias.name.value)
+
+
+# taken from
+# https://github.com/PyCQA/flake8/blob/d016204366a22d382b5b56dc14b6cbff28ce929e/src/flake8/defaults.py#L27
+NOQA_INLINE_REGEXP = re.compile(
+    # We're looking for items that look like this:
+    # ``# noqa``
+    # ``# noqa: E123``
+    # ``# noqa: E123,W451,F921``
+    # ``# noqa:E123,W451,F921``
+    # ``# NoQA: E123,W451,F921``
+    # ``# NOQA: E123,W451,F921``
+    # ``# NOQA:E123,W451,F921``
+    # We do not want to capture the ``: `` that follows ``noqa``
+    # We do not care about the casing of ``noqa``
+    # We want a comma-separated list of errors
+    # upstream links to an old version on regex101
+    # https://regex101.com/r/4XUuax/5 full explanation of the regex
+    r"# noqa(?::[\s]?(?P<codes>([A-Z]+[0-9]+(?:[,\s]+)?)+))?",
+    re.IGNORECASE,
+)
+
+
+@functools.lru_cache(maxsize=512)
+def _find_noqa(physical_line: str) -> Match[str] | None:
+    return NOQA_INLINE_REGEXP.search(physical_line)
+
+
+@utility_visitor_cst
+class NoqaHandler(Flake8TrioVisitor_cst):
+    def visit_Comment(self, node: cst.Comment):
+        noqa_match = _find_noqa(node.value)
+        if noqa_match is None:
+            return False
+
+        codes_str = noqa_match.groupdict()["codes"]
+        pos = self.get_metadata(PositionProvider, node).start
+
+        codes: set[str]
+
+        # blanket noqa
+        if codes_str is None:
+            # this also includes a non-blanket noqa with a list of invalid codes
+            # so one should maybe instead specifically look for no `:`
+            codes = set()
+        else:
+            # split string on ",", strip of whitespace, and save in set if non-empty
+            codes = {
+                item_strip
+                for item in codes_str.split(",")
+                if (item_strip := item.strip())
+            }
+
+            # TODO: Check that code exists
+        self.noqas[pos.line] = codes
+        return False
