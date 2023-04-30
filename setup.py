@@ -50,6 +50,6 @@ setup(
     long_description_content_type="text/markdown",
     entry_points={
         "flake8.extension": ["TRI = flake8_trio:Plugin"],
-        "console_scripts": ["flake8_trio=flake8_trio:main"],
+        "console_scripts": ["flake8-trio=flake8_trio:main"],
     },
 )

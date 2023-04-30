@@ -39,7 +39,7 @@ def test_run_flake8_trio(tmp_path: Path):
     write_examplepy(tmp_path)
     res = subprocess.run(
         [
-            "flake8_trio",
+            "flake8-trio",
             "./example.py",
         ],
         cwd=tmp_path,
@@ -54,7 +54,7 @@ def test_systemexit_0(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8_trio", "./example.py"])
+    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8-trio", "./example.py"])
 
     tmp_path.joinpath("example.py").write_text("")
 
@@ -72,7 +72,7 @@ def test_systemexit_1(
 ):
     write_examplepy(tmp_path)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8_trio", "./example.py"])
+    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8-trio", "./example.py"])
 
     with pytest.raises(SystemExit) as exc_info:
         from flake8_trio import __main__  # noqa
@@ -89,7 +89,7 @@ def test_run_in_git_repo(tmp_path: Path):
     assert subprocess.run(["git", "add", "example.py"], cwd=tmp_path)
     res = subprocess.run(
         [
-            "flake8_trio",
+            "flake8-trio",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -103,7 +103,7 @@ def test_run_no_git_repo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8_trio"])
+    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8-trio"])
     assert main() == 1
     out, err = capsys.readouterr()
     assert err == "Doesn't seem to be a git repo; pass filenames to format.\n"
@@ -116,7 +116,7 @@ def test_run_100_autofix(
     write_examplepy(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
-        sys, "argv", [tmp_path / "flake8_trio", "--autofix=TRIO", "./example.py"]
+        sys, "argv", [tmp_path / "flake8-trio", "--autofix=TRIO", "./example.py"]
     )
     assert main() == 1
 
@@ -256,7 +256,7 @@ def test_enable(
 ):
     write_examplepy(tmp_path)
     monkeypatch.chdir(tmp_path)
-    argv = [tmp_path / "flake8_trio", "./example.py"]
+    argv = [tmp_path / "flake8-trio", "./example.py"]
     monkeypatch.setattr(sys, "argv", argv)
 
     def _helper(*args: str, error: bool = False, autofix: bool = False) -> None:
