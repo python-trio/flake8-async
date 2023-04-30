@@ -1,6 +1,6 @@
 ---
 +++
-@@ x,50 x,51 @@
+@@ x,56 x,57 @@
 
  # a
  # b
@@ -41,7 +41,7 @@
  # b
  # fmt: off
 -with trio.move_on_after(10): ...;...;... # error: 5, "trio", "move_on_after"
-+...;...;...
++...;...;... # error: 5, "trio", "move_on_after"
  # fmt: on
  # c
  # d
@@ -82,4 +82,11 @@
 +# error: 4, "trio", "move_on_after"
 +# c
 +...; ...; ...
+ # fmt: on
+
+
+ # same-line with
+ # fmt: off
+-with trio.fail_after(5): print(1)  # TRIO100: 5, 'trio', 'fail_after'
++print(1)  # TRIO100: 5, 'trio', 'fail_after'
  # fmt: on

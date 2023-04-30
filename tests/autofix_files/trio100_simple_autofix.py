@@ -25,7 +25,7 @@ pass
 # a
 # b
 # fmt: off
-...;...;...
+...;...;... # error: 5, "trio", "move_on_after"
 # fmt: on
 # c
 # d
@@ -50,4 +50,10 @@ pass
 # error: 4, "trio", "move_on_after"
 # c
 ...; ...; ...
+# fmt: on
+
+
+# same-line with
+# fmt: off
+print(1)  # TRIO100: 5, 'trio', 'fail_after'
 # fmt: on

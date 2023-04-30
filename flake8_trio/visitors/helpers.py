@@ -377,7 +377,11 @@ def flatten_preserving_comments(node: cst.BaseCompoundStatement):
     # and IndentedBlock
     if isinstance(node.body, cst.SimpleStatementSuite):
         # `with ...: pass;pass;pass` -> pass;pass;pass
-        return cst.SimpleStatementLine(node.body.body, leading_lines=new_leading_lines)
+        return cst.SimpleStatementLine(
+            node.body.body,
+            leading_lines=new_leading_lines,
+            trailing_whitespace=node.body.trailing_whitespace,
+        )
 
     assert isinstance(node.body, cst.IndentedBlock)
     nodes = list(node.body.body)

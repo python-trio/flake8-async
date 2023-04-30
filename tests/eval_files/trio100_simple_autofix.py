@@ -50,3 +50,9 @@ with (  # a
     # c
 ): ...; ...; ...
 # fmt: on
+
+
+# same-line with
+# fmt: off
+with trio.fail_after(5): print(1)  # TRIO100: 5, 'trio', 'fail_after'
+# fmt: on
