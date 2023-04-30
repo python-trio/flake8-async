@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 class Flake8TrioVisitor(ast.NodeVisitor, ABC):
     # abstract attribute by not providing a value
-    error_codes: dict[str, str]  # pyright: reportUninitializedInstanceVariable=false
+    error_codes: dict[str, str]  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def __init__(self, shared_state: SharedState):
         super().__init__()
@@ -158,7 +158,7 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
 
 class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
     # abstract attribute by not providing a value
-    error_codes: dict[str, str]  # pyright: reportUninitializedInstanceVariable=false
+    error_codes: dict[str, str]  # pyright: ignore[reportUninitializedInstanceVariable]
     METADATA_DEPENDENCIES = (PositionProvider,)
 
     def __init__(self, shared_state: SharedState):
@@ -167,6 +167,7 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
         self.__state = shared_state
 
         self.options = self.__state.options
+        self.noqas = self.__state.noqas
 
     def get_state(self, *attrs: str, copy: bool = False) -> dict[str, Any]:
         # require attrs, since we inherit a *ton* of stuff which we don't want to copy

@@ -108,7 +108,13 @@ def check_autofix(
     visited_code = plugin.module.code
 
     if "# AUTOFIX" not in unfixed_code:
-        assert unfixed_code == visited_code
+        # if the file is specifically marked with NOAUTOFIX, that means it has visitors
+        # that will autofix with --autofix, but the file explicitly doesn't want to check
+        # the result of doing that. THIS IS DANGEROUS
+        if "# NOAUTOFIX" in unfixed_code:
+            print(f"eval file {test} marked with dangerous marker NOAUTOFIX")
+        else:
+            assert unfixed_code == visited_code
         return
 
     # the full generated source code, saved from a previous run
@@ -185,9 +191,9 @@ def find_magic_markers(
 
 # This could be optimized not to reopen+reread+reparse the same file over and over
 # when testing the same file
-@pytest.mark.parametrize(("test", "path"), test_files)
-@pytest.mark.parametrize("autofix", [False, True])
-@pytest.mark.parametrize("anyio", [False, True])
+@pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])
+@pytest.mark.parametrize("autofix", [False, True], ids=["noautofix", "autofix"])
+@pytest.mark.parametrize("anyio", [False, True], ids=["trio", "anyio"])
 def test_eval(
     test: str, path: Path, autofix: bool, anyio: bool, generate_autofix: bool
 ):
@@ -196,7 +202,9 @@ def test_eval(
     if anyio and magic_markers.NOANYIO:
         pytest.skip("file marked with NOANYIO")
 
-    ignore_column = False
+    # if autofixing, columns may get messed up
+    ignore_column = autofix
+
     if magic_markers.NOTRIO:
         if not anyio:
             pytest.skip("file marked with NOTRIO")
@@ -241,6 +249,8 @@ def test_eval(
 @pytest.mark.parametrize("test", autofix_files)
 def test_autofix(test: str):
     content = autofix_files[test].read_text()
+    assert content, "empty file"
+
     if "# NOTRIO" in content:
         pytest.skip("file marked with NOTRIO")
 
@@ -334,7 +344,9 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
 
     enabled_codes_list = enabled_codes.split(",")
     for code in enabled_codes_list:
-        assert re.fullmatch(r"TRIO\d\d\d", code)
+        assert re.fullmatch(
+            r"TRIO\d\d\d", code
+        ), f"invalid code {code} in list {enabled_codes_list}"
 
     for error in expected:
         for code in enabled_codes.split(","):

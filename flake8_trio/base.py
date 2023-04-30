@@ -63,7 +63,8 @@ class Error:
         yield None
 
     def cmp(self):
-        return self.line, self.col, self.code, self.args
+        # column may be ignored/modified when autofixing, so sort on that last
+        return self.line, self.code, self.args, self.col
 
     # for sorting in tests
     def __lt__(self, other: Any) -> bool:
