@@ -70,7 +70,7 @@ pip install flake8 flake8-trio
 flake8 .
 ```
 ### install and run with pre-commit
-If you use [pre-commit](https://pre-commit.com/), you can use it with flake8_trio by
+If you use [pre-commit](https://pre-commit.com/), you can use it with flake8-trio by
 adding the following to your `.pre-commit-config.yaml`:
 
 ```yaml
@@ -84,7 +84,7 @@ repos:
 ```
 
 This is often considerably faster for large projects, because `pre-commit`
-can avoid running `flake8_trio` on unchanged files.  
+can avoid running `flake8-trio` on unchanged files.
 
 
 Afterwards, run
@@ -96,25 +96,25 @@ pre-commit run .
 If inside a git repository, running without arguments will run it against all `*.py` files in the repository.
 ```sh
 pip install flake8-trio
-flake8_trio
+flake8-trio
 ```
 #### with autofixes
 ```sh
-flake8_trio --autofix=TRIO
+flake8-trio --autofix=TRIO
 ```
 #### specifying source files
 ```sh
-flake8_trio my_python_file.py
+flake8-trio my_python_file.py
 ```
 ##### zsh-only
 ```zsh
-flake8_trio **/*.py
+flake8-trio **/*.py
 ```
 
 ## Configuration
 [You can configure `flake8` with command-line options](https://flake8.pycqa.org/en/latest/user/configuration.html),
-but we prefer using a config file. The file needs to start with a section marker `[flake8]` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.  
-Note that it's not currently possible to use a configuration file when running flake8_trio standalone.
+but we prefer using a config file. The file needs to start with a section marker `[flake8]` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.
+Note that it's not currently possible to use a configuration file when running `flake8-trio` standalone.
 
 ### `--enable`
 Comma-separated list of error codes to enable, similar to flake8 --select but is additionally more performant as it will disable non-enabled visitors from running instead of just silencing their errors.

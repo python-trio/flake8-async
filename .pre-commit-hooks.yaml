@@ -1,6 +1,6 @@
 ---
-    - id: flake8_trio
-      name: flake8_trio
-      entry: flake8_trio
+    - id: flake8-trio
+      name: flake8-trio
+      entry: flake8-trio
       language: python
       types: [python]

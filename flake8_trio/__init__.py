@@ -75,7 +75,7 @@ def cst_parse_module_native(source: str) -> cst.Module:
 
 
 def main() -> int:
-    parser = ArgumentParser(prog="flake8_trio")
+    parser = ArgumentParser(prog="flake8-trio")
     Plugin.add_options(parser)
     args = parser.parse_args()
     Plugin.parse_options(args)
