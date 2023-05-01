@@ -357,7 +357,9 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
             if error.code.startswith(code):
                 break
         else:
-            assert error.code in enabled_codes_list, "Expected error code not enabled"
+            assert (
+                error.code in enabled_codes_list
+            ), f"Expected error code {error.code} not enabled"
 
     return expected, parsed_args, enabled_codes
 
@@ -572,6 +574,23 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
         for err, type_ in zip(err_msg, (int, int, str, type(None))):
             assert isinstance(err, type_)
         assert err_msg == info_tuple(exp)
+
+
+# eval_files tests check that noqa is respected when running as standalone, but
+# they don't check anything when running as plugin.
+# When run as a plugin, flake8 will handle parsing of `noqa`.
+def test_noqa_respected_depending_on_standalone(tmp_path: Path):
+    text = """import trio
+with trio.move_on_after(10): ... # noqa
+"""
+    plugin = Plugin.from_source(text)
+    initialize_options(plugin, args=["--enable=TRIO100"])
+
+    assert plugin.standalone
+    assert not tuple(plugin.run())
+
+    plugin.standalone = False
+    assert len(tuple(plugin.run())) == 1
 
 
 @pytest.mark.fuzz()
