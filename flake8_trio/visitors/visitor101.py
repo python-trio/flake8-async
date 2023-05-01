@@ -60,6 +60,7 @@ class Visitor101(Flake8TrioVisitor_cst):
             node, "contextmanager", "asynccontextmanager", "fixture"
         )
 
+    # trigger on leaving yield so any comments are parsed for noqas
     def visit_Yield(self, node: cst.Yield):
         if self._yield_is_error:
             self.error(node)

@@ -23,16 +23,27 @@ EXAMPLE_PY_ERROR = (
 )
 
 
-def write_examplepy(tmp_path: Path) -> None:
-    assert tmp_path.joinpath("example.py").write_text(EXAMPLE_PY_TEXT)
+def write_examplepy(tmp_path: Path, text: str = EXAMPLE_PY_TEXT) -> None:
+    assert tmp_path.joinpath("example.py").write_text(text)
 
 
-def assert_autofixed(tmp_path: Path) -> None:
-    assert tmp_path.joinpath("example.py").read_text() == EXAMPLE_PY_AUTOFIXED_TEXT
+def assert_autofixed(tmp_path: Path, text: str = EXAMPLE_PY_AUTOFIXED_TEXT) -> None:
+    assert tmp_path.joinpath("example.py").read_text() == text
 
 
-def assert_unchanged(tmp_path: Path) -> None:
-    assert tmp_path.joinpath("example.py").read_text() == EXAMPLE_PY_TEXT
+def assert_unchanged(tmp_path: Path, text: str = EXAMPLE_PY_TEXT) -> None:
+    assert tmp_path.joinpath("example.py").read_text() == text
+
+
+def monkeypatch_argv(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    argv: list[Path | str] | None = None,
+) -> None:
+    if argv is None:
+        argv = [tmp_path / "flake8-trio", "./example.py"]
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", argv)
 
 
 def test_run_flake8_trio(tmp_path: Path):
@@ -53,8 +64,7 @@ def test_run_flake8_trio(tmp_path: Path):
 def test_systemexit_0(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8-trio", "./example.py"])
+    monkeypatch_argv(monkeypatch, tmp_path)
 
     tmp_path.joinpath("example.py").write_text("")
 
@@ -71,8 +81,7 @@ def test_systemexit_1(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
     write_examplepy(tmp_path)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8-trio", "./example.py"])
+    monkeypatch_argv(monkeypatch, tmp_path)
 
     with pytest.raises(SystemExit) as exc_info:
         from flake8_trio import __main__  # noqa
@@ -102,8 +111,7 @@ def test_run_in_git_repo(tmp_path: Path):
 def test_run_no_git_repo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", [tmp_path / "flake8-trio"])
+    monkeypatch_argv(monkeypatch, tmp_path, [tmp_path / "flake8-trio"])
     assert main() == 1
     out, err = capsys.readouterr()
     assert err == "Doesn't seem to be a git repo; pass filenames to format.\n"
@@ -114,9 +122,10 @@ def test_run_100_autofix(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
     write_examplepy(tmp_path)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(
-        sys, "argv", [tmp_path / "flake8-trio", "--autofix=TRIO", "./example.py"]
+    monkeypatch_argv(
+        monkeypatch,
+        tmp_path,
+        [tmp_path / "flake8-trio", "--autofix=TRIO", "./example.py"],
     )
     assert main() == 1
 
@@ -255,9 +264,9 @@ def test_enable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
     write_examplepy(tmp_path)
-    monkeypatch.chdir(tmp_path)
-    argv = [tmp_path / "flake8-trio", "./example.py"]
-    monkeypatch.setattr(sys, "argv", argv)
+
+    argv: list[Path | str] = [tmp_path / "flake8-trio", "./example.py"]
+    monkeypatch_argv(monkeypatch, tmp_path, argv)
 
     def _helper(*args: str, error: bool = False, autofix: bool = False) -> None:
         for arg in args:
@@ -327,3 +336,56 @@ def test_flake8_plugin_with_autofix_fails(tmp_path: Path):
     )
     assert not res.stdout
     assert res.stderr == b"Cannot autofix when run as a flake8 plugin.\n"
+
+
+NOQA_TEXT = """import trio
+with trio.move_on_after(10): ... # noqa
+"""
+NOQA_TEXT_AST = """import trio as foo # noqa"""
+
+
+def test_noqa(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    write_examplepy(tmp_path, text=NOQA_TEXT)
+    monkeypatch_argv(monkeypatch, tmp_path)
+    assert main() == 0
+
+
+def test_disable_noqa_cst(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    write_examplepy(tmp_path, text=NOQA_TEXT)
+    monkeypatch_argv(
+        monkeypatch,
+        tmp_path,
+        [tmp_path / "flake8-trio", "./example.py", "--disable-noqa"],
+    )
+    assert main() == 1
+    out, err = capsys.readouterr()
+    assert not err
+    assert (
+        out
+        == "./example.py:2:6: TRIO100 trio.move_on_after context contains no"
+        " checkpoints, remove the context or add `await"
+        " trio.lowlevel.checkpoint()`.\n"
+    )
+
+
+def test_disable_noqa_ast(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    write_examplepy(tmp_path, text=NOQA_TEXT_AST)
+    monkeypatch_argv(
+        monkeypatch,
+        tmp_path,
+        [tmp_path / "flake8-trio", "./example.py", "--disable-noqa"],
+    )
+    assert main() == 1
+    out, err = capsys.readouterr()
+    assert not err
+    assert (
+        out
+        == "./example.py:1:1: TRIO106 trio must be imported with `import trio` for the"
+        " linter to work.\n"
+    )

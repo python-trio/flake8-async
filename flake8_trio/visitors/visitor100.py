@@ -55,10 +55,13 @@ class Visitor100_libcst(Flake8TrioVisitor_cst):
         self, original_node: cst.With, updated_node: cst.With
     ) -> cst.BaseStatement | cst.FlattenSentinel[cst.BaseStatement]:
         if not self.has_checkpoint_stack.pop():
+            autofix = len(updated_node.items) == 1
             for res in self.node_dict[original_node]:
-                self.error(res.node, res.base, res.function)
+                autofix &= self.error(
+                    res.node, res.base, res.function
+                ) and self.should_autofix(res.node)
 
-            if self.should_autofix() and len(updated_node.items) == 1:
+            if autofix:
                 return flatten_preserving_comments(updated_node)
 
         return updated_node

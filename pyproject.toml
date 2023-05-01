@@ -28,7 +28,7 @@ warn_unused_ignores = false
 [tool.pyright]
 exclude = ["**/node_modules", "**/__pycache__", "**/.*"]
 reportCallInDefaultInitializer = true
-reportImplicitStringConcatenation = true
+reportImplicitStringConcatenation = false  # black generates implicit string concats
 reportMissingSuperCall = true
 reportPropertyTypeMismatch = true
 reportShadowedImports = true
