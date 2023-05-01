@@ -131,9 +131,4 @@ class Flake8TrioRunner_cst(__CommonRunner):
         for v in (*self.utility_visitors, *self.visitors):
             self.module = cst.MetadataWrapper(self.module).visit(v)
 
-        for problem in self.state.problems:
-            noqa = self.state.noqas.get(problem.line)
-            # if there's a noqa comment, and it's bare or this code is listed in it
-            if noqa is not None and (noqa == set() or problem.code in noqa):
-                continue
-            yield problem
+        yield from self.state.problems

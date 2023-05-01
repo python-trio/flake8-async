@@ -150,9 +150,27 @@ class Plugin:
         return plugin
 
     def run(self) -> Iterable[Error]:
-        yield from Flake8TrioRunner.run(self._tree, self.options)
+        problems_ast = Flake8TrioRunner.run(self._tree, self.options)
+
         cst_runner = Flake8TrioRunner_cst(self.options, self.module)
-        yield from cst_runner.run()
+        problems_cst = cst_runner.run()
+
+        # when run as a flake8 plugin, flake8 handles suppressing errors from `noqa`.
+        # it's therefore important we don't suppress any errors for compatibility with
+        # flake8-noqa
+        if not self.standalone:
+            yield from problems_ast
+            yield from problems_cst
+            return
+
+        for problem in (*problems_ast, *problems_cst):
+            noqa = cst_runner.state.noqas.get(problem.line)
+            # if there's a noqa comment, and it's bare or this code is listed in it
+            if noqa is not None and (noqa == set() or problem.code in noqa):
+                continue
+            yield problem
+
+        # update saved module so modified source code can be accessed when autofixing
         self.module = cst_runner.module
 
     @staticmethod
