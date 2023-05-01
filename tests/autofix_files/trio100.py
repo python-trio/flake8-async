@@ -9,7 +9,7 @@ import trio
 
 async def function_name():
     # fmt: off
-    ...; ...; ...
+    ...; ...; ...  # error: 15, "trio", "fail_after"
     # fmt: on
     # error: 15, "trio", "fail_after"
     ...

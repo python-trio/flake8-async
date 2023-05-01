@@ -164,7 +164,11 @@ def check_autofix(
         " update the autofix files."
     )
     # and assert that the diff is the same, which it should be if the above passes
-    assert added_autofix_diff == autofix_diff_content
+    assert added_autofix_diff == autofix_diff_content, (
+        "THIS SHOULD NOT HAPPEN: diff in the autofix diff - without there being a diff"
+        " in the autofixed code, run with --generate-autofix if the test file has"
+        " changed to update the autofix files."
+    )
 
 
 # This can be further cleaned up by adding the other return values from
