@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## Future
+## 23.5.1
 - TRIO91X now supports comprehensions
 - TRIO100 and TRIO91X now supports autofixing
 - Renamed `--enable-visitor-codes-regex` to `--enable`
