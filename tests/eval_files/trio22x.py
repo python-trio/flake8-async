@@ -3,6 +3,9 @@
 
 
 async def foo():
+    await async_fun(
+        subprocess.getoutput()  # TRIO221: 8, 'subprocess.getoutput', "trio"
+    )
     subprocess.Popen()  # TRIO220: 4, 'subprocess.Popen', "trio"
     os.system()  # TRIO221: 4, 'os.system', "trio"
 

@@ -18,6 +18,7 @@ from .visitors import (
     utility_visitors,
     utility_visitors_cst,
 )
+from .visitors.visitor_utility import NoqaHandler
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -113,22 +114,35 @@ class Flake8TrioRunner_cst(__CommonRunner):
     def __init__(self, options: Options, module: Module):
         super().__init__(options)
         self.options = options
+        self.noqas: dict[int, set[str]] = {}
+
+        utility_visitors = utility_visitors_cst.copy()
+        if self.options.disable_noqa:
+            utility_visitors.remove(NoqaHandler)
 
         # Could possibly enable/disable utility visitors here, if visitors declared
         # dependencies
         self.utility_visitors: tuple[Flake8TrioVisitor_cst, ...] = tuple(
-            v(self.state) for v in utility_visitors_cst
+            v(self.state) for v in utility_visitors
         )
 
+        # sort the error classes to get predictable behaviour when multiple autofixers
+        # are enabled
+        sorted_error_classes_cst = sorted(ERROR_CLASSES_CST, key=lambda x: x.__name__)
         self.visitors: tuple[Flake8TrioVisitor_cst, ...] = tuple(
-            v(self.state) for v in ERROR_CLASSES_CST if self.selected(v.error_codes)
+            v(self.state)
+            for v in sorted_error_classes_cst
+            if self.selected(v.error_codes)
         )
         self.module = module
 
     def run(self) -> Iterable[Error]:
-        if not self.visitors:
-            return
         for v in (*self.utility_visitors, *self.visitors):
             self.module = cst.MetadataWrapper(self.module).visit(v)
 
         yield from self.state.problems
+
+        # expose the noqa's parsed by the last visitor, so they can be used to filter
+        # ast problems
+        if not self.options.disable_noqa:
+            self.noqas = v.noqas  # type: ignore[reportUnboundVariable]

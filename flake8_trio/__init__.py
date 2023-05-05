@@ -150,21 +150,24 @@ class Plugin:
         return plugin
 
     def run(self) -> Iterable[Error]:
-        problems_ast = Flake8TrioRunner.run(self._tree, self.options)
-
-        cst_runner = Flake8TrioRunner_cst(self.options, self.module)
-        problems_cst = cst_runner.run()
-
         # when run as a flake8 plugin, flake8 handles suppressing errors from `noqa`.
         # it's therefore important we don't suppress any errors for compatibility with
         # flake8-noqa
         if not self.standalone:
+            self.options.disable_noqa = True
+
+        cst_runner = Flake8TrioRunner_cst(self.options, self.module)
+        # any noqa'd errors are suppressed upon being generated
+        yield from cst_runner.run()
+
+        problems_ast = Flake8TrioRunner.run(self._tree, self.options)
+        if self.options.disable_noqa:
             yield from problems_ast
-            yield from problems_cst
             return
 
-        for problem in (*problems_ast, *problems_cst):
-            noqa = cst_runner.state.noqas.get(problem.line)
+        for problem in problems_ast:
+            # access the stored noqas in cst_runner
+            noqa = cst_runner.noqas.get(problem.line)
             # if there's a noqa comment, and it's bare or this code is listed in it
             if noqa is not None and (noqa == set() or problem.code in noqa):
                 continue
@@ -183,6 +186,16 @@ class Plugin:
                 metavar="file",
                 dest="files",
                 help="Files(s) to format, instead of autodetection.",
+            )
+            add_argument(
+                "--disable-noqa",
+                required=False,
+                default=False,
+                action="store_true",
+                help=(
+                    'Disable the effect of "# noqa". This will report errors on '
+                    'lines with "# noqa" at the end.'
+                ),
             )
         else:  # if run as a flake8 plugin
             Plugin.standalone = False
@@ -326,6 +339,7 @@ class Plugin:
             startable_in_context_manager=options.startable_in_context_manager,
             trio200_blocking_calls=options.trio200_blocking_calls,
             anyio=options.anyio,
+            disable_noqa=options.disable_noqa,
         )
 
 

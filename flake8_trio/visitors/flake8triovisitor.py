@@ -197,12 +197,19 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
     def restore_state(self, node: cst.CSTNode):
         self.set_state(self.outer.pop(node, {}))
 
+    def is_noqa(self, node: cst.CSTNode, code: str):
+        if self.options.disable_noqa:
+            return False
+        pos = self.get_metadata(PositionProvider, node).start
+        noqas = self.noqas.get(pos.line)
+        return noqas is not None and (noqas == set() or code in noqas)
+
     def error(
         self,
         node: cst.CSTNode,
         *args: str | Statement | int,
         error_code: str | None = None,
-    ):
+    ) -> bool:
         if error_code is None:
             assert (
                 len(self.error_codes) == 1
@@ -211,9 +218,12 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
         # don't emit an error if this code is disabled in a multi-code visitor
         # TODO: write test for only one of 910/911 enabled/autofixed
         elif error_code[:7] not in self.options.enabled_codes:
-            return  # pragma: no cover
-        pos = self.get_metadata(PositionProvider, node).start
+            return False  # pragma: no cover
 
+        if self.is_noqa(node, error_code):
+            return False
+
+        pos = self.get_metadata(PositionProvider, node).start
         self.__state.problems.append(
             Error(
                 # 7 == len('TRIO...'), so alt messages raise the original code
@@ -224,11 +234,15 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
                 *args,
             )
         )
+        return True
 
-    def should_autofix(self, code: str | None = None):
+    def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
         if code is None:
             assert len(self.error_codes) == 1
             code = next(iter(self.error_codes))
+        # this does not currently need to check for `noqa`s, as error() does that
+        # and no codes tries to autofix if there's no error. This might change if/when
+        # "printing an error" and "autofixing" becomes independent. See issue #192
         return code in self.options.autofix_codes
 
     @property

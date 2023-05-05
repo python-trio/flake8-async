@@ -118,7 +118,7 @@ class CommonVisitors(cst.CSTTransformer, ABC):
         ...
 
     @abstractmethod
-    def should_autofix(self) -> bool:
+    def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
         ...
 
     # instead of trying to exclude yields found in all the weird places from
@@ -126,6 +126,7 @@ class CommonVisitors(cst.CSTTransformer, ABC):
     # Several of them *could* be handled, e.g. `if ...: yield`, but
     # that's uncommon enough we don't care about it.
     def visit_SimpleStatementLine(self, node: cst.SimpleStatementLine):
+        super().visit_SimpleStatementLine(node)
         self.add_statement = None
 
     # insert checkpoint before yield with a flattensentinel, if indicated
@@ -134,10 +135,12 @@ class CommonVisitors(cst.CSTTransformer, ABC):
         original_node: cst.SimpleStatementLine,
         updated_node: cst.SimpleStatementLine,
     ) -> cst.SimpleStatementLine | cst.FlattenSentinel[cst.SimpleStatementLine]:
+        _ = super().leave_SimpleStatementLine(original_node, updated_node)
+
         # possible TODO: generate an error if transforming+visiting is done in a
         # single pass and emit-error-on-transform can be enabled/disabled. The error can't
         # be generated in the yield/return since it doesn't know if it will be autofixed.
-        if self.add_statement is None or not self.should_autofix():
+        if self.add_statement is None or not self.should_autofix(original_node):
             return updated_node
         curr_add_statement = self.add_statement
         self.add_statement = None
@@ -196,8 +199,8 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
     def library(self) -> tuple[str, ...]:
         return self.__library if self.__library else ("trio",)
 
-    def should_autofix(self) -> bool:
-        return True
+    def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
+        return not self.noautofix
 
     def leave_Yield(
         self,
@@ -206,7 +209,9 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
     ) -> cst.Yield:
         # Needs to be passed *original* node, since updated node is a copy
         # which loses identity equality
-        if original_node in self.nodes_needing_checkpoint and not self.noautofix:
+        if original_node in self.nodes_needing_checkpoint and self.should_autofix(
+            original_node
+        ):
             self.add_statement = checkpoint_statement(self.library[0])
         return updated_node
 
@@ -239,8 +244,10 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
         self.loop_state = LoopState()
         self.try_state = TryState()
 
-    def should_autofix(self, code: str | None = None) -> bool:
-        return super().should_autofix("TRIO911" if self.has_yield else "TRIO910")
+    def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
+        return not self.noautofix and super().should_autofix(
+            node, "TRIO911" if self.has_yield else "TRIO910"
+        )
 
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
         return checkpoint_statement(self.library[0])
@@ -290,7 +297,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
             self.async_function
             # updated_node does not have a position, so we must send original_node
             and self.check_function_exit(original_node)
-            and self.should_autofix()
+            and self.should_autofix(original_node)
             and isinstance(updated_node.body, cst.IndentedBlock)
         ):
             # insert checkpoint at the end of body
@@ -327,17 +334,20 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
             # Add this as a node potentially needing checkpoints only if it
             # missing checkpoints solely depends on whether the artificial statement is
             # "real"
-            if len(self.uncheckpointed_statements) == 1 and not self.noautofix:
+            if len(self.uncheckpointed_statements) == 1 and self.should_autofix(
+                original_node
+            ):
                 self.loop_state.nodes_needing_checkpoints.append(original_node)
                 return False
 
+        any_errors = False
         # raise the actual errors
         for statement in self.uncheckpointed_statements:
             if statement == ARTIFICIAL_STATEMENT:
                 continue
-            self.error_91x(original_node, statement)
+            any_errors |= self.error_91x(original_node, statement)
 
-        return True
+        return any_errors
 
     def leave_Return(
         self, original_node: cst.Return, updated_node: cst.Return
@@ -357,7 +367,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
         self,
         node: cst.Return | cst.FunctionDef | cst.Yield,
         statement: Statement,
-    ):
+    ) -> bool:
         assert statement != ARTIFICIAL_STATEMENT
 
         if isinstance(node, cst.FunctionDef):
@@ -365,7 +375,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
         else:
             msg = node.__class__.__name__.lower()
 
-        self.error(
+        return self.error(
             node,
             msg,
             statement,
@@ -403,7 +413,9 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
             return updated_node
         self.has_yield = True
 
-        if self.check_function_exit(original_node) and not self.noautofix:
+        if self.check_function_exit(original_node) and self.should_autofix(
+            original_node
+        ):
             self.add_statement = self.checkpoint_statement()
 
         # mark as requiring checkpoint after
@@ -596,8 +608,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
             ):
                 if stmt == ARTIFICIAL_STATEMENT:
                     continue
-                any_error = True
-                self.error_91x(err_node, stmt)
+                any_error |= self.error_91x(err_node, stmt)
 
         # if there's no errors from artificial statements, we don't need to insert
         # the potential checkpoints
@@ -664,7 +675,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
         | cst.FlattenSentinel[cst.For | cst.While]
         | cst.RemovalSentinel
     ):
-        if self.loop_state.nodes_needing_checkpoints and self.should_autofix():
+        if self.loop_state.nodes_needing_checkpoints:
             transformer = InsertCheckpointsInLoopBody(
                 self.loop_state.nodes_needing_checkpoints, self.library
             )

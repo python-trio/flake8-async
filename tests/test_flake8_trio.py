@@ -41,7 +41,10 @@ autofix_files: dict[str, Path] = {
     f.stem.upper(): f for f in AUTOFIX_DIR.iterdir() if f.suffix == ".py"
 }
 # check that there's an eval file for each autofix file
-assert set(autofix_files.keys()) - {f[0] for f in test_files} == set()
+extra_autofix_files = set(autofix_files.keys()) - {f[0] for f in test_files}
+assert (
+    extra_autofix_files == set()
+), f"no eval file for autofix file[s] {extra_autofix_files}"
 
 
 class ParseError(Exception):
@@ -80,15 +83,19 @@ def format_difflib_line(s: str) -> str:
 
 
 def diff_strings(first: str, second: str, /) -> str:
-    return "".join(
-        map(
-            format_difflib_line,
-            difflib.unified_diff(
-                first.splitlines(keepends=True),
-                second.splitlines(keepends=True),
-            ),
-        )
+    return (
+        "".join(
+            map(
+                format_difflib_line,
+                difflib.unified_diff(
+                    first.splitlines(keepends=True),
+                    second.splitlines(keepends=True),
+                ),
+            )
+        ).rstrip("\n")
+        + "\n"
     )
+    # make sure only single newline at end of file
 
 
 # replaces all instances of `original` with `new` in string
@@ -148,7 +155,7 @@ def check_autofix(
     added_autofix_diff = diff_strings(unfixed_code, visited_code)
 
     # print diff, mainly helpful during development
-    if diff:
+    if diff.strip():
         print("\n", diff)
 
     # if --generate-autofix is specified, which it may be during development,
@@ -198,8 +205,14 @@ def find_magic_markers(
 @pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])
 @pytest.mark.parametrize("autofix", [False, True], ids=["noautofix", "autofix"])
 @pytest.mark.parametrize("anyio", [False, True], ids=["trio", "anyio"])
+@pytest.mark.parametrize("noqa", [False, True], ids=["normal", "noqa"])
 def test_eval(
-    test: str, path: Path, autofix: bool, anyio: bool, generate_autofix: bool
+    test: str,
+    path: Path,
+    autofix: bool,
+    anyio: bool,
+    noqa: bool,
+    generate_autofix: bool,
 ):
     content = path.read_text()
     magic_markers = find_magic_markers(content)
@@ -219,6 +232,10 @@ def test_eval(
 
         # if substituting we're messing up columns
         ignore_column = True
+
+    if noqa:
+        # replace all instances of some error with noqa
+        content = re.sub(r"#[\s]*(error|TRIO\d\d\d):.*", "# noqa", content)
 
     expected, parsed_args, enable = _parse_eval_file(test, content)
     if anyio:
@@ -242,7 +259,7 @@ def test_eval(
             message = error.message.format(*error.args)
             assert "anyio" in message or "trio" not in message
 
-    if autofix:
+    if autofix and not noqa:
         check_autofix(test, plugin, content, generate_autofix, anyio=anyio)
     else:
         # make sure content isn't modified
@@ -266,7 +283,7 @@ def test_autofix(test: str):
     _ = assert_expected_errors(plugin, args=parsed_args)
 
     diff = diff_strings(plugin.module.code, content)
-    if diff:
+    if diff.strip():
         print(diff)
     assert plugin.module.code == content, "autofixed file changed when autofixed again"
 
@@ -579,7 +596,7 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
 # eval_files tests check that noqa is respected when running as standalone, but
 # they don't check anything when running as plugin.
 # When run as a plugin, flake8 will handle parsing of `noqa`.
-def test_noqa_respected_depending_on_standalone(tmp_path: Path):
+def test_noqa_respected_depending_on_standalone():
     text = """import trio
 with trio.move_on_after(10): ... # noqa
 """
@@ -591,6 +608,22 @@ with trio.move_on_after(10): ... # noqa
 
     plugin.standalone = False
     assert len(tuple(plugin.run())) == 1
+
+
+# TODO: failing test due to issue #193
+# the != in the assert should be a ==
+def test_line_numbers_match_end_result():
+    text = """import trio
+with trio.move_on_after(10):
+  ...
+
+trio.sleep(0)
+"""
+    plugin = Plugin.from_source(text)
+    initialize_options(plugin, args=["--enable=TRIO100,TRIO115", "--autofix=TRIO100"])
+    errors = tuple(plugin.run())
+    plugin.module.code
+    assert errors[1].line != plugin.module.code.split("\n").index("trio.sleep(0)") + 1
 
 
 @pytest.mark.fuzz()
