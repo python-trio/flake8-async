@@ -38,7 +38,9 @@ repos:
       rev: v1.1.299
       hooks:
           - id: pyright
-            entry: env PYRIGHT_PYTHON_FORCE_VERSION=latest pyright
+            # ignore warnings about new version being available, no other warnings
+            # are suppressed by this.
+            entry: env PYRIGHT_PYTHON_IGNORE_WARNING=true pyright
             args: [--pythonversion=3.11, --warnings]
             additional_dependencies:
           # Required for pyright strict mode
