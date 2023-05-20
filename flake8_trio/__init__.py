@@ -312,7 +312,7 @@ class Plugin:
         all_codes: set[str] = {
             err_code
             for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
-            for err_code in err_class.error_codes.keys()  # type: ignore[attr-defined]
+            for err_code in err_class.error_codes  # type: ignore[attr-defined]
             if len(err_code) == 7  # exclude e.g. TRIO103_anyio_trio
         }
 
@@ -367,7 +367,7 @@ def parse_trio200_dict(raw_value: str) -> dict[str, str]:
             # if we raise it as ValueError
             raise ArgumentTypeError(
                 f"Invalid number ({len(split_values)-1}) of splitter "
-                + f"tokens {splitter!r} in {value!r}"
+                f"tokens {splitter!r} in {value!r}"
             )
         res[split_values[0]] = split_values[1]
     return res

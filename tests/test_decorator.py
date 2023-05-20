@@ -94,7 +94,7 @@ common_flags = ["--select=TRIO", file_path]
 
 
 def test_command_line_1(capfd: pytest.CaptureFixture[str]):
-    Application().run(common_flags + ["--no-checkpoint-warning-decorators=app.route"])
+    Application().run([*common_flags, "--no-checkpoint-warning-decorators=app.route"])
     assert capfd.readouterr() == ("", "")
 
 
@@ -115,7 +115,7 @@ expected_out = (
 
 
 def test_command_line_2(capfd: pytest.CaptureFixture[str]):
-    Application().run(common_flags + ["--no-checkpoint-warning-decorators=app"])
+    Application().run([*common_flags, "--no-checkpoint-warning-decorators=app"])
     assert capfd.readouterr() == (expected_out, "")
 
 

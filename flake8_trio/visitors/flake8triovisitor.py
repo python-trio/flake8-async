@@ -153,7 +153,7 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
 
     def add_library(self, name: str) -> None:
         if name not in self.__state.library:
-            self.__state.library = self.__state.library + (name,)
+            self.__state.library = (*self.__state.library, name)
 
 
 class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
@@ -200,8 +200,9 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
     def is_noqa(self, node: cst.CSTNode, code: str):
         if self.options.disable_noqa:
             return False
-        pos = self.get_metadata(PositionProvider, node).start
-        noqas = self.noqas.get(pos.line)
+        # pyright + get_metadata is acting up
+        pos = self.get_metadata(PositionProvider, node).start  # type: ignore
+        noqas = self.noqas.get(pos.line)  # type: ignore
         return noqas is not None and (noqas == set() or code in noqas)
 
     def error(
@@ -223,13 +224,14 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
         if self.is_noqa(node, error_code):
             return False
 
-        pos = self.get_metadata(PositionProvider, node).start
+        # pyright + get_metadata is acting up
+        pos = self.get_metadata(PositionProvider, node).start  # type: ignore
         self.__state.problems.append(
             Error(
                 # 7 == len('TRIO...'), so alt messages raise the original code
                 error_code[:7],
-                pos.line,
-                pos.column,
+                pos.line,  # type: ignore
+                pos.column,  # type: ignore
                 self.error_codes[error_code],
                 *args,
             )
@@ -253,4 +255,4 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
 
     def add_library(self, name: str) -> None:
         if name not in self.__state.library:
-            self.__state.library = self.__state.library + (name,)
+            self.__state.library = (*self.__state.library, name)

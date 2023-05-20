@@ -13,10 +13,10 @@ import sys
 import tokenize
 import unittest
 from argparse import ArgumentParser
-from collections import deque
+from collections import defaultdict, deque
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, DefaultDict
+from typing import TYPE_CHECKING, Any
 
 import libcst as cst
 import pytest
@@ -66,7 +66,7 @@ def check_version(test: str):
 ERROR_CODES: dict[str, Flake8TrioVisitor] = {
     err_code: err_class  # type: ignore[misc]
     for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
-    for err_code in err_class.error_codes.keys()  # type: ignore[attr-defined]
+    for err_code in err_class.error_codes  # type: ignore[attr-defined]
 }
 
 
@@ -500,11 +500,11 @@ def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
 
 def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[Error]):
     """Check that errors are on correct lines."""
-    MyDict = DefaultDict[int, DefaultDict[str, int]]  # TypeAlias
+    MyDict = defaultdict[int, defaultdict[str, int]]  # TypeAlias
 
     all_lines = sorted({e.line for e in (*errors, *expected)})
 
-    error_dict: MyDict = DefaultDict(lambda: DefaultDict(int))
+    error_dict: MyDict = defaultdict(lambda: defaultdict(int))
     expected_dict = copy.deepcopy(error_dict)
 
     # populate dicts with number of errors per line
@@ -622,7 +622,6 @@ trio.sleep(0)
     plugin = Plugin.from_source(text)
     initialize_options(plugin, args=["--enable=TRIO100,TRIO115", "--autofix=TRIO100"])
     errors = tuple(plugin.run())
-    plugin.module.code
     assert errors[1].line != plugin.module.code.split("\n").index("trio.sleep(0)") + 1
 
 

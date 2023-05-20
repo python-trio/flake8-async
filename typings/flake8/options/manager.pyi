@@ -7,7 +7,7 @@ Generated for flake8 5, so OptionManager signature is incorrect for flake8 6
 import argparse
 import enum
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, TypeAlias
+from typing import Any
 
 from flake8.plugins.finder import Plugins
 
