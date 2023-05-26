@@ -69,7 +69,7 @@ def test_systemexit_0(
     tmp_path.joinpath("example.py").write_text("")
 
     with pytest.raises(SystemExit) as exc_info:
-        from flake8_trio import __main__  # noqa
+        from flake8_trio import __main__  # noqa: F401
 
     assert exc_info.value.code == 0
     out, err = capsys.readouterr()
@@ -84,7 +84,7 @@ def test_systemexit_1(
     monkeypatch_argv(monkeypatch, tmp_path)
 
     with pytest.raises(SystemExit) as exc_info:
-        from flake8_trio import __main__  # noqa
+        from flake8_trio import __main__  # noqa: F401
 
     assert exc_info.value.code == 1
     out, err = capsys.readouterr()

@@ -147,13 +147,14 @@ class VisitorLibraryHandler_cst(Flake8TrioVisitor_cst):
 # https://github.com/PyCQA/flake8/blob/d016204366a22d382b5b56dc14b6cbff28ce929e/src/flake8/defaults.py#L27
 NOQA_INLINE_REGEXP = re.compile(
     # We're looking for items that look like this:
-    # ``# noqa``
-    # ``# noqa: E123``
-    # ``# noqa: E123,W451,F921``
-    # ``# noqa:E123,W451,F921``
-    # ``# NoQA: E123,W451,F921``
-    # ``# NOQA: E123,W451,F921``
-    # ``# NOQA:E123,W451,F921``
+    # ``# nxqa``
+    # ``# nxqa: E123``
+    # ``# nxqa: E123,W451,F921``
+    # ``# nxqa:E123,W451,F921``
+    # ``# NxQA: E123,W451,F921``
+    # ``# NXQA: E123,W451,F921``
+    # ``# NXQA:E123,W451,F921``
+    # (o/O replaced with x/X to avoid the wrath of flake8-noqa/RUF100)
     # We do not want to capture the ``: `` that follows ``noqa``
     # We do not care about the casing of ``noqa``
     # We want a comma-separated list of errors

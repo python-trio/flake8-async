@@ -146,7 +146,7 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
     ):
         try:
             values = [ast.literal_eval(a) for a in iterable.args]
-        except Exception:  # noqa: PIE786
+        except Exception:
             # parameters aren't literal
             return False
 

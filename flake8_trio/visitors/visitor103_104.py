@@ -177,7 +177,7 @@ class Visitor103_104(Flake8TrioVisitor):
         if isinstance(node, ast.While):
             try:
                 infinite_loop = body_guaranteed_once = bool(ast.literal_eval(node.test))
-            except Exception:  # noqa: PIE786
+            except Exception:
                 body_guaranteed_once = False
             self.visit_nodes(node.test)
         else:

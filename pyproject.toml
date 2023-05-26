@@ -87,10 +87,7 @@ ignore = [
   'TD003',  # missing issue link in TODO
   'TRY003',  # Avoid specifying long messages outside the exception class
   'TRY200',  # Use `raise from` to specify exception cause
-  'TRY201',  # Use `raise` without specifying exception name
-  # enable if flake8/plugins are removed
-  'PGH004',  # Use specific rule codes when using `noqa`
-  'RUF100'  # Unused `noqa` - enable only if flake8 is no longer used
+  'TRY201'  # Use `raise` without specifying exception name
 ]
 line-length = 90
 select = ["ALL"]
