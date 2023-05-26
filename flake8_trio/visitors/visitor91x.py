@@ -307,7 +307,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
             updated_node = updated_node.with_changes(body=indentedblock)
 
         self.restore_state(original_node)
-        return updated_node  # noqa: R504
+        return updated_node
 
     # error if function exit/return/yields with uncheckpointed statements
     # returns a bool indicating if any real (i.e. not artificial) errors were raised
@@ -686,7 +686,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
 
         self.restore_state(original_node)
         # https://github.com/afonasev/flake8-return/issues/133
-        return updated_node  # noqa: R504
+        return updated_node
 
     leave_For = leave_While
 
