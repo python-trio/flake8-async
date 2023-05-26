@@ -284,9 +284,9 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
             # this should improve performance on codebases with many sync functions
             return any(m.findall(node, m.FunctionDef(asynchronous=m.Asynchronous())))
 
-        pos = self.get_metadata(PositionProvider, node).start
+        pos = self.get_metadata(PositionProvider, node).start  # type: ignore
         self.uncheckpointed_statements = {
-            Statement("function definition", pos.line, pos.column)
+            Statement("function definition", pos.line, pos.column)  # type: ignore
         }
         return True
 
@@ -419,8 +419,10 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
             self.add_statement = self.checkpoint_statement()
 
         # mark as requiring checkpoint after
-        pos = self.get_metadata(PositionProvider, original_node).start
-        self.uncheckpointed_statements = {Statement("yield", pos.line, pos.column)}
+        pos = self.get_metadata(PositionProvider, original_node).start  # type: ignore
+        self.uncheckpointed_statements = {
+            Statement("yield", pos.line, pos.column)  # type: ignore
+        }
         # return original to avoid problems with identity equality
         assert original_node.deep_equals(updated_node)
         return original_node
@@ -442,9 +444,9 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
         )
         # yields inside `try` can always be uncheckpointed
         for inner_node in m.findall(node.body, m.Yield()):
-            pos = self.get_metadata(PositionProvider, inner_node).start
+            pos = self.get_metadata(PositionProvider, inner_node).start  # type: ignore
             self.try_state.body_uncheckpointed_statements.add(
-                Statement("yield", pos.line, pos.column)
+                Statement("yield", pos.line, pos.column)  # type: ignore
             )
 
     def leave_Try_body(self, node: cst.Try):
@@ -657,7 +659,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
         else:
             # We may exit from:
             # orelse (covering: no body, body until continue, and all body)
-            # break
+            # `break`
             self.uncheckpointed_statements.update(
                 self.loop_state.uncheckpointed_before_break
             )

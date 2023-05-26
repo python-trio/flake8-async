@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import libcst as cst
+import libcst as cst  # noqa: TCH002
 import libcst.matchers as m
 
 from .flake8triovisitor import Flake8TrioVisitor_cst

@@ -83,7 +83,7 @@ def ensure_tagged() -> None:
 def update_version() -> None:
     # If we've added a new version to the changelog, update __version__ to match
     last_version = next(iter(get_releases()))
-    if VERSION != last_version:
+    if last_version != VERSION:
         INIT_FILE = ROOT_PATH / "flake8_trio" / "__init__.py"
         subs = (f'__version__ = "{VERSION}"', f'__version__ = "{last_version}"')
         INIT_FILE.write_text(INIT_FILE.read_text().replace(*subs))

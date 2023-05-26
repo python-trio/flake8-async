@@ -73,10 +73,16 @@ repos:
           - id: trailing-whitespace
             args: ['--markdown-linebreak-ext=md,markdown']
 
+    - repo: https://github.com/charliermarsh/ruff-pre-commit
+      rev: v0.0.269
+      hooks:
+          - id: ruff
+
     - repo: https://github.com/PyCQA/flake8
       rev: 6.0.0
       hooks:
           - id: flake8
+            # this doesn't seem to work, pyi files don't get checked with --all-files
             types_or: [python, pyi]
             language_version: python3
             additional_dependencies:
@@ -86,26 +92,14 @@ repos:
                 - flake8-comprehensions
                 - flake8-datetimez
                 - flake8-docstrings
-                - flake8-mutable
-                - flake8-noqa
+                - flake8-mutable # not official supported by ruff
                 - flake8-pie
                 - flake8-pyi
                 - flake8-pytest-style
                 - flake8-return
                 - flake8-simplify
                 - flake8-type-checking
-
-# Pinned to flake8 5.0.4 since flake8-eradicate is not updated to work with flake8 6
-# https://github.com/wemake-services/flake8-eradicate/pull/271
-    - repo: https://github.com/PyCQA/flake8
-      rev: 5.0.4
-      hooks:
-          - id: flake8
-            name: flake8-eradicate
-            args: [--select=E800]
-            language_version: python3
-            additional_dependencies:
-                - flake8-eradicate
+              # all other are
 
     - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
       rev: 0.2.2

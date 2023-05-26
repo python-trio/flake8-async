@@ -7,7 +7,6 @@ import functools
 import re
 from typing import TYPE_CHECKING, Any
 
-import libcst as cst
 import libcst.matchers as m
 from libcst.metadata import PositionProvider
 
@@ -16,6 +15,8 @@ from .helpers import utility_visitor, utility_visitor_cst
 
 if TYPE_CHECKING:
     from re import Match
+
+    import libcst as cst
 
 
 @utility_visitor

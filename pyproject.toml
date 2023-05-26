@@ -35,3 +35,75 @@ reportShadowedImports = true
 reportUninitializedInstanceVariable = true
 reportUnusedCallResult = false
 strict = ["*.py", "tests/*.py", "flake8_trio/**/*.py"]
+
+[tool.ruff]
+extend-exclude = [
+  ".*",
+  "tests/eval_files/*",
+  "tests/autofix_files/*"
+]
+ignore = [
+  "COM",  # flake8-comma, handled by black
+  "ANN",  # annotations, handled by pyright/mypy
+  "T20",  # flake8-print
+  "TID252",  # relative imports from parent modules https://github.com/Zac-HD/flake8-trio/pull/196#discussion_r1200413372
+  "D101",
+  "D102",
+  "D103",
+  "D105",
+  "D106",
+  "D107",
+  "S101",
+  "D203",  # one-blank-line-before-class
+  "D213",  # multi-line-summary-second-line
+  "EM101",  # exception must not use a string literal
+  "EM102",  # exception must not use an f-string literal
+  'PGH001',  # No builtin `eval()` allowed
+  'N802',  # function name should be lowercase - not an option with inheritance
+  'PTH123',  # `open()` should be replaced by `Path.open()`
+  'PYI021',  # docstring in stub
+  'S603',  # `subprocess` call: check for execution of untrusted input
+  'N815',  # Variable `visit_AsyncWith` in class scope should not be mixedCase
+  'PLR091',  # Too many return statements/branches/arguments
+  'C901',  # function is too complex
+  # maybe should be ignored in-place
+  'N806',  # Variable `MyDict` in function should be lowercase
+  # --- maybe should be fixed / ignored in-place ---
+  'ARG001',  # Unused function argument
+  'ARG002',  # Unused method argument
+  'B904',  # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  'B905',  # zip without explicit strict parameter
+  'BLE001',  # Do not catch blind exception: `Exception`
+  'FBT001',  # Boolean positional arg in function definition
+  'FBT002',  # Boolean default value in function definition
+  'N801',  # Class name {} should use CapWords convention
+  'PGH003',  # Use specific rule codes when ignoring type issues
+  'PLR2004',  # Magic value used in comparison
+  'PLW2901',  # Outer `for` loop variable `err` overwritten by inner `for` loop target
+  'PTH118',  # `os.path.join()` should be replaced by `Path` with `/` operator
+  'S607',  # Starting a process with a partial executable path
+  'SLF001',  # Private member accessed: `_tree`
+  'TD002',  # missing author in TODO
+  'TD003',  # missing issue link in TODO
+  'TRY003',  # Avoid specifying long messages outside the exception class
+  'TRY200',  # Use `raise from` to specify exception cause
+  'TRY201',  # Use `raise` without specifying exception name
+  # enable if flake8/plugins are removed
+  'PGH004',  # Use specific rule codes when using `noqa`
+  'RUF100'  # Unused `noqa` - enable only if flake8 is no longer used
+]
+line-length = 90
+select = ["ALL"]
+target-version = "py39"
+
+[tool.ruff.per-file-ignores]
+# docstrings, and arguments we can't modify
+"*.pyi" = ["D", 'FBT001', 'PLR0913']
+# imports
+"flake8_trio/visitors/__init__.py" = [
+  "F401",
+  "E402"
+]
+# visitor_utility contains comments specifying how it parses noqa comments, which get
+# parsed as noqa comments
+"flake8_trio/visitors/visitor_utility.py" = ["RUF100", "PGH004"]
