@@ -58,7 +58,7 @@
  # await anext(iter) is not called on break
 @@ x,6 x,7 @@
          yield
-         if ...:
+         if condition():
              break
 +    await trio.lowlevel.checkpoint()
 
@@ -157,7 +157,7 @@
      while foo():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno)
-         if ...:
+         if condition():
              continue
          await foo()
 +    await trio.lowlevel.checkpoint()
@@ -190,7 +190,7 @@
 
  # no checkpoint on break
 @@ x,6 x,7 @@
-         if ...:
+         if condition():
              break
          await foo()
 +    await trio.lowlevel.checkpoint()
@@ -227,7 +227,7 @@
  # check multiple breaks
 @@ x,7 x,9 @@
          await foo()
-         if ...:
+         if condition():
              break
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Statement("yield", lineno-8)
@@ -364,7 +364,7 @@
 @@ x,9 x,11 @@
  # if
  async def foo_if_1():
-     if ...:
+     if condition():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("function definition", lineno-2)
          await foo()
@@ -450,7 +450,7 @@
 +    await trio.lowlevel.checkpoint()
      print(
          (yield)  # error: 9, "yield", Statement("function definition", lineno-2)
-         if ... and await foo()
+         if condition() and await foo()
          else await foo()
      )
 +    await trio.lowlevel.checkpoint()
@@ -491,7 +491,7 @@
 
  # loop over non-empty static collection
 @@ x,6 x,7 @@
-         if ...:
+         if condition():
              continue
          await foo()
 +    await trio.lowlevel.checkpoint()
@@ -585,7 +585,7 @@
 
      # while
 @@ x,6 x,7 @@
-         if ...:
+         if condition():
              break
          await foo()
 +    await trio.lowlevel.checkpoint()

@@ -3,6 +3,7 @@
 `yield` inside a nursery or cancel scope is only safe when implementing a context manager
 - otherwise, it breaks exception handling.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

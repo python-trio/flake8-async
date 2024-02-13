@@ -12,8 +12,7 @@ from typing import Any
 import trio
 
 
-def bar() -> Any:
-    ...
+def bar() -> Any: ...
 
 
 async def foo() -> Any:
@@ -39,10 +38,10 @@ async def foo_yield():  # TRIO911: 0, "exit", Statement("yield", lineno+2)
 
 
 async def foo_if():
-    if ...:
+    if foo():
         await trio.lowlevel.checkpoint()
         return  # TRIO910: 8, "return", Statement("function definition", lineno-2)
-    elif ...:
+    elif foo():
         await trio.lowlevel.checkpoint()
         return  # TRIO910: 8, "return", Statement("function definition", lineno-4)
     else:
@@ -67,7 +66,7 @@ async def foo_while2():
 async def foo_while3():
     await foo()
     while True:
-        if ...:
+        if foo():
             return
         await foo()
 
@@ -75,10 +74,10 @@ async def foo_while3():
 # check that multiple checkpoints don't get inserted
 async def foo_while4():
     while True:
-        if ...:
+        if foo():
             await trio.lowlevel.checkpoint()
             yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno+2)  # TRIO911: 12, "yield", Statement("function definition", lineno-3)
-        if ...:
+        if foo():
             await trio.lowlevel.checkpoint()
             yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno-2)  # TRIO911: 12, "yield", Statement("function definition", lineno-5) # TRIO911: 12, "yield", Statement("yield", lineno-2)
             # this warns about the yield on lineno-2 twice, since it can arrive here from it in two different ways
@@ -103,7 +102,7 @@ async def foo_while_nested_func():
         yield  # TRIO911: 8, "yield", Statement("function definition", lineno-2) # TRIO911: 8, "yield", Statement("yield", lineno)
 
         async def bar():
-            while ...:
+            while foo():
                 ...
             await foo()
 
@@ -111,17 +110,16 @@ async def foo_while_nested_func():
 # Code coverage: visitors run when inside a sync function that has an async function.
 # When sync funcs don't contain an async func the body is not visited.
 def sync_func():
-    async def async_func():
-        ...
+    async def async_func(): ...
 
     try:
         ...
     except:
         ...
-    if ... and ...:
+    if foo() and foo():
         ...
     while ...:
-        if ...:
+        if foo():
             continue
         break
     [... for i in range(5)]

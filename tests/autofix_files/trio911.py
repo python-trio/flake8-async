@@ -13,8 +13,11 @@ async def foo() -> Any:
     await foo()
 
 
-def bar(*args) -> Any:
-    ...
+def bar(*args) -> Any: ...
+
+
+# mypy now treats `if ...` as `if True`, so we have another arbitrary function instead
+def condition() -> Any: ...
 
 
 async def foo_yield_1():
@@ -94,7 +97,7 @@ async def foo_async_for():  # error: 0, "exit", Statement("yield", lineno+4)
 async def foo_async_for_2():  # error: 0, "exit", Statement("yield", lineno+2)
     async for i in trio.trick_pyright:
         yield
-        if ...:
+        if condition():
             break
     await trio.lowlevel.checkpoint()
 
@@ -211,7 +214,7 @@ async def foo_while_continue_1():  # error: 0, "exit", Statement("yield", lineno
     while foo():
         await trio.lowlevel.checkpoint()
         yield  # error: 8, "yield", Statement("yield", lineno)
-        if ...:
+        if condition():
             continue
         await foo()
     await trio.lowlevel.checkpoint()
@@ -226,7 +229,7 @@ async def foo_while_continue_2():  # error: 0, "exit", Statement("yield", lineno
         if foo():
             continue
         await foo()
-        if ...:
+        if condition():
             continue
         while foo():
             yield  # safe
@@ -238,7 +241,7 @@ async def foo_while_continue_2():  # error: 0, "exit", Statement("yield", lineno
 # else might not run
 async def foo_while_break_1():  # error: 0, "exit", Statement("yield", lineno+6)
     while foo():
-        if ...:
+        if condition():
             break
     else:
         await foo()
@@ -252,7 +255,7 @@ async def foo_while_break_2():  # error: 0, "exit", Statement("yield", lineno+3)
     await foo()
     while foo():
         yield  # safe
-        if ...:
+        if condition():
             break
         await foo()
     await trio.lowlevel.checkpoint()
@@ -262,7 +265,7 @@ async def foo_while_break_2():  # error: 0, "exit", Statement("yield", lineno+3)
 async def foo_while_break_3():  # error: 0, "exit", Statement("yield", lineno+7)
     while foo():
         await foo()
-        if ...:
+        if condition():
             break  # if it breaks, have checkpointed
     else:
         await foo()  # runs if 0-iter
@@ -273,7 +276,7 @@ async def foo_while_break_3():  # error: 0, "exit", Statement("yield", lineno+7)
 # break at non-guaranteed checkpoint
 async def foo_while_break_4():  # error: 0, "exit", Statement("yield", lineno+7)
     while foo():
-        if ...:
+        if condition():
             break
         await foo()  # might not run
     else:
@@ -288,7 +291,7 @@ async def foo_while_break_5():  # error: 0, "exit", Statement("yield", lineno+12
     await foo()
     while foo():
         yield
-        if ...:
+        if condition():
             break
         await foo()
         while foo():
@@ -306,12 +309,12 @@ async def foo_while_break_6():  # error: 0, "exit", Statement("yield", lineno+11
     await foo()
     while foo():
         yield
-        if ...:
+        if condition():
             break
         await foo()
         yield
         await foo()
-        if ...:
+        if condition():
             break
     await trio.lowlevel.checkpoint()
     yield  # error: 4, "yield", Statement("yield", lineno-8)
@@ -321,7 +324,7 @@ async def foo_while_break_6():  # error: 0, "exit", Statement("yield", lineno+11
 async def foo_while_break_7():  # error: 0, "exit", Statement("function definition", lineno)# error: 0, "exit", Statement("yield", lineno+5)
     while foo():
         await foo()
-        if ...:
+        if condition():
             break
         yield
         break
@@ -517,7 +520,7 @@ async def foo_try_10_no_except():
 
 # if
 async def foo_if_1():
-    if ...:
+    if condition():
         await trio.lowlevel.checkpoint()
         yield  # error: 8, "yield", Statement("function definition", lineno-2)
         await foo()
@@ -529,7 +532,7 @@ async def foo_if_1():
 
 async def foo_if_2():  # error: 0, "exit", Statement("yield", lineno+6)
     await foo()
-    if ...:
+    if condition():
         ...
     else:
         yield
@@ -540,7 +543,7 @@ async def foo_if_2():  # error: 0, "exit", Statement("yield", lineno+6)
 
 async def foo_if_3():  # error: 0, "exit", Statement("yield", lineno+6)
     await foo()
-    if ...:
+    if condition():
         yield
     else:
         ...
@@ -552,7 +555,7 @@ async def foo_if_3():  # error: 0, "exit", Statement("yield", lineno+6)
 async def foo_if_4():  # error: 0, "exit", Statement("yield", lineno+7)
     await foo()
     yield
-    if ...:
+    if condition():
         await foo()
     else:
         ...
@@ -563,7 +566,7 @@ async def foo_if_4():  # error: 0, "exit", Statement("yield", lineno+7)
 
 async def foo_if_5():  # error: 0, "exit", Statement("yield", lineno+8)
     await foo()
-    if ...:
+    if condition():
         yield
         await foo()
     else:
@@ -576,7 +579,7 @@ async def foo_if_5():  # error: 0, "exit", Statement("yield", lineno+8)
 
 async def foo_if_6():  # error: 0, "exit", Statement("yield", lineno+8)
     await foo()
-    if ...:
+    if condition():
         yield
     else:
         yield
@@ -588,7 +591,7 @@ async def foo_if_6():  # error: 0, "exit", Statement("yield", lineno+8)
 
 
 async def foo_if_7():  # error: 0, "exit", Statement("function definition", lineno)
-    if ...:
+    if condition():
         await foo()
         yield
         await foo()
@@ -596,7 +599,7 @@ async def foo_if_7():  # error: 0, "exit", Statement("function definition", line
 
 
 async def foo_if_8():  # error: 0, "exit", Statement("function definition", lineno)
-    if ...:
+    if condition():
         ...
     else:
         await foo()
@@ -617,7 +620,7 @@ async def foo_ifexp_2():  # error: 0, "exit", Statement("yield", lineno+2)
     await trio.lowlevel.checkpoint()
     print(
         (yield)  # error: 9, "yield", Statement("function definition", lineno-2)
-        if ... and await foo()
+        if condition() and await foo()
         else await foo()
     )
     await trio.lowlevel.checkpoint()
@@ -628,8 +631,7 @@ def foo_sync_1():
     return
 
 
-def foo_sync_2():
-    ...
+def foo_sync_2(): ...
 
 
 def foo_sync_3():
@@ -637,13 +639,13 @@ def foo_sync_3():
 
 
 def foo_sync_4():
-    if ...:
+    if condition():
         return
     yield
 
 
 def foo_sync_5():
-    if ...:
+    if condition():
         return
     yield
 
@@ -655,7 +657,7 @@ def foo_sync_6():
 
 def foo_sync_7():
     while foo():
-        if ...:
+        if condition():
             return
         yield
 
@@ -714,7 +716,7 @@ async def foo_loop_static():
 
     for _ in [1, 2, 3]:
         await foo()
-        if ...:
+        if condition():
             break
     else:
         yield
@@ -723,7 +725,7 @@ async def foo_loop_static():
 
     # continue
     for _ in [1, 2, 3]:
-        if ...:
+        if condition():
             continue
         await foo()
     await trio.lowlevel.checkpoint()
@@ -731,7 +733,7 @@ async def foo_loop_static():
 
     # continue/else
     for _ in [1, 2, 3]:
-        if ...:
+        if condition():
             continue
         await foo()
     else:
@@ -742,7 +744,7 @@ async def foo_loop_static():
 
     for _ in [1, 2, 3]:
         await foo()
-        if ...:
+        if condition():
             break
     else:
         yield
@@ -876,22 +878,22 @@ async def foo_loop_static():
     # while
     while True:
         await foo()
-        if ...:
+        if condition():
             break
     yield
 
     while True:
-        if ...:
+        if condition():
             break
         await foo()
     await trio.lowlevel.checkpoint()
     yield  # error: 4, "yield", Stmt("yield", line-6)
 
     while True:
-        if ...:
+        if condition():
             continue
         await foo()
-        if ...:
+        if condition():
             break
     yield
 

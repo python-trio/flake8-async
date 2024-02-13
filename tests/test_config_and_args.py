@@ -1,4 +1,5 @@
 """Various tests for testing argument and config parsing."""
+
 from __future__ import annotations
 
 import ast
@@ -55,6 +56,7 @@ def test_run_flake8_trio(tmp_path: Path):
         ],
         cwd=tmp_path,
         capture_output=True,
+        check=False,
     )
     assert res.returncode == 1
     assert not res.stderr
@@ -94,14 +96,15 @@ def test_systemexit_1(
 
 def test_run_in_git_repo(tmp_path: Path):
     write_examplepy(tmp_path)
-    assert subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-    assert subprocess.run(["git", "add", "example.py"], cwd=tmp_path)
+    subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(["git", "add", "example.py"], cwd=tmp_path, check=True)
     res = subprocess.run(
         [
             "flake8-trio",
         ],
         cwd=tmp_path,
         capture_output=True,
+        check=False,
     )
     assert res.returncode == 1
     assert not res.stderr
@@ -240,7 +243,7 @@ def test_200_from_config_flake8_internals(
 
 def test_200_from_config_subprocess(tmp_path: Path):
     err_msg = _test_trio200_from_config_common(tmp_path)
-    res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True)
+    res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True, check=False)
     assert res.returncode == 1
     assert not res.stderr
     assert res.stdout == err_msg.encode("ascii")
@@ -269,8 +272,7 @@ def test_enable(
     monkeypatch_argv(monkeypatch, tmp_path, argv)
 
     def _helper(*args: str, error: bool = False, autofix: bool = False) -> None:
-        for arg in args:
-            argv.append(arg)
+        argv.extend(args)
         main()
         out, err = capsys.readouterr()
         if error:
@@ -333,7 +335,9 @@ def test_flake8_plugin_with_autofix_fails(tmp_path: Path):
         ],
         cwd=tmp_path,
         capture_output=True,
+        check=False,
     )
+    assert res.returncode == 1
     assert not res.stdout
     assert res.stderr == b"Cannot autofix when run as a flake8 plugin.\n"
 
@@ -365,8 +369,7 @@ def test_disable_noqa_cst(
     out, err = capsys.readouterr()
     assert not err
     assert (
-        out
-        == "./example.py:2:6: TRIO100 trio.move_on_after context contains no"
+        out == "./example.py:2:6: TRIO100 trio.move_on_after context contains no"
         " checkpoints, remove the context or add `await"
         " trio.lowlevel.checkpoint()`.\n"
     )

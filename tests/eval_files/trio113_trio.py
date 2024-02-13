@@ -125,5 +125,4 @@ async def contextlib_import_alias_acm():
 
 # code coverage for non-name, non-attribute decorator
 @None  # type: ignore
-async def foo4():
-    ...
+async def foo4(): ...

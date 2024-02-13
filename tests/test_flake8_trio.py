@@ -47,8 +47,7 @@ assert (
 ), f"no eval file for autofix file[s] {extra_autofix_files}"
 
 
-class ParseError(Exception):
-    ...
+class ParseError(Exception): ...
 
 
 # check for presence of _pyXX, skip if version is later, and prune parameter
@@ -500,11 +499,11 @@ def print_first_diff(errors: Sequence[Error], expected: Sequence[Error]):
 
 def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[Error]):
     """Check that errors are on correct lines."""
-    MyDict = defaultdict[int, defaultdict[str, int]]  # TypeAlias
-
     all_lines = sorted({e.line for e in (*errors, *expected)})
 
-    error_dict: MyDict = defaultdict(lambda: defaultdict(int))
+    error_dict: defaultdict[int, defaultdict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
     expected_dict = copy.deepcopy(error_dict)
 
     # populate dicts with number of errors per line
@@ -589,7 +588,8 @@ def assert_tuple_and_types(errors: Iterable[Error], expected: Iterable[Error]):
     for err, exp in zip(errors, expected):
         err_msg = info_tuple(err)
         for err, type_ in zip(err_msg, (int, int, str, type(None))):
-            assert isinstance(err, type_)
+            # mypy fails to track types across the zip
+            assert isinstance(err, type_)  # type: ignore[arg-type]
         assert err_msg == info_tuple(exp)
 
 
@@ -751,5 +751,5 @@ def test_does_not_crash_on_site_code(enable_codes: str):
             plugin = Plugin.from_filename(str(path))
             initialize_options(plugin, [f"--enable={enable_codes}"])
             consume(plugin.run())
-        except Exception as err:
+        except Exception as err:  # noqa: PERF203 # try-except in loop
             raise AssertionError(f"Failed on {path}") from err

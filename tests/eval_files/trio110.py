@@ -41,8 +41,7 @@ async def foo():
     while ...:
         await noerror.sleep()
 
-    async def sleep():
-        ...
+    async def sleep(): ...
 
     while ...:
         await sleep()

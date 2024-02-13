@@ -3,8 +3,7 @@
 from typing import Any
 
 
-def foo() -> Any:
-    ...
+def foo() -> Any: ...
 
 
 # fmt: off
@@ -48,9 +47,9 @@ except BaseException:  # TRIO103_trio: 7, "BaseException"
 try:
     ...
 except BaseException as e:  # TRIO103_trio: 7, "BaseException"
-    if ...:
+    if foo():
         raise e
-    elif ...:
+    elif foo():
         ...
     else:
         raise e
@@ -64,9 +63,9 @@ except BaseException:  # TRIO103_trio: 7, "BaseException"
 try:
     ...
 except BaseException:  # safe
-    if ...:
+    if foo():
         raise
-    elif ...:
+    elif foo():
         raise
     else:
         raise
@@ -199,9 +198,8 @@ try:
 except (
     my_super_mega_long_exception_so_it_gets_split,
     SyntaxError,
-    BaseException,  # TRIO103_trio: 4, "BaseException"
-    ValueError,
-    BaseException,  # no complaint on this line
+    BaseException, # TRIO103_trio: 4, "BaseException"
+    ValueError, # no complaint on this line
 ):
     ...
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 from abc import ABC
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Union
 
 import libcst as cst
 from libcst.metadata import PositionProvider
@@ -23,7 +23,9 @@ if TYPE_CHECKING:
 
 class Flake8TrioVisitor(ast.NodeVisitor, ABC):
     # abstract attribute by not providing a value
-    error_codes: dict[str, str]  # pyright: ignore[reportUninitializedInstanceVariable]
+    error_codes: ClassVar[
+        dict[str, str]
+    ]  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def __init__(self, shared_state: SharedState):
         super().__init__()

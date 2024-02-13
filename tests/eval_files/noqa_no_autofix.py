@@ -5,8 +5,7 @@ from typing import Any
 
 
 # errors from AST visitors
-async def foo() -> Any:
-    ...
+async def foo() -> Any: ...
 
 
 async def foo_no_noqa_102():

@@ -15,8 +15,7 @@ async def foo() -> Any:
     await foo()
 
 
-def bar() -> Any:
-    ...
+def bar() -> Any: ...
 
 
 # ARG --enable=TRIO910,TRIO911
@@ -24,8 +23,12 @@ def bar() -> Any:
 
 
 # function whose body solely consists of pass, ellipsis, or string constants is safe
-async def foo_empty_1():
+# fmt: off
+async def foo_empty_1a():
     ...
+async def foo_empty_1b(): ...
+async def foo_empty_1c(): ...; ...
+# fmt: on
 
 
 async def foo_empty_2():
@@ -124,19 +127,16 @@ def foo_normal_func_1():
     return
 
 
-def foo_normal_func_2():
-    ...
+def foo_normal_func_2(): ...
 
 
 # overload decorator
 @overload
-async def foo_overload_1(_: bytes):
-    ...
+async def foo_overload_1(_: bytes): ...
 
 
 @typing.overload
-async def foo_overload_1(_: str):
-    ...
+async def foo_overload_1(_: str): ...
 
 
 async def foo_overload_1(_: bytes | str):
