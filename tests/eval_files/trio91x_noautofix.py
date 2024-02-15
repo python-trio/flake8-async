@@ -2,6 +2,9 @@
 from typing import Any
 
 
+def condition() -> Any: ...
+
+
 async def foo() -> Any:
     await foo()
 
@@ -40,7 +43,7 @@ async def foo_async_with_2():
 # fmt: off
 async def foo_boolops_3():
     _ = (await foo() or (yield) or await foo()) or (
-        ...
+        condition()
         or (
             (yield)  # TRIO911: 13, "yield", Stmt("yield", line-3)
             and (yield))  # TRIO911: 17, "yield", Stmt("yield", line-1)

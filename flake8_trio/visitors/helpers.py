@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import ast
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, NamedTuple, TypeVar, Union
 
 import libcst as cst
 import libcst.matchers as m
@@ -29,7 +29,9 @@ if TYPE_CHECKING:
 
     T = TypeVar("T", bound=Flake8TrioVisitor)
     T_CST = TypeVar("T_CST", bound=Flake8TrioVisitor_cst)
-    T_EITHER = TypeVar("T_EITHER", bound=Flake8TrioVisitor | Flake8TrioVisitor_cst)
+    T_EITHER = TypeVar(
+        "T_EITHER", bound=Union[Flake8TrioVisitor, Flake8TrioVisitor_cst]
+    )
 
 
 def error_class(error_class: type[T]) -> type[T]:
