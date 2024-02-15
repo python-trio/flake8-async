@@ -198,8 +198,9 @@ try:
 except (
     my_super_mega_long_exception_so_it_gets_split,
     SyntaxError,
-    BaseException, # TRIO103_trio: 4, "BaseException"
-    ValueError, # no complaint on this line
+    BaseException,  # TRIO103_trio: 4, "BaseException"
+    ValueError,
+    BaseException,  # no complaint on this line
 ):
     ...
 
