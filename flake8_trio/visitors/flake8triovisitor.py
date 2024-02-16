@@ -23,9 +23,7 @@ if TYPE_CHECKING:
 
 class Flake8TrioVisitor(ast.NodeVisitor, ABC):
     # abstract attribute by not providing a value
-    error_codes: ClassVar[
-        dict[str, str]
-    ]  # pyright: ignore[reportUninitializedInstanceVariable]
+    error_codes: ClassVar[dict[str, str]]
 
     def __init__(self, shared_state: SharedState):
         super().__init__()
@@ -160,7 +158,7 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
 
 class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
     # abstract attribute by not providing a value
-    error_codes: dict[str, str]  # pyright: ignore[reportUninitializedInstanceVariable]
+    error_codes: dict[str, str]
     METADATA_DEPENDENCIES = (PositionProvider,)
 
     def __init__(self, shared_state: SharedState):

@@ -34,6 +34,8 @@ reportMissingSuperCall = true
 reportPropertyTypeMismatch = true
 reportShadowedImports = true
 reportUninitializedInstanceVariable = true
+# can't enable until https://github.com/python/mypy/issues/12358
+reportUnnecessaryTypeIgnoreComment = false
 reportUnusedCallResult = false
 strict = ["*.py", "tests/*.py", "flake8_trio/**/*.py"]
 
