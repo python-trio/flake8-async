@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import functools
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import libcst.matchers as m
 from libcst.metadata import PositionProvider
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from re import Match
 
     import libcst as cst
+    from libcst._position import CodeRange
 
 
 @utility_visitor
@@ -178,7 +179,10 @@ class NoqaHandler(Flake8TrioVisitor_cst):
             return False
 
         codes_str = noqa_match.groupdict()["codes"]
-        pos = self.get_metadata(PositionProvider, node).start
+
+        # see https://github.com/Instagram/LibCST/issues/1107
+        metadata = cast("CodeRange", self.get_metadata(PositionProvider, node))
+        pos = metadata.start
 
         codes: set[str]
 

@@ -4,7 +4,6 @@ Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable, since
 that breaks linter checks and multi-backend programs.
 """
 
-
 from __future__ import annotations
 
 import ast

@@ -2,8 +2,7 @@
 import trio
 
 
-async def foo():
-    ...
+async def foo(): ...
 
 
 # except cancelled/baseexception are also critical

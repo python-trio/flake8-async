@@ -120,7 +120,9 @@ async def foo():
     try:
         pass
     finally:
-        async for i in trio.bypasslinters:  # error: 8, Statement("try/finally", lineno-3)
+        async for (  # error: 8, Statement("try/finally", lineno-3)
+            i
+        ) in trio.bypasslinters:
             pass
     try:
         pass

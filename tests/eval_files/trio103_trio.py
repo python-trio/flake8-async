@@ -6,8 +6,7 @@ from typing import Any
 import trio
 
 
-def foo() -> Any:
-    ...
+def foo() -> Any: ...
 
 
 # fmt: off

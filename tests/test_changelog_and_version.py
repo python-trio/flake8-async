@@ -36,6 +36,8 @@ for line in INIT_FILE.read_text().splitlines():
     if m := re.match(r'__version__ = "(\d*\.\d*\.\d*)"', line):
         VERSION = Version.from_string(m.groups()[0])
         break
+else:
+    raise RuntimeError("No version detected.")
 
 
 def get_releases() -> Iterable[Version]:

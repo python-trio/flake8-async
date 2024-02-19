@@ -29,7 +29,7 @@ setup(
     license="MIT",
     description="A highly opinionated flake8 plugin for Trio-related problems.",
     zip_safe=False,
-    install_requires=["flake8>=5", "libcst>=0.4"],
+    install_requires=["flake8>=6", "libcst>=1.0.1"],
     python_requires=">=3.9",
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -41,6 +41,8 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
     long_description=(
         local_file("README.md").open().read()

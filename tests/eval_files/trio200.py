@@ -37,10 +37,10 @@ async def afoo():
     lambda: bar()
 
     # check that states are properly set/reset on nested functions
-    def bar():
+    def bar2():
         bar()
 
-        async def bar():
+        async def bar3():
             bar()  # TRIO200: 12, "bar", "BAR"
 
     bar()  # TRIO200: 4, "bar", "BAR"

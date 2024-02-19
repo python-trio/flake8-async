@@ -8,8 +8,7 @@ par: Any = ...
 async_funpar: Coroutine[Any, Any, Any] = ...  # type: ignore
 
 
-async def myasyncfun(task_status):
-    ...
+async def myasyncfun(task_status): ...
 
 
 # calls that don't return

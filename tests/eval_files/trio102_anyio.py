@@ -5,8 +5,7 @@ from anyio import get_cancelled_exc_class
 # this one is fine to also run with TRIO
 
 
-async def foo():
-    ...
+async def foo(): ...
 
 
 async def foo_anyio():

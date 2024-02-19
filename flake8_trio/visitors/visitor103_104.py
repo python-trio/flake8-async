@@ -6,7 +6,6 @@ doesn't re-raise the error.
 an improper raise, or other flow control, is encountered.
 """
 
-
 from __future__ import annotations
 
 import ast

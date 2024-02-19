@@ -21,6 +21,7 @@ skip_glob = "tests/eval_files/*"
 [tool.mypy]
 check_untyped_defs = true
 disable_error_code = ["no-untyped-def", "misc", "no-untyped-call", "no-any-return"]
+python_version = "3.9"
 strict = true
 warn_unreachable = true
 warn_unused_ignores = false
@@ -33,6 +34,8 @@ reportMissingSuperCall = true
 reportPropertyTypeMismatch = true
 reportShadowedImports = true
 reportUninitializedInstanceVariable = true
+# can't enable until https://github.com/python/mypy/issues/12358
+reportUnnecessaryTypeIgnoreComment = false
 reportUnusedCallResult = false
 strict = ["*.py", "tests/*.py", "flake8_trio/**/*.py"]
 
@@ -42,6 +45,10 @@ extend-exclude = [
   "tests/eval_files/*",
   "tests/autofix_files/*"
 ]
+line-length = 90
+target-version = "py39"
+
+[tool.ruff.lint]
 ignore = [
   "COM",  # flake8-comma, handled by black
   "ANN",  # annotations, handled by pyright/mypy
@@ -58,7 +65,7 @@ ignore = [
   "D213",  # multi-line-summary-second-line
   "EM101",  # exception must not use a string literal
   "EM102",  # exception must not use an f-string literal
-  'PGH001',  # No builtin `eval()` allowed
+  'S307',  # No builtin `eval()` allowed
   'N802',  # function name should be lowercase - not an option with inheritance
   'PTH123',  # `open()` should be replaced by `Path.open()`
   'PYI021',  # docstring in stub
@@ -86,16 +93,17 @@ ignore = [
   'TD002',  # missing author in TODO
   'TD003',  # missing issue link in TODO
   'TRY003',  # Avoid specifying long messages outside the exception class
-  'TRY200',  # Use `raise from` to specify exception cause
-  'TRY201'  # Use `raise` without specifying exception name
+  'B904',  # Use `raise from` to specify exception cause
+  'TRY201',  # Use `raise` without specifying exception name
+  'FIX002',  # line contains #TODO
+  'RUF012'  # Mutable class attribute should be annotated with `typing.ClassVar`
 ]
-line-length = 90
+# RUF012 occurs in 25 places ... I'm not going to fix that unless type checkers also complain
 select = ["ALL"]
-target-version = "py39"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # docstrings, and arguments we can't modify
-"*.pyi" = ["D", 'FBT001', 'PLR0913']
+"*.pyi" = ["D", 'FBT001', 'PLR0913', "PIE790", "PYI048"]
 # imports
 "flake8_trio/visitors/__init__.py" = [
   "F401",

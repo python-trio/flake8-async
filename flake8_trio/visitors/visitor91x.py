@@ -35,10 +35,16 @@ ARTIFICIAL_STATEMENT = Statement("artificial", -1)
 def func_empty_body(node: cst.FunctionDef) -> bool:
     """Check if function body consist of `pass`, `...`, and/or (doc)string literals."""
     empty_statement = m.Pass() | m.Expr(m.Ellipsis() | m.SimpleString())
+
     return m.matches(
         node.body,
-        m.IndentedBlock(
-            [m.ZeroOrMore(m.SimpleStatementLine([m.ZeroOrMore(empty_statement)]))]
+        m.OneOf(
+            # newline + indented statements
+            m.IndentedBlock(
+                [m.ZeroOrMore(m.SimpleStatementLine([m.ZeroOrMore(empty_statement)]))]
+            ),
+            # same-line statement[s]
+            m.SimpleStatementSuite(body=[m.ZeroOrMore(empty_statement)]),
         ),
     )
 
@@ -114,12 +120,10 @@ class CommonVisitors(cst.CSTTransformer, ABC):
 
     @property
     @abstractmethod
-    def library(self) -> tuple[str, ...]:
-        ...
+    def library(self) -> tuple[str, ...]: ...
 
     @abstractmethod
-    def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
-        ...
+    def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool: ...
 
     # instead of trying to exclude yields found in all the weird places from
     # setting self.add_statement, we instead clear it upon each new line.
@@ -587,7 +591,10 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
         if getattr(node, "asynchronous", None):
             self.uncheckpointed_statements = set()
         else:
-            self.uncheckpointed_statements = {ARTIFICIAL_STATEMENT}
+            # pyright correctly dislikes Statement defining __eq__ but not __hash__
+            # but it works:tm:, and changing it touches on various bits of code, so
+            # leaving it for another time.
+            self.uncheckpointed_statements = {ARTIFICIAL_STATEMENT}  # pyright: ignore
 
         self.loop_state.uncheckpointed_before_continue = set()
         self.loop_state.uncheckpointed_before_break = set()

@@ -3,8 +3,7 @@ import trio
 # ARG --startable-in-context-manager=foo
 
 
-async def foo(task_status):
-    ...
+async def foo(task_status): ...
 
 
 async def bar(task_status):  # error: 0, "bar"
@@ -25,16 +24,13 @@ async def foo3(*, task_status):  # error: 0, "foo3"
 
 
 # don't error on pos-only parameter
-async def foo4(task_status, /):
-    ...
+async def foo4(task_status, /): ...
 
 
-async def foo5(*task_status):
-    ...
+async def foo5(*task_status): ...
 
 
-async def foo6(**task_status):
-    ...
+async def foo6(**task_status): ...
 
 
 def sync():

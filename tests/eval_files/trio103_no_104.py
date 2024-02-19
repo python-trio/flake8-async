@@ -3,8 +3,7 @@
 from typing import Any
 
 
-def foo() -> Any:
-    ...
+def foo() -> Any: ...
 
 
 # nested try

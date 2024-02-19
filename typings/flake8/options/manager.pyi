@@ -123,13 +123,16 @@ class Option:
             attempt to normalize the paths to absolute paths.
         """
         ...
+
     @property
     def filtered_option_kwargs(self) -> dict[str, Any]:
         """Return any actually-specified arguments."""
         ...
+
     def normalize(self, value: Any, *normalize_args: str) -> Any:
         """Normalize the value based on the option configuration."""
         ...
+
     def to_argparse(self) -> tuple[list[str], dict[str, Any]]:
         """Convert a Flake8 Option to argparse ``add_argument`` arguments."""
         ...
@@ -157,9 +160,11 @@ class OptionManager:
             included.
         """
         ...
+
     def register_plugins(self, plugins: Plugins) -> None:
         """Register the plugin options (if needed)."""
         ...
+
     def add_option(self, *args: Any, **kwargs: Any) -> None:
         """Create and register a new option.
 
@@ -172,6 +177,7 @@ class OptionManager:
             positionally as they are with argparse normally.
         """
         ...
+
     def extend_default_ignore(self, error_codes: Sequence[str]) -> None:
         """Extend the default ignore list with the error codes provided.
 
@@ -180,6 +186,7 @@ class OptionManager:
             extend the default ignore list.
         """
         ...
+
     def extend_default_select(self, error_codes: Sequence[str]) -> None:
         """Extend the default select list with the error codes provided.
 
@@ -188,6 +195,7 @@ class OptionManager:
             to extend the default select list.
         """
         ...
+
     def parse_args(
         self,
         args: Sequence[str] | None = ...,

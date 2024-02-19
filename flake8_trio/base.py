@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Collection
@@ -29,10 +29,12 @@ class Statement(NamedTuple):
     lineno: int
     col_offset: int = -1
 
-    def __eq__(self, other: Any) -> bool:
+    # pyright is unhappy about defining __eq__ but not __hash__ .. which it should
+    # but it works :tm: and needs changing in a couple places to avoid it.
+    def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Statement)
-            and self[:2] == other[:2]  # type: ignore
+            and self[:2] == other[:2]
             and (
                 self.col_offset == other.col_offset
                 or -1 in (self.col_offset, other.col_offset)
@@ -68,11 +70,11 @@ class Error:
         return self.line, self.code, self.args, self.col
 
     # for sorting in tests
-    def __lt__(self, other: Any) -> bool:
+    def __lt__(self, other: Error) -> bool:
         assert isinstance(other, Error)
         return self.cmp() < other.cmp()
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Error) and self.cmp() == other.cmp()
 
     def __repr__(self) -> str:  # pragma: no cover
