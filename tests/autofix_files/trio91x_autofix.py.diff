@@ -29,10 +29,10 @@
 
 
  async def foo_if():
-     if foo():
+     if bar():
 +        await trio.lowlevel.checkpoint()
          return  # TRIO910: 8, "return", Statement("function definition", lineno-2)
-     elif foo():
+     elif bar():
 +        await trio.lowlevel.checkpoint()
          return  # TRIO910: 8, "return", Statement("function definition", lineno-4)
      else:
@@ -50,10 +50,10 @@
 @@ x,8 x,10 @@
  async def foo_while4():
      while True:
-         if foo():
+         if bar():
 +            await trio.lowlevel.checkpoint()
              yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno+2)  # TRIO911: 12, "yield", Statement("function definition", lineno-3)
-         if foo():
+         if bar():
 +            await trio.lowlevel.checkpoint()
              yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno-2)  # TRIO911: 12, "yield", Statement("function definition", lineno-5) # TRIO911: 12, "yield", Statement("yield", lineno-2)
              # this warns about the yield on lineno-2 twice, since it can arrive here from it in two different ways

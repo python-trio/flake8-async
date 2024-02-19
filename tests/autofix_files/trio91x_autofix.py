@@ -38,10 +38,10 @@ async def foo_yield():  # TRIO911: 0, "exit", Statement("yield", lineno+2)
 
 
 async def foo_if():
-    if foo():
+    if bar():
         await trio.lowlevel.checkpoint()
         return  # TRIO910: 8, "return", Statement("function definition", lineno-2)
-    elif foo():
+    elif bar():
         await trio.lowlevel.checkpoint()
         return  # TRIO910: 8, "return", Statement("function definition", lineno-4)
     else:
@@ -66,7 +66,7 @@ async def foo_while2():
 async def foo_while3():
     await foo()
     while True:
-        if foo():
+        if bar():
             return
         await foo()
 
@@ -74,10 +74,10 @@ async def foo_while3():
 # check that multiple checkpoints don't get inserted
 async def foo_while4():
     while True:
-        if foo():
+        if bar():
             await trio.lowlevel.checkpoint()
             yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno+2)  # TRIO911: 12, "yield", Statement("function definition", lineno-3)
-        if foo():
+        if bar():
             await trio.lowlevel.checkpoint()
             yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno-2)  # TRIO911: 12, "yield", Statement("function definition", lineno-5) # TRIO911: 12, "yield", Statement("yield", lineno-2)
             # this warns about the yield on lineno-2 twice, since it can arrive here from it in two different ways
@@ -102,7 +102,7 @@ async def foo_while_nested_func():
         yield  # TRIO911: 8, "yield", Statement("function definition", lineno-2) # TRIO911: 8, "yield", Statement("yield", lineno)
 
         async def bar():
-            while foo():
+            while bar():
                 ...
             await foo()
 
@@ -116,10 +116,10 @@ def sync_func():
         ...
     except:
         ...
-    if foo() and foo():
+    if bar() and bar():
         ...
     while ...:
-        if foo():
+        if bar():
             continue
         break
     [... for i in range(5)]
