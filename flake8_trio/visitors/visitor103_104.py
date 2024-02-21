@@ -9,10 +9,13 @@ an improper raise, or other flow control, is encountered.
 from __future__ import annotations
 
 import ast
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import critical_except, error_class, iter_guaranteed_once
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _trio103_common_msg = "{} block with a code path that doesn't re-raise the error."
 _suggestion = " Consider adding an `except {}: raise` before this exception handler."
@@ -22,17 +25,19 @@ _suggestion_dict: dict[tuple[str, ...], str] = {
 }
 _suggestion_dict[("anyio", "trio")] = "[" + "|".join(_suggestion_dict.values()) + "]"
 
+_error_codes = {
+    "TRIO103": _trio103_common_msg,
+    "TRIO104": "Cancelled (and therefore BaseException) must be re-raised.",
+}
+for poss_library in _suggestion_dict:
+    _error_codes[f"TRIO103_{'_'.join(poss_library)}"] = (
+        _trio103_common_msg + _suggestion.format(_suggestion_dict[poss_library])
+    )
+
 
 @error_class
 class Visitor103_104(Flake8TrioVisitor):
-    error_codes = {
-        "TRIO103": _trio103_common_msg,
-        "TRIO104": "Cancelled (and therefore BaseException) must be re-raised.",
-    }
-    for poss_library in _suggestion_dict:
-        error_codes[f"TRIO103_{'_'.join(poss_library)}"] = (
-            _trio103_common_msg + _suggestion.format(_suggestion_dict[poss_library])
-        )
+    error_codes: Mapping[str, str] = _error_codes
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)

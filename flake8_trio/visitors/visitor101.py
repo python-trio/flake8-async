@@ -17,12 +17,14 @@ from .helpers import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import libcst as cst
 
 
 @error_class_cst
 class Visitor101(Flake8TrioVisitor_cst):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO101": (
             "`yield` inside a nursery or cancel scope is only safe when implementing "
             "a context manager - otherwise, it breaks exception handling."
