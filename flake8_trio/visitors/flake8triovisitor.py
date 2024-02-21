@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 from abc import ABC
-from typing import TYPE_CHECKING, Any, ClassVar, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import libcst as cst
 from libcst.metadata import PositionProvider
@@ -12,7 +12,7 @@ from libcst.metadata import PositionProvider
 from ..base import Error, Statement
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
 
     from ..runner import SharedState
 
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 class Flake8TrioVisitor(ast.NodeVisitor, ABC):
     # abstract attribute by not providing a value
-    error_codes: ClassVar[dict[str, str]]
+    error_codes: Mapping[str, str]
 
     def __init__(self, shared_state: SharedState):
         super().__init__()
@@ -158,7 +158,7 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
 
 class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
     # abstract attribute by not providing a value
-    error_codes: dict[str, str]
+    error_codes: Mapping[str, str]
     METADATA_DEPENDENCIES = (PositionProvider,)
 
     def __init__(self, shared_state: SharedState):

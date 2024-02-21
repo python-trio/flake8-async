@@ -26,9 +26,10 @@ from .helpers import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 
+# Statement injected at the start of loops to track missed checkpoints.
 ARTIFICIAL_STATEMENT = Statement("artificial", -1)
 
 
@@ -226,7 +227,7 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
 @error_class_cst
 @disabled_by_default
 class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO910": (
             "{0} from async function with no guaranteed checkpoint or exception "
             "since function definition on line {1.lineno}."
@@ -591,10 +592,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
         if getattr(node, "asynchronous", None):
             self.uncheckpointed_statements = set()
         else:
-            # pyright correctly dislikes Statement defining __eq__ but not __hash__
-            # but it works:tm:, and changing it touches on various bits of code, so
-            # leaving it for another time.
-            self.uncheckpointed_statements = {ARTIFICIAL_STATEMENT}  # pyright: ignore
+            self.uncheckpointed_statements = {ARTIFICIAL_STATEMENT}
 
         self.loop_state.uncheckpointed_before_continue = set()
         self.loop_state.uncheckpointed_before_break = set()

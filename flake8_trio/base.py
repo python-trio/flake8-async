@@ -29,18 +29,6 @@ class Statement(NamedTuple):
     lineno: int
     col_offset: int = -1
 
-    # pyright is unhappy about defining __eq__ but not __hash__ .. which it should
-    # but it works :tm: and needs changing in a couple places to avoid it.
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, Statement)
-            and self[:2] == other[:2]
-            and (
-                self.col_offset == other.col_offset
-                or -1 in (self.col_offset, other.col_offset)
-            )
-        )
-
 
 class Error:
     def __init__(

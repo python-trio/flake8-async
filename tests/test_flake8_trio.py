@@ -50,6 +50,22 @@ assert (
 class ParseError(Exception): ...
 
 
+class ColumnAgnosticStatement(Statement):
+    def __eq__(self, other: object) -> bool:
+        assert isinstance(other, Statement)
+        return (
+            self.name == other.name
+            and self.lineno == other.lineno
+            and (
+                self.col_offset == other.col_offset
+                or -1 in (self.col_offset, other.col_offset)
+            )
+        )
+
+    def __hash__(self) -> int:
+        raise NotImplementedError
+
+
 # check for presence of _pyXX, skip if version is later, and prune parameter
 def check_version(test: str):
     python_version = re.search(r"(?<=_PY)\d*", test)
@@ -332,8 +348,8 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
                         {
                             "lineno": lineno,
                             "line": lineno,
-                            "Statement": Statement,
-                            "Stmt": Statement,
+                            "Statement": ColumnAgnosticStatement,
+                            "Stmt": ColumnAgnosticStatement,
                         },
                     )
                 except NameError:
