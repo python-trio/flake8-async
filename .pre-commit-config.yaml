@@ -2,7 +2,7 @@
 default_language_version:
     python: python3.12
 # pyright requires internet connection to run, which the pre-commit ci app doesn't have.
-# Not used in this repo.
+# it instead runs in a github action
 ci:
     skip: [pyright]
 
