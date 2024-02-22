@@ -8,14 +8,18 @@ from __future__ import annotations
 
 import ast
 import re
+from typing import TYPE_CHECKING
 
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import error_class
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 
 @error_class
 class Visitor118(Flake8TrioVisitor):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO118": (
             "Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable,"
             " since that breaks linter checks and multi-backend programs."

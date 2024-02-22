@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import ast
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import error_class
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 
 # used in 105
 trio_async_funcs = (
@@ -39,7 +43,7 @@ trio_async_funcs = (
 
 @error_class
 class Visitor105(Flake8TrioVisitor):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO105": "{0} async {1} must be immediately awaited.",
     }
 

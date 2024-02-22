@@ -12,15 +12,18 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import error_class, fnmatch_qualified_name, get_matching_call
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 
 @error_class
 class Visitor200(Flake8TrioVisitor):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO200": (
             "User-configured blocking sync call {0} in async function, consider "
             "replacing with {1}."
@@ -55,7 +58,7 @@ class Visitor200(Flake8TrioVisitor):
 
 @error_class
 class Visitor21X(Visitor200):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO210": "Sync HTTP call {} in async function, use `httpx.AsyncClient`.",
         "TRIO211": (
             "Likely sync HTTP call {} in async function, use `httpx.AsyncClient`."
@@ -114,7 +117,7 @@ class Visitor21X(Visitor200):
 
 @error_class
 class Visitor212(Visitor200):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO212": (
             "Blocking sync HTTP call {1} on httpx object {0}, use httpx.AsyncClient."
         )
@@ -166,7 +169,7 @@ class Visitor212(Visitor200):
 # Process invocations 202
 @error_class
 class Visitor22X(Visitor200):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO220": (
             "Sync call {} in async function, use "
             "`await nursery.start({}.run_process, ...)`."
@@ -225,7 +228,7 @@ class Visitor22X(Visitor200):
 
 @error_class
 class Visitor23X(Visitor200):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO230": "Sync call {0} in async function, use `{1}.open_file(...)`.",
         "TRIO231": "Sync call {0} in async function, use `{1}.wrap_file({0})`.",
     }
@@ -251,7 +254,7 @@ class Visitor23X(Visitor200):
 
 @error_class
 class Visitor232(Visitor200):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO232": (
             "Blocking sync call {1} on file object {0}, wrap the file object"
             "in `{2}.wrap_file()` to get an async file object."
@@ -281,7 +284,7 @@ class Visitor232(Visitor200):
 
 @error_class
 class Visitor24X(Visitor200):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO240": "Avoid using os.path, prefer using {1}.Path objects.",
     }
 

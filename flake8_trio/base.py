@@ -29,17 +29,21 @@ class Statement(NamedTuple):
     lineno: int
     col_offset: int = -1
 
-    # pyright is unhappy about defining __eq__ but not __hash__ .. which it should
-    # but it works :tm: and needs changing in a couple places to avoid it.
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Statement)
-            and self[:2] == other[:2]
+            and self.name == other.name
+            and self.lineno == other.lineno
             and (
                 self.col_offset == other.col_offset
                 or -1 in (self.col_offset, other.col_offset)
             )
         )
+
+    # Objects that are equal needs to have the same hash, so we don't hash on
+    # `col_offset` since it's a "wildcard" value
+    def __hash__(self) -> int:
+        return hash((self.name, self.lineno))
 
 
 class Error:

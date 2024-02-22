@@ -95,10 +95,8 @@ ignore = [
   'TRY003',  # Avoid specifying long messages outside the exception class
   'B904',  # Use `raise from` to specify exception cause
   'TRY201',  # Use `raise` without specifying exception name
-  'FIX002',  # line contains #TODO
-  'RUF012'  # Mutable class attribute should be annotated with `typing.ClassVar`
+  'FIX002'  # line contains #TODO
 ]
-# RUF012 occurs in 25 places ... I'm not going to fix that unless type checkers also complain
 select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]

@@ -6,16 +6,19 @@ To properly protect they must be inside a shielded cancel scope with a timeout.
 from __future__ import annotations
 
 import ast
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..base import Statement
 from .flake8triovisitor import Flake8TrioVisitor
 from .helpers import cancel_scope_names, critical_except, error_class, get_matching_call
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 
 @error_class
 class Visitor102(Flake8TrioVisitor):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO102": (
             "await inside {0.name} on line {0.lineno} must have shielded cancel "
             "scope with a timeout."

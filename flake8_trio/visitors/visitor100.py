@@ -8,7 +8,7 @@ Checkpoints on Await, Async For and Async With
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import libcst as cst
 import libcst.matchers as m
@@ -21,10 +21,13 @@ from .helpers import (
     with_has_call,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 
 @error_class_cst
 class Visitor100_libcst(Flake8TrioVisitor_cst):
-    error_codes = {
+    error_codes: Mapping[str, str] = {
         "TRIO100": (
             "{0}.{1} context contains no checkpoints, remove the context or add"
             " `await {0}.lowlevel.checkpoint()`."

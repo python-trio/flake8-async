@@ -21,7 +21,7 @@ from .visitors import (
 from .visitors.visitor_utility import NoqaHandler
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
 
     from libcst import Module
 
@@ -46,7 +46,7 @@ class __CommonRunner:
         super().__init__()
         self.state = SharedState(options)
 
-    def selected(self, error_codes: dict[str, str]) -> bool:
+    def selected(self, error_codes: Mapping[str, str]) -> bool:
         enabled_or_autofix = (
             self.state.options.enabled_codes | self.state.options.autofix_codes
         )
