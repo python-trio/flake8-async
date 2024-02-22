@@ -2,7 +2,7 @@
 default_language_version:
     python: python3.12
 # pyright requires internet connection to run, which the pre-commit ci app doesn't have.
-# Not used in this repo.
+# it instead runs in a github action
 ci:
     skip: [pyright]
 
@@ -42,9 +42,12 @@ repos:
             # ignore warnings about new version being available, no other warnings
             # are suppressed by this.
             entry: env PYRIGHT_PYTHON_IGNORE_WARNING=true pyright
-            args: [--pythonversion=3.11, --warnings]
+            # exit with non-zero on warnings
+            args: [--warnings]
+            # Required for pyright strict mode
+            # Mirrors content of requirements-typing.txt, as pre-commit does not allow
+            # reading from that for caching reasons.
             additional_dependencies:
-          # Required for pyright strict mode
                 - anyio
                 - flake8
                 - GitPython

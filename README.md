@@ -1,3 +1,5 @@
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/python-trio/flake8-trio/main.svg)](https://results.pre-commit.ci/latest/github/python-trio/flake8-trio/main)
+[![Checked with pyright](https://microsoft.github.io/pyright/img/pyright_badge.svg)](https://microsoft.github.io/pyright/)
 # flake8-trio
 
 A highly opinionated flake8 plugin for [Trio](https://github.com/python-trio/trio)-related problems.

@@ -28,6 +28,7 @@ warn_unused_ignores = false
 
 [tool.pyright]
 exclude = ["**/node_modules", "**/__pycache__", "**/.*", "tests/eval_files/*", "tests/autofix_files/*"]  # TODO: fix errors in eval/autofix files
+pythonVersion = "3.12"
 reportCallInDefaultInitializer = true
 reportImplicitStringConcatenation = false  # black generates implicit string concats
 reportMissingSuperCall = true

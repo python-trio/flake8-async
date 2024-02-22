@@ -1,0 +1,7 @@
+anyio
+flake8
+GitPython
+hypothesis
+hypothesmith
+pytest
+trio
