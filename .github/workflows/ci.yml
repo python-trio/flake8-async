@@ -1,5 +1,5 @@
 ---
-name: flake8-trio CI
+name: flake8-async CI
 
 on:
     push:

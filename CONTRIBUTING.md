@@ -5,13 +5,11 @@ Contributions welcome!  We'll expand this guide as we go.
 
 ## Development
 
-When you wish to add a check to `flake8-trio` please ensure the following:
+When you wish to add a check to `flake8-async` please ensure the following:
 
 - `README.md` gets a one line about your new warning
 - Add a CHANGELOG entry (see 'Releasing a new version' below)
-- Unittests are added showing the check highlight where it should and shouldn't
-  (see flake8-bugbear for examples of good linter tests)
-
+- A test in `tests/eval_files` is added for your check. See the "Test generator" heading below.
 To run our test suite please use tox.
 
 ```console

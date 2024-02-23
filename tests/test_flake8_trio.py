@@ -438,7 +438,7 @@ def test_noerror_on_sync_code(test: str, path: Path):
 
 
 def initialize_options(plugin: Plugin, args: list[str] | None = None):
-    parser = ArgumentParser(prog="flake8-trio")
+    parser = ArgumentParser(prog="flake8-async")
     Plugin.add_options(parser)
     Plugin.parse_options(parser.parse_args(args))
 

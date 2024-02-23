@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Tests for flake8-trio package metadata."""
+"""Tests for flake8-async package metadata."""
 
 from __future__ import annotations
 

@@ -42,7 +42,7 @@ def monkeypatch_argv(
     argv: list[Path | str] | None = None,
 ) -> None:
     if argv is None:
-        argv = [tmp_path / "flake8-trio", "./example.py"]
+        argv = [tmp_path / "flake8-async", "./example.py"]
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", argv)
 
@@ -51,7 +51,7 @@ def test_run_flake8_trio(tmp_path: Path):
     write_examplepy(tmp_path)
     res = subprocess.run(
         [
-            "flake8-trio",
+            "flake8-async",
             "./example.py",
         ],
         cwd=tmp_path,
@@ -100,7 +100,7 @@ def test_run_in_git_repo(tmp_path: Path):
     subprocess.run(["git", "add", "example.py"], cwd=tmp_path, check=True)
     res = subprocess.run(
         [
-            "flake8-trio",
+            "flake8-async",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -114,7 +114,7 @@ def test_run_in_git_repo(tmp_path: Path):
 def test_run_no_git_repo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
-    monkeypatch_argv(monkeypatch, tmp_path, [tmp_path / "flake8-trio"])
+    monkeypatch_argv(monkeypatch, tmp_path, [tmp_path / "flake8-async"])
     assert main() == 1
     out, err = capsys.readouterr()
     assert err == "Doesn't seem to be a git repo; pass filenames to format.\n"
@@ -128,7 +128,7 @@ def test_run_100_autofix(
     monkeypatch_argv(
         monkeypatch,
         tmp_path,
-        [tmp_path / "flake8-trio", "--autofix=TRIO", "./example.py"],
+        [tmp_path / "flake8-async", "--autofix=TRIO", "./example.py"],
     )
     assert main() == 1
 
@@ -268,7 +268,7 @@ def test_enable(
 ):
     write_examplepy(tmp_path)
 
-    argv: list[Path | str] = [tmp_path / "flake8-trio", "./example.py"]
+    argv: list[Path | str] = [tmp_path / "flake8-async", "./example.py"]
     monkeypatch_argv(monkeypatch, tmp_path, argv)
 
     def _helper(*args: str, error: bool = False, autofix: bool = False) -> None:
@@ -363,7 +363,7 @@ def test_disable_noqa_cst(
     monkeypatch_argv(
         monkeypatch,
         tmp_path,
-        [tmp_path / "flake8-trio", "./example.py", "--disable-noqa"],
+        [tmp_path / "flake8-async", "./example.py", "--disable-noqa"],
     )
     assert main() == 1
     out, err = capsys.readouterr()
@@ -382,7 +382,7 @@ def test_disable_noqa_ast(
     monkeypatch_argv(
         monkeypatch,
         tmp_path,
-        [tmp_path / "flake8-trio", "./example.py", "--disable-noqa"],
+        [tmp_path / "flake8-async", "./example.py", "--disable-noqa"],
     )
     assert main() == 1
     out, err = capsys.readouterr()

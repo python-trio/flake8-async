@@ -54,7 +54,7 @@ ignore = [
   "COM",  # flake8-comma, handled by black
   "ANN",  # annotations, handled by pyright/mypy
   "T20",  # flake8-print
-  "TID252",  # relative imports from parent modules https://github.com/Zac-HD/flake8-trio/pull/196#discussion_r1200413372
+  "TID252",  # relative imports from parent modules https://github.com/python-trio/flake8-trio/pull/196#discussion_r1200413372
   "D101",
   "D102",
   "D103",
