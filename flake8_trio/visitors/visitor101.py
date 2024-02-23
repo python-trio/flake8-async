@@ -1,4 +1,4 @@
-"""Contains visitor for TRIO101.
+"""Contains visitor for ASYNC101.
 
 `yield` inside a nursery or cancel scope is only safe when implementing a context manager
 - otherwise, it breaks exception handling.
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 @error_class_cst
 class Visitor101(Flake8TrioVisitor_cst):
     error_codes: Mapping[str, str] = {
-        "TRIO101": (
+        "ASYNC101": (
             "`yield` inside a nursery or cancel scope is only safe when implementing "
             "a context manager - otherwise, it breaks exception handling."
         ),

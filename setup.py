@@ -51,6 +51,9 @@ setup(
     ),
     long_description_content_type="text/markdown",
     entry_points={
+        # You're not allowed to register error codes longer than 3 characters. But flake8
+        # doesn't enforce anything about the characters trailing the code, so we can say
+        # the code is ASY and then just always happen to print NCxxx directly after it.
         "flake8.extension": ["ASY = flake8_trio:Plugin"],
         "console_scripts": ["flake8-async=flake8_trio:main"],
     },

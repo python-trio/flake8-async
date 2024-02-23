@@ -1,4 +1,4 @@
-# ARG --enable=TRIO910,TRIO911
+# ARG --enable=ASYNC910,ASYNC911
 from typing import Any
 
 
@@ -13,7 +13,7 @@ async def foo() -> Any:
 async def foo_singleline():
     await foo()
     # fmt: off
-    yield; yield  # TRIO911: 11, "yield", Statement("yield", lineno, 4)
+    yield; yield  # ASYNC911: 11, "yield", Statement("yield", lineno, 4)
     # fmt: on
     await foo()
 
@@ -21,14 +21,14 @@ async def foo_singleline():
 # not autofixed
 async def foo_singleline2():
     # fmt: off
-    yield; await foo()  # TRIO911: 4, "yield", Statement("function definition", lineno-2)
+    yield; await foo()  # ASYNC911: 4, "yield", Statement("function definition", lineno-2)
     # fmt: on
 
 
 # not autofixed
 async def foo_singleline3():
     # fmt: off
-    if ...: yield  # TRIO911: 12, "yield", Statement("function definition", lineno-2)
+    if ...: yield  # ASYNC911: 12, "yield", Statement("function definition", lineno-2)
     # fmt: on
     await foo()
 
@@ -36,7 +36,7 @@ async def foo_singleline3():
 # fmt: off
 async def foo_async_with_2():
     # with'd expression evaluated before checkpoint
-    async with (yield):  # TRIO911: 16, "yield", Statement("function definition", lineno-2)
+    async with (yield):  # ASYNC911: 16, "yield", Statement("function definition", lineno-2)
         yield
 # fmt: on
 
@@ -45,8 +45,8 @@ async def foo_boolops_3():
     _ = (await foo() or (yield) or await foo()) or (
         condition()
         or (
-            (yield)  # TRIO911: 13, "yield", Stmt("yield", line-3)
-            and (yield))  # TRIO911: 17, "yield", Stmt("yield", line-1)
+            (yield)  # ASYNC911: 13, "yield", Stmt("yield", line-3)
+            and (yield))  # ASYNC911: 17, "yield", Stmt("yield", line-1)
     )
     await foo()
 # fmt: on
@@ -54,7 +54,7 @@ async def foo_boolops_3():
 
 async def foo_async_for():
     async for i in (
-        yield  # TRIO911: 8, "yield", Statement("function definition", lineno-2)
+        yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-2)
     ):
         yield  # safe
     else:
@@ -69,6 +69,6 @@ async def foo_boolops_2():
         await foo()
         and (yield)
         and await foo()
-        and (yield)  # TRIO911: 13, "yield", Stmt("yield", line-2, 13)
+        and (yield)  # ASYNC911: 13, "yield", Stmt("yield", line-2, 13)
     )
     await foo()

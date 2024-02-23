@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 @error_class
 class Visitor111(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO111": (
+        "ASYNC111": (
             "variable {2} is usable within the context manager on line {0}, but that "
             "will close before nursery opened on line {1} - this is usually a bug.  "
             "Nurseries should generally be the inner-most context manager."

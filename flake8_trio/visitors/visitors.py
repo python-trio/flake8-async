@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 @error_class
 class Visitor106(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO106": "{0} must be imported with `import {0}` for the linter to work.",
+        "ASYNC106": "{0} must be imported with `import {0}` for the linter to work.",
     }
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
@@ -31,7 +31,7 @@ class Visitor106(Flake8TrioVisitor):
 @error_class
 class Visitor109(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO109": (
+        "ASYNC109": (
             "Async function definition with a `timeout` parameter - use "
             "`{}.[fail/move_on]_[after/at]` instead."
         ),
@@ -52,7 +52,7 @@ class Visitor109(Flake8TrioVisitor):
 @error_class
 class Visitor110(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO110": (
+        "ASYNC110": (
             "`while <condition>: await {0}.sleep()` should be replaced by "
             "a `{0}.Event`."
         ),
@@ -71,7 +71,7 @@ class Visitor110(Flake8TrioVisitor):
 @error_class
 class Visitor112(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO112": (
+        "ASYNC112": (
             "Redundant nursery {}, consider replacing with directly awaiting "
             "the function call."
         ),
@@ -123,7 +123,7 @@ STARTABLE_CALLS = (
 @error_class
 class Visitor113(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO113": (
+        "ASYNC113": (
             "Dangerous `.start_soon()`, function might not be executed before"
             " `__aenter__` exits. Consider replacing with `.start()`."
         ),
@@ -190,9 +190,9 @@ class Visitor113(Flake8TrioVisitor):
 @error_class
 class Visitor114(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO114": (
+        "ASYNC114": (
             "Startable function {} not in --startable-in-context-manager parameter "
-            "list, please add it so TRIO113 can catch errors using it."
+            "list, please add it so ASYNC113 can catch errors using it."
         ),
     }
 
@@ -212,7 +212,7 @@ class Visitor114(Flake8TrioVisitor):
 @error_class
 class Visitor115(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO115": "Use `{0}.lowlevel.checkpoint()` instead of `{0}.sleep(0)`.",
+        "ASYNC115": "Use `{0}.lowlevel.checkpoint()` instead of `{0}.sleep(0)`.",
     }
 
     def visit_Call(self, node: ast.Call):
@@ -229,7 +229,7 @@ class Visitor115(Flake8TrioVisitor):
 @error_class
 class Visitor116(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO116": (
+        "ASYNC116": (
             "{0}.sleep() with >24 hour interval should usually be "
             "`{0}.sleep_forever()`."
         ),
@@ -271,10 +271,10 @@ DEPRECATED_ERRORS = ("MultiError", "NonBaseMultiError")
 @error_class
 class Visitor117(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO117": "Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup.",
+        "ASYNC117": "Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup.",
     }
 
-    # This should never actually happen given TRIO106
+    # This should never actually happen given ASYNC106
     def visit_Name(self, node: ast.Name):
         if node.id in DEPRECATED_ERRORS and "trio" in self.library:
             self.error(node, node.id)
@@ -288,7 +288,7 @@ class Visitor117(Flake8TrioVisitor):
 @disabled_by_default
 class Visitor900(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO900": "Async generator without `@asynccontextmanager` not allowed."
+        "ASYNC900": "Async generator without `@asynccontextmanager` not allowed."
     }
 
     def __init__(self, *args: Any, **kwargs: Any):

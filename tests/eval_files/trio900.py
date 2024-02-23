@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 
 
-async def foo1():  # TRIO900: 0
+async def foo1():  # ASYNC900: 0
     yield
     yield
 
@@ -15,7 +15,7 @@ async def foo2():
 
 @asynccontextmanager
 async def foo3():
-    async def bar():  # TRIO900: 4
+    async def bar():  # ASYNC900: 4
         yield
 
     yield
@@ -37,7 +37,7 @@ async def async_fixtures_can_take_arguments():
 
 # no-checkpoint-warning-decorator now ignored
 @other_context_manager
-async def foo5():  # TRIO900: 0
+async def foo5():  # ASYNC900: 0
     yield
 
 

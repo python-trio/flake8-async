@@ -20,7 +20,7 @@ def pytest_addoption(parser: pytest.Parser):
     )
     parser.addoption(
         "--enable-codes",
-        default="TRIO",
+        default="ASYNC",
         help="select error codes whose visitors to run.",
     )
 

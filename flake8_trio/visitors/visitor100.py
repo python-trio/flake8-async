@@ -1,4 +1,4 @@
-"""Contains visitor for TRIO100.
+"""Contains visitor for ASYNC100.
 
 A `with trio.fail_after(...):` or `with trio.move_on_after(...):`
 context does not contain any `await` statements.  This makes it pointless, as
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 @error_class_cst
 class Visitor100_libcst(Flake8TrioVisitor_cst):
     error_codes: Mapping[str, str] = {
-        "TRIO100": (
+        "ASYNC100": (
             "{0}.{1} context contains no checkpoints, remove the context or add"
             " `await {0}.lowlevel.checkpoint()`."
         ),

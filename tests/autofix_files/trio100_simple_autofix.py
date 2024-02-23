@@ -55,5 +55,5 @@ pass
 
 # same-line with
 # fmt: off
-print(1)  # TRIO100: 5, 'trio', 'fail_after'
+print(1)  # ASYNC100: 5, 'trio', 'fail_after'
 # fmt: on

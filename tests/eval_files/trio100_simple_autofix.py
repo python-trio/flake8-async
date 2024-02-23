@@ -54,5 +54,5 @@ with (  # a
 
 # same-line with
 # fmt: off
-with trio.fail_after(5): print(1)  # TRIO100: 5, 'trio', 'fail_after'
+with trio.fail_after(5): print(1)  # ASYNC100: 5, 'trio', 'fail_after'
 # fmt: on

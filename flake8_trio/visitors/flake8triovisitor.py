@@ -20,6 +20,9 @@ if TYPE_CHECKING:
         ast.expr, ast.stmt, ast.arg, ast.excepthandler, ast.alias, Statement
     ]
 
+# 8 == len('ASYNCxxx'), so alt messages raise the original code
+ERROR_CODE_LEN = 8
+
 
 class Flake8TrioVisitor(ast.NodeVisitor, ABC):
     # abstract attribute by not providing a value
@@ -98,13 +101,12 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
             ), "No error code defined, but class has multiple codes"
             error_code = next(iter(self.error_codes))
         # don't emit an error if this code is disabled in a multi-code visitor
-        elif error_code[:7] not in self.options.enabled_codes:
+        elif error_code[:ERROR_CODE_LEN] not in self.options.enabled_codes:
             return
 
         self.__state.problems.append(
             Error(
-                # 7 == len('TRIO...'), so alt messages raise the original code
-                error_code[:7],
+                error_code[:ERROR_CODE_LEN],
                 node.lineno,
                 node.col_offset,
                 self.error_codes[error_code],
@@ -218,7 +220,7 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
             error_code = next(iter(self.error_codes))
         # don't emit an error if this code is disabled in a multi-code visitor
         # TODO: write test for only one of 910/911 enabled/autofixed
-        elif error_code[:7] not in self.options.enabled_codes:
+        elif error_code[:ERROR_CODE_LEN] not in self.options.enabled_codes:
             return False  # pragma: no cover
 
         if self.is_noqa(node, error_code):
@@ -228,8 +230,7 @@ class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
         pos = self.get_metadata(PositionProvider, node).start  # type: ignore
         self.__state.problems.append(
             Error(
-                # 7 == len('TRIO...'), so alt messages raise the original code
-                error_code[:7],
+                error_code[:ERROR_CODE_LEN],
                 pos.line,  # type: ignore
                 pos.column,  # type: ignore
                 self.error_codes[error_code],

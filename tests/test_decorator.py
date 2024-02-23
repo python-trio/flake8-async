@@ -90,7 +90,7 @@ def test_pep614():
 
 
 file_path = str(Path(__file__).parent / "trio_options.py")
-common_flags = ["--select=TRIO", file_path]
+common_flags = ["--select=ASYNC", file_path]
 
 
 def test_command_line_1(capfd: pytest.CaptureFixture[str]):
@@ -106,8 +106,8 @@ with open(file_path) as f:
             break
 
 expected_out = (
-    f"{file_path}:{expected_lineno}:1: TRIO910 "
-    + Visitor91X.error_codes["TRIO910"].format(
+    f"{file_path}:{expected_lineno}:1: ASYNC910 "
+    + Visitor91X.error_codes["ASYNC910"].format(
         "exit", Statement("function definition", expected_lineno)
     )
     + "\n"

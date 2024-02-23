@@ -2,7 +2,7 @@
 import anyio
 from anyio import get_cancelled_exc_class
 
-# this one is fine to also run with TRIO
+# this one is fine to also run with ASYNC
 
 
 async def foo(): ...

@@ -228,11 +228,11 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
 @disabled_by_default
 class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
     error_codes: Mapping[str, str] = {
-        "TRIO910": (
+        "ASYNC910": (
             "{0} from async function with no guaranteed checkpoint or exception "
             "since function definition on line {1.lineno}."
         ),
-        "TRIO911": (
+        "ASYNC911": (
             "{0} from async iterable with no guaranteed checkpoint since {1.name} "
             "on line {1.lineno}."
         ),
@@ -251,7 +251,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
 
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
         return not self.noautofix and super().should_autofix(
-            node, "TRIO911" if self.has_yield else "TRIO910"
+            node, "ASYNC911" if self.has_yield else "ASYNC910"
         )
 
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
@@ -384,7 +384,7 @@ class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
             node,
             msg,
             statement,
-            error_code="TRIO911" if self.has_yield else "TRIO910",
+            error_code="ASYNC911" if self.has_yield else "ASYNC910",
         )
 
     def leave_Await(

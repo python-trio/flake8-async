@@ -364,7 +364,7 @@ def get_comments(node: cst.CSTNode | Iterable[cst.CSTNode]) -> Iterator[cst.Empt
             yield from get_comments(n)
 
 
-# used in TRIO100
+# used in ASYNC100
 def flatten_preserving_comments(node: cst.BaseCompoundStatement):
     # add leading lines (comments and empty lines) for the node to be removed
     new_leading_lines = list(node.leading_lines)

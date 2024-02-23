@@ -157,7 +157,7 @@ async def foo3():
             s.shield = True
             await foo()  # safe
         with trio.move_on_after(30) as s, trio.fail_after(5):
-            await foo()  # TRIO102: 12, Statement("try/finally", lineno-7)
+            await foo()  # ASYNC102: 12, Statement("try/finally", lineno-7)
         with open(""), trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
         with trio.fail_after(5), trio.move_on_after(30) as s:

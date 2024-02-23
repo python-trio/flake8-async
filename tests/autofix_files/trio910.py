@@ -20,7 +20,7 @@ async def foo() -> Any:
 def bar() -> Any: ...
 
 
-# ARG --enable=TRIO910,TRIO911
+# ARG --enable=ASYNC910,ASYNC911
 # ARG --no-checkpoint-warning-decorator=custom_disabled_decorator
 
 

@@ -1,5 +1,5 @@
 # type: ignore
-# ARG --enable=TRIO220
+# ARG --enable=ASYNC220
 # NOANYIO
 async def foo():
-    subprocess.Popen()  # TRIO220: 4, 'subprocess.Popen', "trio"
+    subprocess.Popen()  # ASYNC220: 4, 'subprocess.Popen', "trio"

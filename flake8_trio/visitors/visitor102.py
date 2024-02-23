@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 @error_class
 class Visitor102(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO102": (
+        "ASYNC102": (
             "await inside {0.name} on line {0.lineno} must have shielded cancel "
             "scope with a timeout."
         ),

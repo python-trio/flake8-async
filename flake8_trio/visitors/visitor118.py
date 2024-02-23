@@ -1,4 +1,4 @@
-"""Visitor for TRIO118.
+"""Visitor for ASYNC118.
 
 Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable, since
 that breaks linter checks and multi-backend programs.
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 @error_class
 class Visitor118(Flake8TrioVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO118": (
+        "ASYNC118": (
             "Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable,"
             " since that breaks linter checks and multi-backend programs."
         )
@@ -35,7 +35,7 @@ class Visitor118(Flake8TrioVisitor):
 
     visit_AnnAssign = visit_Assign
 
-    # redundant check with TRIO106
+    # redundant check with ASYNC106
     def visit_ImportFrom(self, node: ast.ImportFrom):
         if node.module == "anyio":
             for alias in node.names:

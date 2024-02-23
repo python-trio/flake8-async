@@ -6,7 +6,7 @@ from __future__ import annotations
 So we make sure that import is added after it.
 """
 # isort: skip_file
-# ARG --enable=TRIO910,TRIO911
+# ARG --enable=ASYNC910,ASYNC911
 
 from typing import Any
 
@@ -18,33 +18,33 @@ async def foo() -> Any:
     await foo()
 
 
-async def foo1():  # TRIO910: 0, "exit", Statement("function definition", lineno)
+async def foo1():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     bar()
 
 
 async def foo_return():
     bar()
-    return  # TRIO910: 4, "return", Statement("function definition", lineno-2)
+    return  # ASYNC910: 4, "return", Statement("function definition", lineno-2)
 
 
-async def foo_yield():  # TRIO911: 0, "exit", Statement("yield", lineno+2)
+async def foo_yield():  # ASYNC911: 0, "exit", Statement("yield", lineno+2)
     bar()
-    yield  # TRIO911: 4, "yield", Statement("function definition", lineno-2)
+    yield  # ASYNC911: 4, "yield", Statement("function definition", lineno-2)
 
 
 async def foo_if():
     if bar():
-        return  # TRIO910: 8, "return", Statement("function definition", lineno-2)
+        return  # ASYNC910: 8, "return", Statement("function definition", lineno-2)
     elif bar():
-        return  # TRIO910: 8, "return", Statement("function definition", lineno-4)
+        return  # ASYNC910: 8, "return", Statement("function definition", lineno-4)
     else:
-        return  # TRIO910: 8, "return", Statement("function definition", lineno-6)
+        return  # ASYNC910: 8, "return", Statement("function definition", lineno-6)
 
 
 async def foo_while():
     await foo()
     while True:
-        yield  # TRIO911: 8, "yield", Statement("yield", lineno)
+        yield  # ASYNC911: 8, "yield", Statement("yield", lineno)
 
 
 async def foo_while2():
@@ -66,25 +66,25 @@ async def foo_while3():
 async def foo_while4():
     while True:
         if bar():
-            yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno+2)  # TRIO911: 12, "yield", Statement("function definition", lineno-3)
+            yield  # ASYNC911: 12, "yield", Statement("yield", lineno)  # ASYNC911: 12, "yield", Statement("yield", lineno+2)  # ASYNC911: 12, "yield", Statement("function definition", lineno-3)
         if bar():
-            yield  # TRIO911: 12, "yield", Statement("yield", lineno)  # TRIO911: 12, "yield", Statement("yield", lineno-2)  # TRIO911: 12, "yield", Statement("function definition", lineno-5) # TRIO911: 12, "yield", Statement("yield", lineno-2)
+            yield  # ASYNC911: 12, "yield", Statement("yield", lineno)  # ASYNC911: 12, "yield", Statement("yield", lineno-2)  # ASYNC911: 12, "yield", Statement("function definition", lineno-5) # ASYNC911: 12, "yield", Statement("yield", lineno-2)
             # this warns about the yield on lineno-2 twice, since it can arrive here from it in two different ways
 
 
 # check state management of nested loops
 async def foo_nested_while():
     while True:
-        yield  # TRIO911: 8, "yield", Statement("function definition", lineno-2)
+        yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-2)
         while True:
-            yield  # TRIO911: 12, "yield", Statement("yield", lineno-2)
+            yield  # ASYNC911: 12, "yield", Statement("yield", lineno-2)
             while True:
-                yield  # TRIO911: 16, "yield", Statement("yield", lineno-2)  # TRIO911: 16, "yield", Statement("yield", lineno)
+                yield  # ASYNC911: 16, "yield", Statement("yield", lineno-2)  # ASYNC911: 16, "yield", Statement("yield", lineno)
 
 
 async def foo_while_nested_func():
     while True:
-        yield  # TRIO911: 8, "yield", Statement("function definition", lineno-2) # TRIO911: 8, "yield", Statement("yield", lineno)
+        yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-2) # ASYNC911: 8, "yield", Statement("yield", lineno)
 
         async def bar():
             while bar():
