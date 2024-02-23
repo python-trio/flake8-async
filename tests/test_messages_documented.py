@@ -13,9 +13,9 @@ ROOT_PATH = Path(__file__).parent.parent
 CHANGELOG = ROOT_PATH / "CHANGELOG.md"
 README = CHANGELOG.parent / "README.md"
 
-# 107 & 108 are removed (but still mentioned in changelog & readme)
+# 107, 108 & 117 are removed (but still mentioned in changelog & readme)
 # TRIOxxx_* are fake codes to get different error messages for the same code
-IGNORED_CODES_REGEX = r"TRIO107|TRIO108|TRIO\d\d\d_.*"
+IGNORED_CODES_REGEX = r"TRIO107|TRIO108|TRIO117|TRIO\d\d\d_.*"
 
 
 def test_messages_documented():
