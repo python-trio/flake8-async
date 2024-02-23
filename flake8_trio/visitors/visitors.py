@@ -264,26 +264,6 @@ class Visitor116(Flake8TrioVisitor):
                 self.error(node, m[2])
 
 
-DEPRECATED_ERRORS = ("MultiError", "NonBaseMultiError")
-
-
-# anyio does not have MultiError, so this check is trio-only
-@error_class
-class Visitor117(Flake8TrioVisitor):
-    error_codes: Mapping[str, str] = {
-        "TRIO117": "Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup.",
-    }
-
-    # This should never actually happen given TRIO106
-    def visit_Name(self, node: ast.Name):
-        if node.id in DEPRECATED_ERRORS and "trio" in self.library:
-            self.error(node, node.id)
-
-    def visit_Attribute(self, node: ast.Attribute):
-        if (n := ast.unparse(node)) in ("trio.MultiError", "trio.NonBaseMultiError"):
-            self.error(node, n)
-
-
 @error_class
 @disabled_by_default
 class Visitor900(Flake8TrioVisitor):
