@@ -25,12 +25,16 @@ from . import (
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
 
-    from .flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst, HasLineCol
+    from .flake8triovisitor import (
+        Flake8AsyncVisitor,
+        Flake8AsyncVisitor_cst,
+        HasLineCol,
+    )
 
-    T = TypeVar("T", bound=Flake8TrioVisitor)
-    T_CST = TypeVar("T_CST", bound=Flake8TrioVisitor_cst)
+    T = TypeVar("T", bound=Flake8AsyncVisitor)
+    T_CST = TypeVar("T_CST", bound=Flake8AsyncVisitor_cst)
     T_EITHER = TypeVar(
-        "T_EITHER", bound=Union[Flake8TrioVisitor, Flake8TrioVisitor_cst]
+        "T_EITHER", bound=Union[Flake8AsyncVisitor, Flake8AsyncVisitor_cst]
     )
 
 

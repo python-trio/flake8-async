@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 ERROR_CODE_LEN = 8
 
 
-class Flake8TrioVisitor(ast.NodeVisitor, ABC):
+class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
     # abstract attribute by not providing a value
     error_codes: Mapping[str, str]
 
@@ -39,7 +39,7 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
 
         # mark variables that shouldn't be saved/loaded in self.get_state
         self.nocopy = {
-            "_Flake8TrioVisitor__state",
+            "_Flake8AsyncVisitor__state",
             "error_codes",
             "nocopy",
             "novisit",
@@ -158,7 +158,7 @@ class Flake8TrioVisitor(ast.NodeVisitor, ABC):
             self.__state.library = (*self.__state.library, name)
 
 
-class Flake8TrioVisitor_cst(cst.CSTTransformer, ABC):
+class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
     # abstract attribute by not providing a value
     error_codes: Mapping[str, str]
     METADATA_DEPENDENCIES = (PositionProvider,)

@@ -16,7 +16,7 @@ import libcst.matchers as m
 from libcst.metadata import PositionProvider
 
 from ..base import Statement
-from .flake8triovisitor import Flake8TrioVisitor_cst
+from .flake8triovisitor import Flake8AsyncVisitor_cst
 from .helpers import (
     disabled_by_default,
     error_class_cst,
@@ -226,7 +226,7 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
 
 @error_class_cst
 @disabled_by_default
-class Visitor91X(Flake8TrioVisitor_cst, CommonVisitors):
+class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     error_codes: Mapping[str, str] = {
         "ASYNC910": (
             "{0} from async function with no guaranteed checkpoint or exception "

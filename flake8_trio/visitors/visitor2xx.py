@@ -14,7 +14,7 @@ import ast
 import re
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8TrioVisitor
+from .flake8triovisitor import Flake8AsyncVisitor
 from .helpers import error_class, fnmatch_qualified_name, get_matching_call
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 @error_class
-class Visitor200(Flake8TrioVisitor):
+class Visitor200(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC200": (
             "User-configured blocking sync call {0} in async function, consider "

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import libcst as cst
 import libcst.matchers as m
 
-from .flake8triovisitor import Flake8TrioVisitor_cst
+from .flake8triovisitor import Flake8AsyncVisitor_cst
 from .helpers import (
     AttributeCall,
     error_class_cst,
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 @error_class_cst
-class Visitor100_libcst(Flake8TrioVisitor_cst):
+class Visitor100_libcst(Flake8AsyncVisitor_cst):
     error_codes: Mapping[str, str] = {
         "ASYNC100": (
             "{0}.{1} context contains no checkpoints, remove the context or add"

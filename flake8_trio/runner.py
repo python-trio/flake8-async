@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from libcst import Module
 
     from .base import Error, Options
-    from .visitors.flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst
+    from .visitors.flake8triovisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
 
 
 @dataclass
@@ -73,7 +73,7 @@ class Flake8TrioRunner(ast.NodeVisitor, __CommonRunner):
         """Visit a node."""
         # tracks the subclasses that, from this node on, iterated through it's subfields
         # we need to remember it so we can restore it at the end of the function.
-        novisit: set[Flake8TrioVisitor] = set()
+        novisit: set[Flake8AsyncVisitor] = set()
 
         method = "visit_" + node.__class__.__name__
 
@@ -122,14 +122,14 @@ class Flake8TrioRunner_cst(__CommonRunner):
 
         # Could possibly enable/disable utility visitors here, if visitors declared
         # dependencies
-        self.utility_visitors: tuple[Flake8TrioVisitor_cst, ...] = tuple(
+        self.utility_visitors: tuple[Flake8AsyncVisitor_cst, ...] = tuple(
             v(self.state) for v in utility_visitors
         )
 
         # sort the error classes to get predictable behaviour when multiple autofixers
         # are enabled
         sorted_error_classes_cst = sorted(ERROR_CLASSES_CST, key=lambda x: x.__name__)
-        self.visitors: tuple[Flake8TrioVisitor_cst, ...] = tuple(
+        self.visitors: tuple[Flake8AsyncVisitor_cst, ...] = tuple(
             v(self.state)
             for v in sorted_error_classes_cst
             if self.selected(v.error_codes)

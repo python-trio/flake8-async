@@ -30,7 +30,7 @@ from flake8_trio.visitors import ERROR_CLASSES, ERROR_CLASSES_CST
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-    from flake8_trio.visitors.flake8triovisitor import Flake8TrioVisitor
+    from flake8_trio.visitors.flake8triovisitor import Flake8AsyncVisitor
 
 AUTOFIX_DIR = Path(__file__).parent / "autofix_files"
 
@@ -75,7 +75,7 @@ def check_version(test: str):
 
 
 # mypy does not see that both types have error_codes
-ERROR_CODES: dict[str, Flake8TrioVisitor] = {
+ERROR_CODES: dict[str, Flake8AsyncVisitor] = {
     err_code: err_class  # type: ignore[misc]
     for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
     for err_code in err_class.error_codes  # type: ignore[attr-defined]

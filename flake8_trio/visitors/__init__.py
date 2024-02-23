@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst
+    from .flake8triovisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
 
 __all__ = [
     "ERROR_CLASSES",
@@ -19,11 +19,11 @@ __all__ = [
     "utility_visitors",
     "utility_visitors_cst",
 ]
-ERROR_CLASSES: set[type[Flake8TrioVisitor]] = set()
-ERROR_CLASSES_CST: set[type[Flake8TrioVisitor_cst]] = set()
+ERROR_CLASSES: set[type[Flake8AsyncVisitor]] = set()
+ERROR_CLASSES_CST: set[type[Flake8AsyncVisitor_cst]] = set()
 default_disabled_error_codes: list[str] = []
-utility_visitors: set[type[Flake8TrioVisitor]] = set()
-utility_visitors_cst: set[type[Flake8TrioVisitor_cst]] = set()
+utility_visitors: set[type[Flake8AsyncVisitor]] = set()
+utility_visitors_cst: set[type[Flake8AsyncVisitor_cst]] = set()
 
 # Import all visitors so their decorators run, filling the above containers
 # This has to be done at the end to avoid circular imports

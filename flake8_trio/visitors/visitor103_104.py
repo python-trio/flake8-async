@@ -11,7 +11,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8TrioVisitor
+from .flake8triovisitor import Flake8AsyncVisitor
 from .helpers import critical_except, error_class, iter_guaranteed_once
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ for poss_library in _suggestion_dict:
 
 
 @error_class
-class Visitor103_104(Flake8TrioVisitor):
+class Visitor103_104(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = _error_codes
 
     def __init__(self, *args: Any, **kwargs: Any):

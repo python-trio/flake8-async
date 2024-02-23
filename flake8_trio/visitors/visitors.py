@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any, cast
 
-from .flake8triovisitor import Flake8TrioVisitor
+from .flake8triovisitor import Flake8AsyncVisitor
 from .helpers import disabled_by_default, error_class, get_matching_call, has_decorator
 
 if TYPE_CHECKING:
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 @error_class
-class Visitor106(Flake8TrioVisitor):
+class Visitor106(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC106": "{0} must be imported with `import {0}` for the linter to work.",
     }
@@ -29,7 +29,7 @@ class Visitor106(Flake8TrioVisitor):
 
 
 @error_class
-class Visitor109(Flake8TrioVisitor):
+class Visitor109(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC109": (
             "Async function definition with a `timeout` parameter - use "
@@ -50,7 +50,7 @@ class Visitor109(Flake8TrioVisitor):
 
 
 @error_class
-class Visitor110(Flake8TrioVisitor):
+class Visitor110(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC110": (
             "`while <condition>: await {0}.sleep()` should be replaced by "
@@ -69,7 +69,7 @@ class Visitor110(Flake8TrioVisitor):
 
 
 @error_class
-class Visitor112(Flake8TrioVisitor):
+class Visitor112(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC112": (
             "Redundant nursery {}, consider replacing with directly awaiting "
@@ -121,7 +121,7 @@ STARTABLE_CALLS = (
 
 
 @error_class
-class Visitor113(Flake8TrioVisitor):
+class Visitor113(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC113": (
             "Dangerous `.start_soon()`, function might not be executed before"
@@ -188,7 +188,7 @@ class Visitor113(Flake8TrioVisitor):
 # name, so may miss cases where functions are named the same in different modules/classes
 # and option names are specified including the module name.
 @error_class
-class Visitor114(Flake8TrioVisitor):
+class Visitor114(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC114": (
             "Startable function {} not in --startable-in-context-manager parameter "
@@ -210,7 +210,7 @@ class Visitor114(Flake8TrioVisitor):
 # Suggests replacing all `trio.sleep(0)` with the more suggestive
 # `trio.lowlevel.checkpoint()`
 @error_class
-class Visitor115(Flake8TrioVisitor):
+class Visitor115(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC115": "Use `{0}.lowlevel.checkpoint()` instead of `{0}.sleep(0)`.",
     }
@@ -227,7 +227,7 @@ class Visitor115(Flake8TrioVisitor):
 
 
 @error_class
-class Visitor116(Flake8TrioVisitor):
+class Visitor116(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC116": (
             "{0}.sleep() with >24 hour interval should usually be "
@@ -269,7 +269,7 @@ DEPRECATED_ERRORS = ("MultiError", "NonBaseMultiError")
 
 # anyio does not have MultiError, so this check is trio-only
 @error_class
-class Visitor117(Flake8TrioVisitor):
+class Visitor117(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC117": "Reference to {}, prefer [exceptiongroup.]BaseExceptionGroup.",
     }
@@ -286,7 +286,7 @@ class Visitor117(Flake8TrioVisitor):
 
 @error_class
 @disabled_by_default
-class Visitor900(Flake8TrioVisitor):
+class Visitor900(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC900": "Async generator without `@asynccontextmanager` not allowed."
     }
