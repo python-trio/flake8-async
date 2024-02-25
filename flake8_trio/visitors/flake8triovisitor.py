@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Union
 import libcst as cst
 from libcst.metadata import PositionProvider
 
-from ..base import Error, Statement
+from ..base import Error, Statement, strip_error_subidentifier
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -19,9 +19,6 @@ if TYPE_CHECKING:
     HasLineCol = Union[
         ast.expr, ast.stmt, ast.arg, ast.excepthandler, ast.alias, Statement
     ]
-
-# 8 == len('ASYNCxxx'), so alt messages raise the original code
-ERROR_CODE_LEN = 8
 
 
 class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
@@ -101,12 +98,12 @@ class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
             ), "No error code defined, but class has multiple codes"
             error_code = next(iter(self.error_codes))
         # don't emit an error if this code is disabled in a multi-code visitor
-        elif error_code[:ERROR_CODE_LEN] not in self.options.enabled_codes:
+        elif strip_error_subidentifier(error_code) not in self.options.enabled_codes:
             return
 
         self.__state.problems.append(
             Error(
-                error_code[:ERROR_CODE_LEN],
+                strip_error_subidentifier(error_code),
                 node.lineno,
                 node.col_offset,
                 self.error_codes[error_code],
@@ -220,7 +217,7 @@ class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
             error_code = next(iter(self.error_codes))
         # don't emit an error if this code is disabled in a multi-code visitor
         # TODO: write test for only one of 910/911 enabled/autofixed
-        elif error_code[:ERROR_CODE_LEN] not in self.options.enabled_codes:
+        elif strip_error_subidentifier(error_code) not in self.options.enabled_codes:
             return False  # pragma: no cover
 
         if self.is_noqa(node, error_code):
@@ -230,7 +227,7 @@ class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
         pos = self.get_metadata(PositionProvider, node).start  # type: ignore
         self.__state.problems.append(
             Error(
-                error_code[:ERROR_CODE_LEN],
+                strip_error_subidentifier(error_code),
                 pos.line,  # type: ignore
                 pos.column,  # type: ignore
                 self.error_codes[error_code],

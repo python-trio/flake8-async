@@ -15,7 +15,6 @@ import ast
 import functools
 import keyword
 import os
-import re
 import subprocess
 import sys
 import tokenize
@@ -24,7 +23,7 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
-from .base import Options
+from .base import Options, error_has_subidentifier
 from .runner import Flake8TrioRunner, Flake8TrioRunner_cst
 from .visitors import ERROR_CLASSES, ERROR_CLASSES_CST, default_disabled_error_codes
 
@@ -314,7 +313,7 @@ class Plugin:
             err_code
             for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
             for err_code in err_class.error_codes  # type: ignore[attr-defined]
-            if re.match("ASYNC...", err_code)  # exclude e.g. ASYNC103_anyio_trio
+            if not error_has_subidentifier(err_code)  # exclude e.g. ASYNC103_anyio_trio
         }
         assert all_codes
 
@@ -332,7 +331,7 @@ class Plugin:
         # if disable has default value, re-enable explicitly enabled codes
         if options.disable == ["ASYNC9"]:
             enabled_codes.update(
-                code for code in options.enable if re.match("ASYNC...", code)
+                code for code in options.enable if not error_has_subidentifier(code)
             )
 
         Plugin._options = Options(
