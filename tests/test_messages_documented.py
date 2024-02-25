@@ -13,9 +13,9 @@ ROOT_PATH = Path(__file__).parent.parent
 CHANGELOG = ROOT_PATH / "CHANGELOG.md"
 README = CHANGELOG.parent / "README.md"
 
-# 107 & 108 are removed (but still mentioned in changelog & readme)
+# 107, 108 & 117 are removed (but still mentioned in changelog & readme)
 # ASYNCxxx_* are fake codes to get different error messages for the same code
-IGNORED_CODES_REGEX = r"(TRIO|ASYNC)107|(TRIO|ASYNC)108|ASYNC\d\d\d_.*"
+IGNORED_CODES_REGEX = r"(TRIO|ASYNC)(107|108|117)|ASYNC\d\d\d_.*"
 
 
 # temp function for eval files

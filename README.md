@@ -34,8 +34,6 @@ pip install flake8-async
 - **ASYNC104**: `Cancelled` and `BaseException` must be re-raised - when a user tries to `return` or `raise` a different exception.
 - **ASYNC105**: Calling a trio async function without immediately `await`ing it.
 - **ASYNC106**: `trio`/`anyio` must be imported with `import trio`/`import anyio` for the linter to work.
-- **ASYNC107**: Renamed to ASYNC910
-- **ASYNC108**: Renamed to ASYNC911
 - **ASYNC109**: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead
 - **ASYNC110**: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.
 - **ASYNC111**: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
@@ -44,7 +42,6 @@ pip install flake8-async
 - **ASYNC114**: Startable function (i.e. has a `task_status` keyword parameter) not in `--startable-in-context-manager` parameter list, please add it so ASYNC113 can catch errors when using it.
 - **ASYNC115**: Replace `trio.sleep(0)` with the more suggestive `trio.lowlevel.checkpoint()`.
 - **ASYNC116**: `trio.sleep()` with >24 hour interval should usually be `trio.sleep_forever()`.
-- **ASYNC117**: Don't raise or catch `trio.[NonBase]MultiError`, prefer `[exceptiongroup.]BaseExceptionGroup`. Even if Trio still raises `MultiError` for legacy code, it can be caught with `BaseExceptionGroup` so it's fully redundant.
 - **ASYNC118**: Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable, since that breaks linter checks and multi-backend programs.
 
 ### Warnings for blocking sync calls in async functions
@@ -60,12 +57,16 @@ pip install flake8-async
 - **ASYNC232**: Blocking sync call on file object, wrap the file object in `trio.wrap_file()` to get an async file object.
 - **ASYNC240**: Avoid using `os.path` in async functions, prefer using `trio.Path` objects.
 
-
 ### Warnings disabled by default
 - **ASYNC900**: Async generator without `@asynccontextmanager` not allowed.
 - **ASYNC910**: Exit or `return` from async function with no guaranteed checkpoint or exception since function definition.
 - **ASYNC911**: Exit, `yield` or `return` from async iterable with no guaranteed checkpoint since possible function entry (yield or function definition)
   Checkpoints are `await`, `async for`, and `async with` (on one of enter/exit).
+
+### Removed Warnings
+- **TRIO107**: Renamed to TRIO910
+- **TRIO108**: Renamed to TRIO911
+- **TRIO117**: Don't raise or catch `trio.[NonBase]MultiError`, prefer `[exceptiongroup.]BaseExceptionGroup`. `MultiError` was removed in trio==0.24.0.
 
 ## Examples
 ### install and run through flake8

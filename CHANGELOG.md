@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## Future
+- Removed TRIO117, MultiError removed in trio 0.24.0
+
 ## 23.5.1
 - TRIO91X now supports comprehensions
 - TRIO100 and TRIO91X now supports autofixing
