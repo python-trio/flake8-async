@@ -14,7 +14,7 @@ import ast
 import re
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8TrioVisitor
+from .flake8triovisitor import Flake8AsyncVisitor
 from .helpers import error_class, fnmatch_qualified_name, get_matching_call
 
 if TYPE_CHECKING:
@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 
 
 @error_class
-class Visitor200(Flake8TrioVisitor):
+class Visitor200(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO200": (
+        "ASYNC200": (
             "User-configured blocking sync call {0} in async function, consider "
             "replacing with {1}."
         )
@@ -59,8 +59,8 @@ class Visitor200(Flake8TrioVisitor):
 @error_class
 class Visitor21X(Visitor200):
     error_codes: Mapping[str, str] = {
-        "TRIO210": "Sync HTTP call {} in async function, use `httpx.AsyncClient`.",
-        "TRIO211": (
+        "ASYNC210": "Sync HTTP call {} in async function, use `httpx.AsyncClient`.",
+        "ASYNC211": (
             "Likely sync HTTP call {} in async function, use `httpx.AsyncClient`."
         ),
     }
@@ -92,7 +92,7 @@ class Visitor21X(Visitor200):
         func_name = ast.unparse(node.func)
         for http_package in "requests", "httpx":
             if get_matching_call(node, *http_methods | {"request"}, base=http_package):
-                self.error(node, func_name, error_code="TRIO210")
+                self.error(node, func_name, error_code="ASYNC210")
                 return
 
         if func_name in (
@@ -101,7 +101,7 @@ class Visitor21X(Visitor200):
             "request.urlopen",
             "urlopen",
         ):
-            self.error(node, func_name, error_code="TRIO210")
+            self.error(node, func_name, error_code="ASYNC210")
 
         elif (
             "urllib3" in self.imports
@@ -112,13 +112,13 @@ class Visitor21X(Visitor200):
             and isinstance(node.args[0].value, str)
             and node.args[0].value.lower() in http_methods | {"trace", "connect"}
         ):
-            self.error(node, func_name, error_code="TRIO211")
+            self.error(node, func_name, error_code="ASYNC211")
 
 
 @error_class
 class Visitor212(Visitor200):
     error_codes: Mapping[str, str] = {
-        "TRIO212": (
+        "ASYNC212": (
             "Blocking sync HTTP call {1} on httpx object {0}, use httpx.AsyncClient."
         )
     }
@@ -170,12 +170,12 @@ class Visitor212(Visitor200):
 @error_class
 class Visitor22X(Visitor200):
     error_codes: Mapping[str, str] = {
-        "TRIO220": (
+        "ASYNC220": (
             "Sync call {} in async function, use "
             "`await nursery.start({}.run_process, ...)`."
         ),
-        "TRIO221": "Sync call {} in async function, use `await {}.run_process(...)`.",
-        "TRIO222": "Sync call {} in async function, wrap in `{}.to_thread.run_sync()`.",
+        "ASYNC221": "Sync call {} in async function, use `await {}.run_process(...)`.",
+        "ASYNC222": "Sync call {} in async function, wrap in `{}.to_thread.run_sync()`.",
     }
 
     def visit_blocking_call(self, node: ast.Call):
@@ -196,30 +196,30 @@ class Visitor22X(Visitor200):
         func_name = ast.unparse(node.func)
         error_code: str | None = None
         if func_name in ("subprocess.Popen", "os.popen"):
-            error_code = "TRIO220"
+            error_code = "ASYNC220"
 
         elif func_name in (
             "os.system",
             "os.posix_spawn",
             "os.posix_spawnp",
         ) or get_matching_call(node, *subprocess_calls, base="subprocess"):
-            error_code = "TRIO221"
+            error_code = "ASYNC221"
 
         elif re.fullmatch("os.wait([34]|(id)|(pid))?", func_name):
-            error_code = "TRIO222"
+            error_code = "ASYNC222"
 
         elif re.fullmatch("os.spawn[vl]p?e?", func_name):
-            error_code = "TRIO221"
+            error_code = "ASYNC221"
 
-            # if mode= is given and not [os.]P_WAIT: TRIO220
+            # if mode= is given and not [os.]P_WAIT: ASYNC220
             # 1. as a positional parameter
             if node.args and not is_p_wait(node.args[0]):
-                error_code = "TRIO220"
+                error_code = "ASYNC220"
 
             # 2. as a keyword parameter
             for kw in node.keywords:
                 if kw.arg == "mode" and not is_p_wait(kw.value):
-                    error_code = "TRIO220"
+                    error_code = "ASYNC220"
                     break
 
         if error_code is not None:
@@ -229,8 +229,8 @@ class Visitor22X(Visitor200):
 @error_class
 class Visitor23X(Visitor200):
     error_codes: Mapping[str, str] = {
-        "TRIO230": "Sync call {0} in async function, use `{1}.open_file(...)`.",
-        "TRIO231": "Sync call {0} in async function, use `{1}.wrap_file({0})`.",
+        "ASYNC230": "Sync call {0} in async function, use `{1}.open_file(...)`.",
+        "ASYNC231": "Sync call {0} in async function, use `{1}.wrap_file({0})`.",
     }
 
     def visit_Call(self, node: ast.Call):
@@ -244,9 +244,9 @@ class Visitor23X(Visitor200):
             return
         func_name = ast.unparse(node.func)
         if func_name in ("open", "io.open", "io.open_code"):
-            error_code = "TRIO230"
+            error_code = "ASYNC230"
         elif func_name == "os.fdopen":
-            error_code = "TRIO231"
+            error_code = "ASYNC231"
         else:
             return
         self.error(node, func_name, self.library_str, error_code=error_code)
@@ -255,7 +255,7 @@ class Visitor23X(Visitor200):
 @error_class
 class Visitor232(Visitor200):
     error_codes: Mapping[str, str] = {
-        "TRIO232": (
+        "ASYNC232": (
             "Blocking sync call {1} on file object {0}, wrap the file object"
             "in `{2}.wrap_file()` to get an async file object."
         )
@@ -285,7 +285,7 @@ class Visitor232(Visitor200):
 @error_class
 class Visitor24X(Visitor200):
     error_codes: Mapping[str, str] = {
-        "TRIO240": "Avoid using os.path, prefer using {1}.Path objects.",
+        "ASYNC240": "Avoid using os.path, prefer using {1}.Path objects.",
     }
 
     def __init__(self, *args: Any, **kwargs: Any):

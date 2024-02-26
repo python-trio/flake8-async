@@ -1,11 +1,11 @@
-"""TRIO105: library async function must be immediately awaited."""
+"""ASYNC105: library async function must be immediately awaited."""
 
 from __future__ import annotations
 
 import ast
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8TrioVisitor
+from .flake8triovisitor import Flake8AsyncVisitor
 from .helpers import error_class
 
 if TYPE_CHECKING:
@@ -42,9 +42,9 @@ trio_async_funcs = (
 
 
 @error_class
-class Visitor105(Flake8TrioVisitor):
+class Visitor105(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO105": "{0} async {1} must be immediately awaited.",
+        "ASYNC105": "{0} async {1} must be immediately awaited.",
     }
 
     def __init__(self, *args: Any, **kwargs: Any):

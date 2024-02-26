@@ -11,13 +11,13 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8TrioVisitor
+from .flake8triovisitor import Flake8AsyncVisitor
 from .helpers import critical_except, error_class, iter_guaranteed_once
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-_trio103_common_msg = "{} block with a code path that doesn't re-raise the error."
+_async103_common_msg = "{} block with a code path that doesn't re-raise the error."
 _suggestion = " Consider adding an `except {}: raise` before this exception handler."
 _suggestion_dict: dict[tuple[str, ...], str] = {
     ("anyio",): "anyio.get_cancelled_exc_class()",
@@ -26,17 +26,17 @@ _suggestion_dict: dict[tuple[str, ...], str] = {
 _suggestion_dict[("anyio", "trio")] = "[" + "|".join(_suggestion_dict.values()) + "]"
 
 _error_codes = {
-    "TRIO103": _trio103_common_msg,
-    "TRIO104": "Cancelled (and therefore BaseException) must be re-raised.",
+    "ASYNC103": _async103_common_msg,
+    "ASYNC104": "Cancelled (and therefore BaseException) must be re-raised.",
 }
 for poss_library in _suggestion_dict:
-    _error_codes[f"TRIO103_{'_'.join(poss_library)}"] = (
-        _trio103_common_msg + _suggestion.format(_suggestion_dict[poss_library])
+    _error_codes[f"ASYNC103_{'_'.join(poss_library)}"] = (
+        _async103_common_msg + _suggestion.format(_suggestion_dict[poss_library])
     )
 
 
 @error_class
-class Visitor103_104(Flake8TrioVisitor):
+class Visitor103_104(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = _error_codes
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -61,21 +61,21 @@ class Visitor103_104(Flake8TrioVisitor):
         # If previous excepts have handled trio.Cancelled, don't do anything - namely
         # don't set self.unraised (so 104 isn't triggered) nor check for 103.
         if marker.name == "trio.Cancelled":
-            error_code = "TRIO103"
+            error_code = "ASYNC103"
             self.cancelled_caught.add("trio")
         elif marker.name in (
             "anyio.get_cancelled_exc_class()",
             "get_cancelled_exc_class()",
         ):
-            error_code = "TRIO103"
+            error_code = "ASYNC103"
             self.cancelled_caught.add("anyio")
         else:
             if self.cancelled_caught:
                 return
             if len(self.library) < 2:
-                error_code = f"TRIO103_{self.library_str}"
+                error_code = f"ASYNC103_{self.library_str}"
             else:
-                error_code = f"TRIO103_{'_'.join(sorted(self.library))}"
+                error_code = f"ASYNC103_{'_'.join(sorted(self.library))}"
             self.cancelled_caught.update("trio", "anyio")
 
         # Don't save the state of cancelled_caught, that's handled in Try and would
@@ -117,7 +117,7 @@ class Visitor103_104(Flake8TrioVisitor):
             and node.exc is not None
             and not (isinstance(node.exc, ast.Name) and node.exc.id == self.except_name)
         ):
-            self.error(node, error_code="TRIO104")
+            self.error(node, error_code="ASYNC104")
 
         # treat it as safe regardless, to avoid unnecessary error messages.
         self.unraised = False
@@ -125,7 +125,7 @@ class Visitor103_104(Flake8TrioVisitor):
     def visit_Return(self, node: ast.Return | ast.Yield):
         if self.unraised:
             # Error: must re-raise
-            self.error(node, error_code="TRIO104")
+            self.error(node, error_code="ASYNC104")
 
     visit_Yield = visit_Return
 
@@ -209,10 +209,10 @@ class Visitor103_104(Flake8TrioVisitor):
 
     def visit_Break(self, node: ast.Break):
         if self.unraised and self.loop_depth == 0:
-            self.error(node, error_code="TRIO104")
+            self.error(node, error_code="ASYNC104")
         self.unraised_break |= self.unraised
 
     def visit_Continue(self, node: ast.Continue):
         if self.unraised and self.loop_depth == 0:
-            self.error(node, error_code="TRIO104")
+            self.error(node, error_code="ASYNC104")
         self.unraised_continue |= self.unraised

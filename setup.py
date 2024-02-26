@@ -20,12 +20,12 @@ with open(Path(__file__).parent / "flake8_trio" / "__init__.py") as o:
 
 
 setup(
-    name="flake8-trio",
+    name="flake8-async",
     version=__version__,
     author="Zac Hatfield-Dodds, John Litborn, and Contributors",
     author_email="zac@zhd.dev",
     packages=find_packages(include=["flake8_trio", "flake8_trio.*"]),
-    url="https://github.com/Zac-HD/flake8-trio",
+    url="https://github.com/python-trio/flake8-trio",
     license="MIT",
     description="A highly opinionated flake8 plugin for Trio-related problems.",
     zip_safe=False,
@@ -51,7 +51,10 @@ setup(
     ),
     long_description_content_type="text/markdown",
     entry_points={
-        "flake8.extension": ["TRI = flake8_trio:Plugin"],
-        "console_scripts": ["flake8-trio=flake8_trio:main"],
+        # You're not allowed to register error codes longer than 3 characters. But flake8
+        # doesn't enforce anything about the characters trailing the code, so we can say
+        # the code is ASY and then just always happen to print NCxxx directly after it.
+        "flake8.extension": ["ASY = flake8_trio:Plugin"],
+        "console_scripts": ["flake8-async=flake8_trio:main"],
     },
 )

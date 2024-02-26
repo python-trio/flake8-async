@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any, NamedTuple
 
-from .flake8triovisitor import Flake8TrioVisitor
+from .flake8triovisitor import Flake8AsyncVisitor
 from .helpers import error_class, get_matching_call
 
 if TYPE_CHECKING:
@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 
 
 @error_class
-class Visitor111(Flake8TrioVisitor):
+class Visitor111(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO111": (
+        "ASYNC111": (
             "variable {2} is usable within the context manager on line {0}, but that "
             "will close before nursery opened on line {1} - this is usually a bug.  "
             "Nurseries should generally be the inner-most context manager."

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, cast
 import libcst.matchers as m
 from libcst.metadata import PositionProvider
 
-from .flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst
+from .flake8triovisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
 from .helpers import utility_visitor, utility_visitor_cst
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 @utility_visitor
-class VisitorTypeTracker(Flake8TrioVisitor):
+class VisitorTypeTracker(Flake8AsyncVisitor):
     def visit_AsyncFunctionDef(
         self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
     ):
@@ -101,7 +101,7 @@ class VisitorTypeTracker(Flake8TrioVisitor):
 
 
 @utility_visitor
-class VisitorAwaitModifier(Flake8TrioVisitor):
+class VisitorAwaitModifier(Flake8AsyncVisitor):
     def visit_Await(self, node: ast.Await):
         if isinstance(node.value, ast.Call):
             # add attribute to indicate it's awaited
@@ -109,7 +109,7 @@ class VisitorAwaitModifier(Flake8TrioVisitor):
 
 
 @utility_visitor
-class VisitorLibraryHandler(Flake8TrioVisitor):
+class VisitorLibraryHandler(Flake8AsyncVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         # check whether library we're working towards has been explicitly
@@ -126,7 +126,7 @@ class VisitorLibraryHandler(Flake8TrioVisitor):
 
 
 @utility_visitor_cst
-class VisitorLibraryHandler_cst(Flake8TrioVisitor_cst):
+class VisitorLibraryHandler_cst(Flake8AsyncVisitor_cst):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         # check whether library we're working towards has been explicitly
@@ -172,7 +172,7 @@ def _find_noqa(physical_line: str) -> Match[str] | None:
 
 
 @utility_visitor_cst
-class NoqaHandler(Flake8TrioVisitor_cst):
+class NoqaHandler(Flake8AsyncVisitor_cst):
     def visit_Comment(self, node: cst.Comment):
         noqa_match = _find_noqa(node.value)
         if noqa_match is None:

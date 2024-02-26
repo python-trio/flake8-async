@@ -9,7 +9,7 @@ import ast
 from typing import TYPE_CHECKING, Any
 
 from ..base import Statement
-from .flake8triovisitor import Flake8TrioVisitor
+from .flake8triovisitor import Flake8AsyncVisitor
 from .helpers import cancel_scope_names, critical_except, error_class, get_matching_call
 
 if TYPE_CHECKING:
@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 
 
 @error_class
-class Visitor102(Flake8TrioVisitor):
+class Visitor102(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "TRIO102": (
+        "ASYNC102": (
             "await inside {0.name} on line {0.lineno} must have shielded cancel "
             "scope with a timeout."
         ),

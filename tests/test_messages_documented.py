@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Tests for flake8-trio package metadata."""
+"""Tests for flake8-async package metadata."""
 
 from __future__ import annotations
 
@@ -14,8 +14,14 @@ CHANGELOG = ROOT_PATH / "CHANGELOG.md"
 README = CHANGELOG.parent / "README.md"
 
 # 107, 108 & 117 are removed (but still mentioned in changelog & readme)
-# TRIOxxx_* are fake codes to get different error messages for the same code
-IGNORED_CODES_REGEX = r"TRIO107|TRIO108|TRIO117|TRIO\d\d\d_.*"
+# ASYNCxxx_* are fake codes to get different error messages for the same code
+IGNORED_CODES_REGEX = r"(TRIO|ASYNC)(107|108|117)|ASYNC\d\d\d_.*"
+
+
+# temp function for eval files
+# less sure what to do with the changelog
+def rename_trio_to_async(s: str) -> str:
+    return re.sub("TRIO", "ASYNC", s)
 
 
 def test_messages_documented():
@@ -26,12 +32,12 @@ def test_messages_documented():
         filename = path.name
         documented_errors[filename] = set()
         for line in lines:
-            for error_msg in re.findall(r"TRIO\d\d\d", line):
-                documented_errors[filename].add(error_msg)
+            for error_msg in re.findall(r"TRIO\d\d\d|ASYNC\d\d\d", line):
+                documented_errors[filename].add(rename_trio_to_async(error_msg))
 
     documented_errors["flake8_trio.py"] = set(ERROR_CODES)
 
-    # get tested error codes from file names and from `INCLUDE` lines
+    # get tested error codes from file names and from `# ARG --enable` lines
     documented_errors["eval_files"] = set()
     p = Path(__file__).parent / "eval_files"
     for file_path in p.iterdir():
@@ -39,26 +45,30 @@ def test_messages_documented():
             continue
 
         if m := re.search(r"trio\d\d\d", str(file_path)):
-            documented_errors["eval_files"].add(m.group().upper())
+            documented_errors["eval_files"].add(rename_trio_to_async(m.group().upper()))
 
         with open(file_path) as file:
             for line in file:
                 if line.startswith("# ARG --enable"):
-                    for m in re.findall(r"trio\d\d\d", line, re.IGNORECASE):
+                    for m in re.findall(r"async\d\d\d", line, re.IGNORECASE):
                         # pyright types m as `Any` (as it is in typeshed)
                         # mypy types it as Optional[Match[str]]
                         # but afaict it should be something like str|Tuple[str,...]
                         # depending on whether there's a group in the pattern or not.
                         # (or bytes, if both inputs are bytes)
+                        # see https://github.com/python/typeshed/issues/263
                         documented_errors["eval_files"].add(cast("str", m))
                     break
 
+    # ignore codes that aren't actually codes, and removed codes
     for errset in documented_errors.values():
         errset.difference_update(
             [c for c in errset if re.fullmatch(IGNORED_CODES_REGEX, c)]
         )
 
+    # error is only listed in one file
     unique_errors: dict[str, set[str]] = {}
+    # error is mentioned in other files but not in this one
     missing_errors: dict[str, set[str]] = {}
     for key, codes in documented_errors.items():
         unique_errors[key] = codes.copy()
@@ -70,4 +80,5 @@ def test_messages_documented():
             unique_errors[key].difference_update(other_codes)
             missing_errors[key].update(other_codes - codes)
 
+    # both of these should be dicts with empty sets
     assert unique_errors == missing_errors

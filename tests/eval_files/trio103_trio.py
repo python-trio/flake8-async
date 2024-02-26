@@ -1,4 +1,4 @@
-# ARG --enable=TRIO103,TRIO104
+# ARG --enable=ASYNC103,ASYNC104
 # NOANYIO
 
 from typing import Any
@@ -17,7 +17,7 @@ try:
 except (
     SyntaxError,
     ValueError,
-    trio.Cancelled,  # TRIO103: 4, "trio.Cancelled"
+    trio.Cancelled,  # ASYNC103: 4, "trio.Cancelled"
 ) as p:
     ...
 
@@ -38,7 +38,7 @@ except trio.Cancelled as e:
 
 try:
     ...
-except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
+except trio.Cancelled:  # ASYNC103: 7, "trio.Cancelled"
     ...
 
 # Issue #106, false alarm on excepts after `Cancelled` has already been handled
@@ -69,7 +69,7 @@ except:  # now silent
 # don't throw multiple 103's even if `Cancelled` wasn't properly handled.
 try:
     ...
-except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
+except trio.Cancelled:  # ASYNC103: 7, "trio.Cancelled"
     ...
 except BaseException:  # now silent
     ...
@@ -82,10 +82,10 @@ try:
         ...
     except trio.Cancelled:
         raise
-except trio.Cancelled:  # TRIO103: 7, "trio.Cancelled"
+except trio.Cancelled:  # ASYNC103: 7, "trio.Cancelled"
     ...
 except:
     try:
         ...
-    except trio.Cancelled:  # TRIO103: 11, "trio.Cancelled"
+    except trio.Cancelled:  # ASYNC103: 11, "trio.Cancelled"
         ...

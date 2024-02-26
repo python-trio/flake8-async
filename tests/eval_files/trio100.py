@@ -72,7 +72,7 @@ async def function_name():
 
 # Seems like the inner context manager 'hides' the checkpoint.
 async def does_contain_checkpoints():
-    with trio.fail_after(1):  # false-alarm TRIO100
+    with trio.fail_after(1):  # false-alarm ASYNC100
         with trio.CancelScope():  # or any other context manager
             await trio.sleep_forever()
 

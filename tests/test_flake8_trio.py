@@ -30,15 +30,28 @@ from flake8_trio.visitors import ERROR_CLASSES, ERROR_CLASSES_CST
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-    from flake8_trio.visitors.flake8triovisitor import Flake8TrioVisitor
+    from flake8_trio.visitors.flake8triovisitor import Flake8AsyncVisitor
 
 AUTOFIX_DIR = Path(__file__).parent / "autofix_files"
 
+
+# to be able to usefully view diffs on github+be able to run tests in each step
+# we temporarily introduce these functions
+# so we can do the *actual* renaming of files in a separate commit.
+def rename_file(s: str) -> str:
+    return re.sub("TRIO", "ASYNC", s)
+
+
+def unrename_file(s: str) -> str:
+    return re.sub("ASYNC", "TRIO", s)
+
+
 test_files: list[tuple[str, Path]] = sorted(
-    (f.stem.upper(), f) for f in (Path(__file__).parent / "eval_files").iterdir()
+    (rename_file(f.stem.upper()), f)
+    for f in (Path(__file__).parent / "eval_files").iterdir()
 )
 autofix_files: dict[str, Path] = {
-    f.stem.upper(): f for f in AUTOFIX_DIR.iterdir() if f.suffix == ".py"
+    rename_file(f.stem.upper()): f for f in AUTOFIX_DIR.iterdir() if f.suffix == ".py"
 }
 # check that there's an eval file for each autofix file
 extra_autofix_files = set(autofix_files.keys()) - {f[0] for f in test_files}
@@ -62,7 +75,7 @@ def check_version(test: str):
 
 
 # mypy does not see that both types have error_codes
-ERROR_CODES: dict[str, Flake8TrioVisitor] = {
+ERROR_CODES: dict[str, Flake8AsyncVisitor] = {
     err_code: err_class  # type: ignore[misc]
     for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
     for err_code in err_class.error_codes  # type: ignore[attr-defined]
@@ -131,7 +144,7 @@ def check_autofix(
 
     # file contains a previous diff showing what's added/removed by the autofixer
     # i.e. a diff between "eval_files/{test}.py" and "autofix_files/{test}.py"
-    autofix_diff_file = AUTOFIX_DIR / f"{test.lower()}.py.diff"
+    autofix_diff_file = AUTOFIX_DIR / f"{unrename_file(test).lower()}.py.diff"
     if not autofix_diff_file.exists():
         assert generate_autofix, "autofix diff file doesn't exist"
         # if generate_autofix is set, the diff content isn't used and the file
@@ -185,7 +198,7 @@ class MagicMarkers:
     NOANYIO: bool = False
     NOTRIO: bool = False
     ANYIO_NO_ERROR: bool = False
-    TRIO_NO_ERROR: bool = False
+    ASYNC_NO_ERROR: bool = False
 
 
 def find_magic_markers(
@@ -234,7 +247,7 @@ def test_eval(
 
     if noqa:
         # replace all instances of some error with noqa
-        content = re.sub(r"#[\s]*(error|TRIO\d\d\d):.*", "# noqa", content)
+        content = re.sub(r"#[\s]*(error|ASYNC\d\d\d):.*", "# noqa", content)
 
     expected, parsed_args, enable = _parse_eval_file(test, content)
     if anyio:
@@ -243,7 +256,7 @@ def test_eval(
         parsed_args.append(f"--autofix={enable}")
 
     if (anyio and magic_markers.ANYIO_NO_ERROR) or (
-        not anyio and magic_markers.TRIO_NO_ERROR
+        not anyio and magic_markers.ASYNC_NO_ERROR
     ):
         expected = []
 
@@ -322,7 +335,7 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
             continue
 
         # get text between `error:` and (end of line or another comment)
-        k = re.findall(r"(error|TRIO...)(_.*)?:([^#]*)(?=#|$)", line)
+        k = re.findall(r"(error|ASYNC...)(_.*)?:([^#]*)(?=#|$)", line)
 
         for err_code, alt_code, err_args in k:
             try:
@@ -365,7 +378,7 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
     enabled_codes_list = enabled_codes.split(",")
     for code in enabled_codes_list:
         assert re.fullmatch(
-            r"TRIO\d\d\d", code
+            r"ASYNC\d\d\d", code
         ), f"invalid code {code} in list {enabled_codes_list}"
 
     for error in expected:
@@ -385,18 +398,18 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
 # Expand this list when adding a new check if it does not care about whether the code
 # is asynchronous or not.
 error_codes_ignored_when_checking_transformed_sync_code = {
-    "TRIO100",
-    "TRIO101",
-    "TRIO103",
-    "TRIO104",
-    "TRIO105",
-    "TRIO106",
-    "TRIO111",
-    "TRIO112",
-    "TRIO115",
-    "TRIO116",
-    "TRIO117",
-    "TRIO118",
+    "ASYNC100",
+    "ASYNC101",
+    "ASYNC103",
+    "ASYNC104",
+    "ASYNC105",
+    "ASYNC106",
+    "ASYNC111",
+    "ASYNC112",
+    "ASYNC115",
+    "ASYNC116",
+    "ASYNC117",
+    "ASYNC118",
 }
 
 
@@ -438,7 +451,7 @@ def test_noerror_on_sync_code(test: str, path: Path):
 
 
 def initialize_options(plugin: Plugin, args: list[str] | None = None):
-    parser = ArgumentParser(prog="flake8-trio")
+    parser = ArgumentParser(prog="flake8-async")
     Plugin.add_options(parser)
     Plugin.parse_options(parser.parse_args(args))
 
@@ -523,7 +536,7 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
                 print(
                     "Lines with different # of errors:",
                     "-" * 38,
-                    f"| line | {'code':7} | actual | expected |",
+                    f"| line | {'code':8} | actual | expected |",
                     sep="\n",
                     file=sys.stderr,
                 )
@@ -601,7 +614,7 @@ def test_noqa_respected_depending_on_standalone():
 with trio.move_on_after(10): ... # noqa
 """
     plugin = Plugin.from_source(text)
-    initialize_options(plugin, args=["--enable=TRIO100"])
+    initialize_options(plugin, args=["--enable=ASYNC100"])
 
     assert plugin.standalone
     assert not tuple(plugin.run())
@@ -620,14 +633,16 @@ with trio.move_on_after(10):
 trio.sleep(0)
 """
     plugin = Plugin.from_source(text)
-    initialize_options(plugin, args=["--enable=TRIO100,TRIO115", "--autofix=TRIO100"])
+    initialize_options(
+        plugin, args=["--enable=ASYNC100,ASYNC115", "--autofix=ASYNC100"]
+    )
     errors = tuple(plugin.run())
     assert errors[1].line != plugin.module.code.split("\n").index("trio.sleep(0)") + 1
 
 
 @pytest.mark.fuzz()
 def test_910_permutations():
-    """Tests all possible permutations for TRIO910.
+    """Tests all possible permutations for ASYNC910.
 
     Since each test is so fast, and there's so many permutations, manually doing
     the permutations in a single test is much faster than the permutations from using
@@ -651,7 +666,7 @@ def test_910_permutations():
             await foo() | ... | return | None
     """
     plugin = Plugin(ast.AST(), [])
-    initialize_options(plugin, args=["--enable=TRIO910"])
+    initialize_options(plugin, args=["--enable=ASYNC910"])
 
     check = "await foo()"
 
@@ -722,7 +737,7 @@ class TestFuzz(unittest.TestCase):
         # so `--enable-codes` can be passed through.
         # Though I barely notice a difference manually changing this value, or even
         # not running the plugin at all, so overhead looks to be vast majority of runtime
-        enabled_codes = "TRIO"
+        enabled_codes = "ASYNC"
 
         # Given any syntatically-valid source code, the checker should
         # not crash.  This tests doesn't check that we do the *right* thing,

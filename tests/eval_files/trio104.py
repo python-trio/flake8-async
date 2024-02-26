@@ -1,4 +1,4 @@
-# ARG --enable=TRIO103,TRIO104
+# ARG --enable=ASYNC103,ASYNC104
 try:
     ...
 # raise different exception
@@ -25,7 +25,7 @@ except BaseException as e:
 # But is a very weird pattern that we don't handle.
 try:
     ...
-except BaseException as e:  # TRIO103_trio: 7, "BaseException"
+except BaseException as e:  # ASYNC103_trio: 7, "BaseException"
     try:
         raise e
     except ValueError:
@@ -90,13 +90,13 @@ def foo():
 def foo2():
     try:
         ...
-    except BaseException:  # TRIO103_trio: 11, "BaseException"
+    except BaseException:  # ASYNC103_trio: 11, "BaseException"
         return  # error: 8
 
     # check that we properly iterate over all nodes in try
     try:
         ...
-    except BaseException:  # TRIO103_trio: 11, "BaseException"
+    except BaseException:  # ASYNC103_trio: 11, "BaseException"
         try:
             return  # error: 12
         except ValueError:
@@ -179,7 +179,7 @@ def foo_cancelled_handled():
 def foo_cancelled_not_handled():
     try:
         ...
-    except BaseException:  # TRIO103_trio: 11, "BaseException"
-        return  # TRIO104: 8
+    except BaseException:  # ASYNC103_trio: 11, "BaseException"
+        return  # ASYNC104: 8
     except:
         return  # would otherwise error

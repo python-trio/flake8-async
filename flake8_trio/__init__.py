@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
-from .base import Options
+from .base import Options, error_has_subidentifier
 from .runner import Flake8TrioRunner, Flake8TrioRunner_cst
 from .visitors import ERROR_CLASSES, ERROR_CLASSES_CST, default_disabled_error_codes
 
@@ -199,7 +199,7 @@ class Plugin:
             )
         else:  # if run as a flake8 plugin
             Plugin.standalone = False
-            # Disable TRIO9xx calls by default
+            # Disable ASYNC9xx calls by default
             option_manager.extend_default_ignore(default_disabled_error_codes)
             # add parameter to parse from flake8 config
             add_argument = functools.partial(  # type: ignore
@@ -209,7 +209,7 @@ class Plugin:
         add_argument(
             "--enable",
             type=comma_separated_list,
-            default="TRIO",
+            default="ASYNC",
             required=False,
             help=(
                 "Comma-separated list of error codes to enable, similar to flake8"
@@ -221,7 +221,7 @@ class Plugin:
         add_argument(
             "--disable",
             type=comma_separated_list,
-            default="TRIO9" if Plugin.standalone else "",
+            default="ASYNC9" if Plugin.standalone else "",
             required=False,
             help=(
                 "Comma-separated list of error codes to disable, similar to flake8"
@@ -253,7 +253,7 @@ class Plugin:
             required=False,
             type=comma_separated_list,
             help=(
-                "Comma-separated list of decorators to disable TRIO910 & TRIO911 "
+                "Comma-separated list of decorators to disable ASYNC910 & ASYNC911 "
                 "checkpoint warnings for. "
                 "Decorators can be dotted or not, as well as support * as a wildcard. "
                 "For example, ``--no-checkpoint-warning-decorators=app.route,"
@@ -266,7 +266,7 @@ class Plugin:
             default="",
             required=False,
             help=(
-                "Comma-separated list of method calls to additionally enable TRIO113 "
+                "Comma-separated list of method calls to additionally enable ASYNC113 "
                 "warnings for. Will also check for the pattern inside function calls. "
                 "Methods must be valid identifiers as per `str.isidientifier()` and "
                 "not reserved keywords. "
@@ -281,7 +281,7 @@ class Plugin:
             required=False,
             help=(
                 "Comma-separated list of key->value pairs, where key is a [dotted] "
-                "function that if found inside an async function will raise TRIO200, "
+                "function that if found inside an async function will raise ASYNC200, "
                 "suggesting it be replaced with {value}"
             ),
         )
@@ -313,8 +313,9 @@ class Plugin:
             err_code
             for err_class in (*ERROR_CLASSES, *ERROR_CLASSES_CST)
             for err_code in err_class.error_codes  # type: ignore[attr-defined]
-            if len(err_code) == 7  # exclude e.g. TRIO103_anyio_trio
+            if not error_has_subidentifier(err_code)  # exclude e.g. ASYNC103_anyio_trio
         }
+        assert all_codes
 
         if options.autofix and not Plugin.standalone:
             print("Cannot autofix when run as a flake8 plugin.", file=sys.stderr)
@@ -328,8 +329,10 @@ class Plugin:
         enabled_codes -= set(get_matching_codes(options.disable, enabled_codes))
 
         # if disable has default value, re-enable explicitly enabled codes
-        if options.disable == ["TRIO9"]:
-            enabled_codes.update(code for code in options.enable if len(code) == 7)
+        if options.disable == ["ASYNC9"]:
+            enabled_codes.update(
+                code for code in options.enable if not error_has_subidentifier(code)
+            )
 
         Plugin._options = Options(
             enabled_codes=enabled_codes,

@@ -22,7 +22,7 @@ async def foo():
 
 
 # weird ones with multiple `withitem`s
-# but if split among several `with` they'd all be treated as error (or TRIO111), so
+# but if split among several `with` they'd all be treated as error (or ASYNC111), so
 # treating as error for now.
 with trio.open_nursery() as n, trio.open("") as n:  # error: 5, "n"
     n.start(...)

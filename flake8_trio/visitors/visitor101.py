@@ -1,4 +1,4 @@
-"""Contains visitor for TRIO101.
+"""Contains visitor for ASYNC101.
 
 `yield` inside a nursery or cancel scope is only safe when implementing a context manager
 - otherwise, it breaks exception handling.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8TrioVisitor_cst
+from .flake8triovisitor import Flake8AsyncVisitor_cst
 from .helpers import (
     cancel_scope_names,
     error_class_cst,
@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
 
 @error_class_cst
-class Visitor101(Flake8TrioVisitor_cst):
+class Visitor101(Flake8AsyncVisitor_cst):
     error_codes: Mapping[str, str] = {
-        "TRIO101": (
+        "ASYNC101": (
             "`yield` inside a nursery or cancel scope is only safe when implementing "
             "a context manager - otherwise, it breaks exception handling."
         ),

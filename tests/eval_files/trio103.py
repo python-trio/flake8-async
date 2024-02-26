@@ -1,4 +1,4 @@
-# ARG --enable=TRIO103,TRIO104
+# ARG --enable=ASYNC103,ASYNC104
 
 from typing import Any
 
@@ -19,7 +19,7 @@ try:
 except (
     SyntaxError,
     ValueError,
-    BaseException,  # TRIO103_trio: 4, "BaseException"
+    BaseException,  # ASYNC103_trio: 4, "BaseException"
 ) as p:
     ...
 
@@ -40,13 +40,13 @@ except BaseException as e:
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     ...
 
 # if
 try:
     ...
-except BaseException as e:  # TRIO103_trio: 7, "BaseException"
+except BaseException as e:  # ASYNC103_trio: 7, "BaseException"
     if foo():
         raise e
     elif foo():
@@ -56,7 +56,7 @@ except BaseException as e:  # TRIO103_trio: 7, "BaseException"
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     if True:
         raise
 
@@ -74,7 +74,7 @@ except BaseException:  # safe
 # raises inside the body are never guaranteed to run and are ignored
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     while foo():
         raise
 
@@ -97,7 +97,7 @@ except BaseException:
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     while ...:
         if ...:
             break
@@ -107,7 +107,7 @@ except BaseException:  # TRIO103_trio: 7, "BaseException"
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     for _ in "":
         if ...:
             break
@@ -132,13 +132,13 @@ except BaseException:
 # But is a very weird pattern that we don't handle.
 try:
     ...
-except BaseException as e:  # TRIO103_trio: 7, "BaseException"
+except BaseException as e:  # ASYNC103_trio: 7, "BaseException"
     try:
         raise e
     except ValueError:
         raise e
     except:
-        raise e  # TRIO104: 8
+        raise e  # ASYNC104: 8
 
 try:
     ...
@@ -175,7 +175,7 @@ except BaseException as e:
     try:
         ...
     except ValueError as g:
-        raise g  # TRIO104: 8
+        raise g  # ASYNC104: 8
     except BaseException as h:
         raise h  # error? currently treated as safe
     raise e
@@ -183,7 +183,7 @@ except BaseException as e:
 # bare except, equivalent to `except baseException`
 try:
     ...
-except:  # TRIO103_trio: 0, "bare except"
+except:  # ASYNC103_trio: 0, "bare except"
     ...
 
 try:
@@ -198,7 +198,7 @@ try:
 except (
     my_super_mega_long_exception_so_it_gets_split,
     SyntaxError,
-    BaseException,  # TRIO103_trio: 4, "BaseException"
+    BaseException,  # ASYNC103_trio: 4, "BaseException"
     ValueError,
     BaseException,  # no complaint on this line
 ):
@@ -223,13 +223,13 @@ except BaseException as e:
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     for i in [1, 2, 3]:
         ...
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     for i in [1, 2, 3]:
         if ...:
             continue
@@ -237,7 +237,7 @@ except BaseException:  # TRIO103_trio: 7, "BaseException"
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     for i in foo():
         raise
 
@@ -267,19 +267,19 @@ except BaseException:
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     for i in range(foo()):
         raise
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     for i in []:
         raise
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     for i in {}:
         raise
 
@@ -297,7 +297,7 @@ except BaseException:
 
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     while True:
         if ...:
             break
@@ -322,7 +322,7 @@ except:  # now silent
 # don't throw multiple 103's even if `Cancelled` wasn't properly handled.
 try:
     ...
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     ...
 except:  # now silent
     ...
@@ -333,10 +333,10 @@ try:
         ...
     except BaseException:
         raise
-except BaseException:  # TRIO103_trio: 7, "BaseException"
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
     ...
 except:
     try:
         ...
-    except BaseException:  # TRIO103_trio: 11, "BaseException"
+    except BaseException:  # ASYNC103_trio: 11, "BaseException"
         ...

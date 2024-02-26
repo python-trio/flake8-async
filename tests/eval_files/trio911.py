@@ -6,7 +6,7 @@ import trio
 
 _: Any = ""
 
-# ARG --enable=TRIO910,TRIO911
+# ARG --enable=ASYNC910,ASYNC911
 
 
 async def foo() -> Any:

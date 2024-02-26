@@ -19,7 +19,7 @@ with trio.move_on_after(10):
 """
 EXAMPLE_PY_AUTOFIXED_TEXT = "import trio\n...\n"
 EXAMPLE_PY_ERROR = (
-    "./example.py:2:6: TRIO100 trio.move_on_after context contains no checkpoints,"
+    "./example.py:2:6: ASYNC100 trio.move_on_after context contains no checkpoints,"
     " remove the context or add `await trio.lowlevel.checkpoint()`.\n"
 )
 
@@ -42,7 +42,7 @@ def monkeypatch_argv(
     argv: list[Path | str] | None = None,
 ) -> None:
     if argv is None:
-        argv = [tmp_path / "flake8-trio", "./example.py"]
+        argv = [tmp_path / "flake8-async", "./example.py"]
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", argv)
 
@@ -51,7 +51,7 @@ def test_run_flake8_trio(tmp_path: Path):
     write_examplepy(tmp_path)
     res = subprocess.run(
         [
-            "flake8-trio",
+            "flake8-async",
             "./example.py",
         ],
         cwd=tmp_path,
@@ -100,7 +100,7 @@ def test_run_in_git_repo(tmp_path: Path):
     subprocess.run(["git", "add", "example.py"], cwd=tmp_path, check=True)
     res = subprocess.run(
         [
-            "flake8-trio",
+            "flake8-async",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -114,7 +114,7 @@ def test_run_in_git_repo(tmp_path: Path):
 def test_run_no_git_repo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
-    monkeypatch_argv(monkeypatch, tmp_path, [tmp_path / "flake8-trio"])
+    monkeypatch_argv(monkeypatch, tmp_path, [tmp_path / "flake8-async"])
     assert main() == 1
     out, err = capsys.readouterr()
     assert err == "Doesn't seem to be a git repo; pass filenames to format.\n"
@@ -128,7 +128,7 @@ def test_run_100_autofix(
     monkeypatch_argv(
         monkeypatch,
         tmp_path,
-        [tmp_path / "flake8-trio", "--autofix=TRIO", "./example.py"],
+        [tmp_path / "flake8-async", "--autofix=ASYNC", "./example.py"],
     )
     assert main() == 1
 
@@ -164,18 +164,18 @@ def test_anyio_from_config(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         """
 [flake8]
 anyio = True
-select = TRIO220
+select = ASYNC220
 """
     )
 
     from flake8_trio.visitors.visitor2xx import Visitor22X
 
-    err_msg = Visitor22X.error_codes["TRIO220"].format(
+    err_msg = Visitor22X.error_codes["ASYNC220"].format(
         "subprocess.Popen",
         "[anyio|trio]",
     )
     err_file = str(Path(__file__).parent / "eval_files" / "anyio_trio.py")
-    expected = f"{err_file}:10:5: TRIO220 {err_msg}\n"
+    expected = f"{err_file}:10:5: ASYNC220 {err_msg}\n"
     from flake8.main.cli import main
 
     returnvalue = main(
@@ -198,7 +198,7 @@ def _test_trio200_from_config_common(tmp_path: Path) -> str:
 trio200-blocking-calls =
   other -> async,
   sync_fns.* -> the_async_equivalent,
-select = TRIO200
+select = ASYNC200
 """
     )
     assert tmp_path.joinpath("example.py").write_text(
@@ -210,7 +210,7 @@ async def foo():
 """
     )
     return (
-        "./example.py:5:5: TRIO200 User-configured blocking sync call sync_fns.* "
+        "./example.py:5:5: ASYNC200 User-configured blocking sync call sync_fns.* "
         "in async function, consider replacing with the_async_equivalent.\n"
     )
 
@@ -260,7 +260,7 @@ def test_900_default_off(capsys: pytest.CaptureFixture[str]):
     out, err = capsys.readouterr()
     assert returnvalue == 1
     assert not err
-    assert "TRIO900" not in out
+    assert "ASYNC900" not in out
 
 
 def test_enable(
@@ -268,7 +268,7 @@ def test_enable(
 ):
     write_examplepy(tmp_path)
 
-    argv: list[Path | str] = [tmp_path / "flake8-trio", "./example.py"]
+    argv: list[Path | str] = [tmp_path / "flake8-async", "./example.py"]
     monkeypatch_argv(monkeypatch, tmp_path, argv)
 
     def _helper(*args: str, error: bool = False, autofix: bool = False) -> None:
@@ -292,33 +292,33 @@ def test_enable(
     _helper(error=True)
 
     # explicit enable
-    _helper("--enable=TRIO100", error=True)
+    _helper("--enable=ASYNC100", error=True)
 
     # explicit enable other
-    _helper("--enable=TRIO101")
+    _helper("--enable=ASYNC101")
 
     # make sure commas don't enable others
-    _helper("--enable=TRIO101,")
+    _helper("--enable=ASYNC101,")
     _helper("--enable=,")
-    _helper("--enable=TRIO101,,TRIO102")
+    _helper("--enable=ASYNC101,,ASYNC102")
 
     # disable
-    _helper("--disable=TRIO100")
+    _helper("--disable=ASYNC100")
 
     # disable enabled code
-    _helper("--disable=TRIO100", "--enable=TRIO100")
+    _helper("--disable=ASYNC100", "--enable=ASYNC100")
 
     # don't enable, but autofix
     _helper(
         "--enable=''",
-        "--autofix=TRIO100",
+        "--autofix=ASYNC100",
         error=True,  # TODO: should be False
         autofix=True,
     )
 
     _helper(
         "--enable=''",
-        "--autofix=TRIO100",
+        "--autofix=ASYNC100",
         "--error-on-autofix",
         error=True,
         autofix=True,
@@ -331,7 +331,7 @@ def test_flake8_plugin_with_autofix_fails(tmp_path: Path):
         [
             "flake8",
             "./example.py",
-            "--autofix=TRIO",
+            "--autofix=ASYNC",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -363,13 +363,13 @@ def test_disable_noqa_cst(
     monkeypatch_argv(
         monkeypatch,
         tmp_path,
-        [tmp_path / "flake8-trio", "./example.py", "--disable-noqa"],
+        [tmp_path / "flake8-async", "./example.py", "--disable-noqa"],
     )
     assert main() == 1
     out, err = capsys.readouterr()
     assert not err
     assert (
-        out == "./example.py:2:6: TRIO100 trio.move_on_after context contains no"
+        out == "./example.py:2:6: ASYNC100 trio.move_on_after context contains no"
         " checkpoints, remove the context or add `await"
         " trio.lowlevel.checkpoint()`.\n"
     )
@@ -382,13 +382,13 @@ def test_disable_noqa_ast(
     monkeypatch_argv(
         monkeypatch,
         tmp_path,
-        [tmp_path / "flake8-trio", "./example.py", "--disable-noqa"],
+        [tmp_path / "flake8-async", "./example.py", "--disable-noqa"],
     )
     assert main() == 1
     out, err = capsys.readouterr()
     assert not err
     assert (
         out
-        == "./example.py:1:1: TRIO106 trio must be imported with `import trio` for the"
+        == "./example.py:1:1: ASYNC106 trio must be imported with `import trio` for the"
         " linter to work.\n"
     )

@@ -25,12 +25,16 @@ from . import (
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
 
-    from .flake8triovisitor import Flake8TrioVisitor, Flake8TrioVisitor_cst, HasLineCol
+    from .flake8triovisitor import (
+        Flake8AsyncVisitor,
+        Flake8AsyncVisitor_cst,
+        HasLineCol,
+    )
 
-    T = TypeVar("T", bound=Flake8TrioVisitor)
-    T_CST = TypeVar("T_CST", bound=Flake8TrioVisitor_cst)
+    T = TypeVar("T", bound=Flake8AsyncVisitor)
+    T_CST = TypeVar("T_CST", bound=Flake8AsyncVisitor_cst)
     T_EITHER = TypeVar(
-        "T_EITHER", bound=Union[Flake8TrioVisitor, Flake8TrioVisitor_cst]
+        "T_EITHER", bound=Union[Flake8AsyncVisitor, Flake8AsyncVisitor_cst]
     )
 
 
@@ -364,7 +368,7 @@ def get_comments(node: cst.CSTNode | Iterable[cst.CSTNode]) -> Iterator[cst.Empt
             yield from get_comments(n)
 
 
-# used in TRIO100
+# used in ASYNC100
 def flatten_preserving_comments(node: cst.BaseCompoundStatement):
     # add leading lines (comments and empty lines) for the node to be removed
     new_leading_lines = list(node.leading_lines)
