@@ -1,5 +1,4 @@
 # type: ignore
-# NOASYNCIO
 import urllib3
 
 
