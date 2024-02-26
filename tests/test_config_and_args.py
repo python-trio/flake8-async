@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from flake8_trio import Plugin, main
+from flake8_async import Plugin, main
 
-from .test_flake8_trio import initialize_options
+from .test_flake8_async import initialize_options
 
 EXAMPLE_PY_TEXT = """import trio
 with trio.move_on_after(10):
@@ -47,7 +47,7 @@ def monkeypatch_argv(
     monkeypatch.setattr(sys, "argv", argv)
 
 
-def test_run_flake8_trio(tmp_path: Path):
+def test_run_flake8_async(tmp_path: Path):
     write_examplepy(tmp_path)
     res = subprocess.run(
         [
@@ -71,7 +71,7 @@ def test_systemexit_0(
     tmp_path.joinpath("example.py").write_text("")
 
     with pytest.raises(SystemExit) as exc_info:
-        from flake8_trio import __main__  # noqa: F401
+        from flake8_async import __main__  # noqa: F401
 
     assert exc_info.value.code == 0
     out, err = capsys.readouterr()
@@ -86,7 +86,7 @@ def test_systemexit_1(
     monkeypatch_argv(monkeypatch, tmp_path)
 
     with pytest.raises(SystemExit) as exc_info:
-        from flake8_trio import __main__  # noqa: F401
+        from flake8_async import __main__  # noqa: F401
 
     assert exc_info.value.code == 1
     out, err = capsys.readouterr()
@@ -168,7 +168,7 @@ select = ASYNC220
 """
     )
 
-    from flake8_trio.visitors.visitor2xx import Visitor22X
+    from flake8_async.visitors.visitor2xx import Visitor22X
 
     err_msg = Visitor22X.error_codes["ASYNC220"].format(
         "subprocess.Popen",

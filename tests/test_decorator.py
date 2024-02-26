@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 
 from flake8.main.application import Application
 
-from flake8_trio.base import Statement
-from flake8_trio.visitors.helpers import fnmatch_qualified_name
-from flake8_trio.visitors.visitor91x import Visitor91X
+from flake8_async.base import Statement
+from flake8_async.visitors.helpers import fnmatch_qualified_name
+from flake8_async.visitors.visitor91x import Visitor91X
 
 if TYPE_CHECKING:
     import pytest

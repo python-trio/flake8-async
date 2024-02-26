@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .flake8triovisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
+    from .flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
 
 __all__ = [
     "ERROR_CLASSES",

@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import cast
 
-from .test_flake8_trio import ERROR_CODES
+from .test_flake8_async import ERROR_CODES
 
 ROOT_PATH = Path(__file__).parent.parent
 CHANGELOG = ROOT_PATH / "CHANGELOG.md"
@@ -35,7 +35,7 @@ def test_messages_documented():
             for error_msg in re.findall(r"TRIO\d\d\d|ASYNC\d\d\d", line):
                 documented_errors[filename].add(rename_trio_to_async(error_msg))
 
-    documented_errors["flake8_trio.py"] = set(ERROR_CODES)
+    documented_errors["flake8_async.py"] = set(ERROR_CODES)
 
     # get tested error codes from file names and from `# ARG --enable` lines
     documented_errors["eval_files"] = set()

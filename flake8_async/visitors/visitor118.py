@@ -10,7 +10,7 @@ import ast
 import re
 from typing import TYPE_CHECKING
 
-from .flake8triovisitor import Flake8AsyncVisitor
+from .flake8asyncvisitor import Flake8AsyncVisitor
 from .helpers import error_class
 
 if TYPE_CHECKING:

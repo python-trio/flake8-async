@@ -1,6 +1,6 @@
 ---
-    - id: flake8-trio
-      name: flake8-trio
-      entry: flake8-trio
+    - id: flake8-async
+      name: flake8-async
+      entry: flake8-async
       language: python
       types: [python]

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8AsyncVisitor_cst
+from .flake8asyncvisitor import Flake8AsyncVisitor_cst
 from .helpers import (
     cancel_scope_names,
     error_class_cst,

@@ -9,7 +9,7 @@ import ast
 from typing import TYPE_CHECKING, Any
 
 from ..base import Statement
-from .flake8triovisitor import Flake8AsyncVisitor
+from .flake8asyncvisitor import Flake8AsyncVisitor
 from .helpers import cancel_scope_names, critical_except, error_class, get_matching_call
 
 if TYPE_CHECKING:

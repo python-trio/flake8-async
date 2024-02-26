@@ -11,7 +11,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8AsyncVisitor
+from .flake8asyncvisitor import Flake8AsyncVisitor
 from .helpers import critical_except, error_class, iter_guaranteed_once
 
 if TYPE_CHECKING:

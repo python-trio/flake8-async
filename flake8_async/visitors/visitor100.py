@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import libcst as cst
 import libcst.matchers as m
 
-from .flake8triovisitor import Flake8AsyncVisitor_cst
+from .flake8asyncvisitor import Flake8AsyncVisitor_cst
 from .helpers import (
     AttributeCall,
     error_class_cst,

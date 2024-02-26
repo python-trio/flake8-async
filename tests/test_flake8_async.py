@@ -23,14 +23,14 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesmith import from_grammar, from_node
 
-from flake8_trio import Plugin
-from flake8_trio.base import Error, Statement
-from flake8_trio.visitors import ERROR_CLASSES, ERROR_CLASSES_CST
+from flake8_async import Plugin
+from flake8_async.base import Error, Statement
+from flake8_async.visitors import ERROR_CLASSES, ERROR_CLASSES_CST
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-    from flake8_trio.visitors.flake8triovisitor import Flake8AsyncVisitor
+    from flake8_async.visitors.flake8asyncvisitor import Flake8AsyncVisitor
 
 AUTOFIX_DIR = Path(__file__).parent / "autofix_files"
 

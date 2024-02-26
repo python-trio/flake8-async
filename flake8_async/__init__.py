@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 import libcst as cst
 
 from .base import Options, error_has_subidentifier
-from .runner import Flake8TrioRunner, Flake8TrioRunner_cst
+from .runner import Flake8AsyncRunner, Flake8AsyncRunner_cst
 from .visitors import ERROR_CLASSES, ERROR_CLASSES_CST, default_disabled_error_codes
 
 if TYPE_CHECKING:
@@ -75,7 +75,7 @@ def cst_parse_module_native(source: str) -> cst.Module:
 
 
 def main() -> int:
-    parser = ArgumentParser(prog="flake8-trio")
+    parser = ArgumentParser(prog="flake8-async")
     Plugin.add_options(parser)
     args = parser.parse_args()
     Plugin.parse_options(args)
@@ -156,11 +156,11 @@ class Plugin:
         if not self.standalone:
             self.options.disable_noqa = True
 
-        cst_runner = Flake8TrioRunner_cst(self.options, self.module)
+        cst_runner = Flake8AsyncRunner_cst(self.options, self.module)
         # any noqa'd errors are suppressed upon being generated
         yield from cst_runner.run()
 
-        problems_ast = Flake8TrioRunner.run(self._tree, self.options)
+        problems_ast = Flake8AsyncRunner.run(self._tree, self.options)
         if self.options.disable_noqa:
             yield from problems_ast
             return

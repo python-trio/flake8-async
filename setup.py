@@ -10,7 +10,7 @@ def local_file(name: str) -> Path:
     return Path(__file__).parent / name
 
 
-with open(Path(__file__).parent / "flake8_trio" / "__init__.py") as o:
+with open(Path(__file__).parent / "flake8_async" / "__init__.py") as o:
     for line in o:
         if line.startswith("__version__"):
             _, __version__, _ = line.split('"')
@@ -24,7 +24,7 @@ setup(
     version=__version__,
     author="Zac Hatfield-Dodds, John Litborn, and Contributors",
     author_email="zac@zhd.dev",
-    packages=find_packages(include=["flake8_trio", "flake8_trio.*"]),
+    packages=find_packages(include=["flake8_async", "flake8_async.*"]),
     url="https://github.com/python-trio/flake8-trio",
     license="MIT",
     description="A highly opinionated flake8 plugin for Trio-related problems.",
@@ -54,7 +54,7 @@ setup(
         # You're not allowed to register error codes longer than 3 characters. But flake8
         # doesn't enforce anything about the characters trailing the code, so we can say
         # the code is ASY and then just always happen to print NCxxx directly after it.
-        "flake8.extension": ["ASY = flake8_trio:Plugin"],
-        "console_scripts": ["flake8-async=flake8_trio:main"],
+        "flake8.extension": ["ASY = flake8_async:Plugin"],
+        "console_scripts": ["flake8-async=flake8_async:main"],
     },
 )

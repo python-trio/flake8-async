@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any, cast
 
-from .flake8triovisitor import Flake8AsyncVisitor
+from .flake8asyncvisitor import Flake8AsyncVisitor
 from .helpers import disabled_by_default, error_class, get_matching_call, has_decorator
 
 if TYPE_CHECKING:

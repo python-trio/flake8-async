@@ -16,7 +16,7 @@ import libcst.matchers as m
 from libcst.metadata import PositionProvider
 
 from ..base import Statement
-from .flake8triovisitor import Flake8AsyncVisitor_cst
+from .flake8asyncvisitor import Flake8AsyncVisitor_cst
 from .helpers import (
     disabled_by_default,
     error_class_cst,
