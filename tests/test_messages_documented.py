@@ -33,7 +33,6 @@ def test_messages_documented():
         documented_errors[filename] = set()
         for line in lines:
             for error_msg in re.findall(r"TRIO\d\d\d|ASYNC\d\d\d", line):
-                print(error_msg, rename_trio_to_async(error_msg))
                 documented_errors[filename].add(rename_trio_to_async(error_msg))
 
     documented_errors["flake8_trio.py"] = set(ERROR_CODES)
