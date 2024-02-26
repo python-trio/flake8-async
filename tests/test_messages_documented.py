@@ -44,8 +44,8 @@ def test_messages_documented():
         if not file_path.is_file():
             continue
 
-        if m := re.search(r"trio\d\d\d", str(file_path)):
-            documented_errors["eval_files"].add(rename_trio_to_async(m.group().upper()))
+        if m := re.search(r"async\d\d\d", str(file_path)):
+            documented_errors["eval_files"].add(m.group().upper())
 
         with open(file_path) as file:
             for line in file:
