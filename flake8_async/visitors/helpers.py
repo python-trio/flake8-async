@@ -25,7 +25,7 @@ from . import (
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
 
-    from .flake8triovisitor import (
+    from .flake8asyncvisitor import (
         Flake8AsyncVisitor,
         Flake8AsyncVisitor_cst,
         HasLineCol,

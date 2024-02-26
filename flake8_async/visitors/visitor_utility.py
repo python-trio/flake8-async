@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, cast
 import libcst.matchers as m
 from libcst.metadata import PositionProvider
 
-from .flake8triovisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
+from .flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
 from .helpers import utility_visitor, utility_visitor_cst
 
 if TYPE_CHECKING:

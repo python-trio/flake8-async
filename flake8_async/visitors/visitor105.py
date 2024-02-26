@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8AsyncVisitor
+from .flake8asyncvisitor import Flake8AsyncVisitor
 from .helpers import error_class
 
 if TYPE_CHECKING:

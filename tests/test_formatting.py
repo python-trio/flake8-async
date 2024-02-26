@@ -1,6 +1,6 @@
 """Test formatting in error codes."""
 
-from flake8_trio.visitors import ERROR_CLASSES
+from flake8_async.visitors import ERROR_CLASSES
 
 
 def test_error_messages_ends_with_period():

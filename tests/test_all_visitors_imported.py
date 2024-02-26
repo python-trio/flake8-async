@@ -1,7 +1,7 @@
 """Check that all visitors are imported.
 
-Checks that all flake8_trio/visitor*.py files are imported in flake8_trio/visitor/__init__
-so their decorators are run.
+Checks that all flake8_async/visitor*.py files are imported in
+flake8_async/visitor/__init__.py so their decorators are run.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 def test_all_visitors_imported():
-    visitor_dir = Path(__file__).parent.parent / "flake8_trio" / "visitors"
+    visitor_dir = Path(__file__).parent.parent / "flake8_async" / "visitors"
     visitor_files = {
         f.stem for f in visitor_dir.iterdir() if f.stem.startswith("visitor")
     }

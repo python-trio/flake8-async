@@ -1,4 +1,4 @@
-"""Contains Flake8TrioRunner.
+"""Contains Flake8AsyncRunner.
 
 The runner is what's run by the Plugin, and handles traversing
 the AST and letting all registered ERROR_CLASSES do their visit'ing on them.
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from libcst import Module
 
     from .base import Error, Options
-    from .visitors.flake8triovisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
+    from .visitors.flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
 
 
 @dataclass
@@ -53,7 +53,7 @@ class __CommonRunner:
         return bool(set(error_codes) & enabled_or_autofix)
 
 
-class Flake8TrioRunner(ast.NodeVisitor, __CommonRunner):
+class Flake8AsyncRunner(ast.NodeVisitor, __CommonRunner):
     def __init__(self, options: Options):
         super().__init__(options)
         # utility visitors that need to run before the error-checking visitors
@@ -110,7 +110,7 @@ class Flake8TrioRunner(ast.NodeVisitor, __CommonRunner):
             subclass.set_state(subclass.outer.pop(node, {}))
 
 
-class Flake8TrioRunner_cst(__CommonRunner):
+class Flake8AsyncRunner_cst(__CommonRunner):
     def __init__(self, options: Options, module: Module):
         super().__init__(options)
         self.options = options

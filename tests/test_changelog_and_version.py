@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 ROOT_PATH = Path(__file__).parent.parent
 CHANGELOG = ROOT_PATH / "CHANGELOG.md"
 README = ROOT_PATH / "README.md"
-INIT_FILE = ROOT_PATH / "flake8_trio" / "__init__.py"
+INIT_FILE = ROOT_PATH / "flake8_async" / "__init__.py"
 
 T = TypeVar("T", bound="Version")
 
@@ -86,7 +86,7 @@ def update_version() -> None:
     # If we've added a new version to the changelog, update __version__ to match
     last_version = next(iter(get_releases()))
     if last_version != VERSION:
-        INIT_FILE = ROOT_PATH / "flake8_trio" / "__init__.py"
+        INIT_FILE = ROOT_PATH / "flake8_async" / "__init__.py"
         subs = (f'__version__ = "{VERSION}"', f'__version__ = "{last_version}"')
         INIT_FILE.write_text(INIT_FILE.read_text().replace(*subs))
 

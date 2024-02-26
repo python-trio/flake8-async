@@ -38,7 +38,7 @@ reportUninitializedInstanceVariable = true
 # can't enable until https://github.com/python/mypy/issues/12358
 reportUnnecessaryTypeIgnoreComment = false
 reportUnusedCallResult = false
-strict = ["*.py", "tests/*.py", "flake8_trio/**/*.py"]
+strict = ["*.py", "tests/*.py", "flake8_async/**/*.py"]
 
 [tool.ruff]
 extend-exclude = [
@@ -104,10 +104,10 @@ select = ["ALL"]
 # docstrings, and arguments we can't modify
 "*.pyi" = ["D", 'FBT001', 'PLR0913', "PIE790", "PYI048"]
 # imports
-"flake8_trio/visitors/__init__.py" = [
+"flake8_async/visitors/__init__.py" = [
   "F401",
   "E402"
 ]
 # visitor_utility contains comments specifying how it parses noqa comments, which get
 # parsed as noqa comments
-"flake8_trio/visitors/visitor_utility.py" = ["RUF100", "PGH004"]
+"flake8_async/visitors/visitor_utility.py" = ["RUF100", "PGH004"]

@@ -14,7 +14,7 @@ import ast
 import re
 from typing import TYPE_CHECKING, Any
 
-from .flake8triovisitor import Flake8AsyncVisitor
+from .flake8asyncvisitor import Flake8AsyncVisitor
 from .helpers import error_class, fnmatch_qualified_name, get_matching_call
 
 if TYPE_CHECKING:

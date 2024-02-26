@@ -5,7 +5,7 @@ import ast
 import libcst as cst
 import pytest
 
-from flake8_trio.visitors.helpers import iter_guaranteed_once, iter_guaranteed_once_cst
+from flake8_async.visitors.helpers import iter_guaranteed_once, iter_guaranteed_once_cst
 
 
 def _raises_on_code_cst(source: str):
