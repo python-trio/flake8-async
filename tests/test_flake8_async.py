@@ -35,23 +35,11 @@ if TYPE_CHECKING:
 AUTOFIX_DIR = Path(__file__).parent / "autofix_files"
 
 
-# to be able to usefully view diffs on github+be able to run tests in each step
-# we temporarily introduce these functions
-# so we can do the *actual* renaming of files in a separate commit.
-def rename_file(s: str) -> str:
-    return re.sub("TRIO", "ASYNC", s)
-
-
-def unrename_file(s: str) -> str:
-    return re.sub("ASYNC", "TRIO", s)
-
-
 test_files: list[tuple[str, Path]] = sorted(
-    (rename_file(f.stem.upper()), f)
-    for f in (Path(__file__).parent / "eval_files").iterdir()
+    (f.stem.upper(), f) for f in (Path(__file__).parent / "eval_files").iterdir()
 )
 autofix_files: dict[str, Path] = {
-    rename_file(f.stem.upper()): f for f in AUTOFIX_DIR.iterdir() if f.suffix == ".py"
+    f.stem.upper(): f for f in AUTOFIX_DIR.iterdir() if f.suffix == ".py"
 }
 # check that there's an eval file for each autofix file
 extra_autofix_files = set(autofix_files.keys()) - {f[0] for f in test_files}
@@ -144,9 +132,9 @@ def check_autofix(
 
     # file contains a previous diff showing what's added/removed by the autofixer
     # i.e. a diff between "eval_files/{test}.py" and "autofix_files/{test}.py"
-    autofix_diff_file = AUTOFIX_DIR / f"{unrename_file(test).lower()}.py.diff"
+    autofix_diff_file = AUTOFIX_DIR / f"{test.lower()}.py.diff"
     if not autofix_diff_file.exists():
-        assert generate_autofix, "autofix diff file doesn't exist"
+        assert generate_autofix, f"autofix diff file {autofix_diff_file} doesn't exist"
         # if generate_autofix is set, the diff content isn't used and the file
         # content will be created
         autofix_diff_content = ""
