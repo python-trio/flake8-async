@@ -1,5 +1,6 @@
 # AUTOFIX
 # NOANYIO # TODO
+# NOASYNCIO
 # ARG --enable=ASYNC100,ASYNC911
 from typing import Any
 

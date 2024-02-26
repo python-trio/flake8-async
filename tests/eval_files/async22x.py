@@ -1,5 +1,6 @@
 # type: ignore
 # ARG --enable=ASYNC220,ASYNC221,ASYNC222
+# NOASYNCIO
 
 
 async def foo():

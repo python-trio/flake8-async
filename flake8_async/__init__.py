@@ -298,6 +298,19 @@ class Plugin:
                 " suggestions with [anyio|trio]."
             ),
         )
+        add_argument(
+            "--asyncio",
+            # action=store_true + parse_from_config does seem to work here, despite
+            # https://github.com/PyCQA/flake8/issues/1770
+            action="store_true",
+            required=False,
+            default=False,
+            help=(
+                "Change the default library to be asyncio instead of trio."
+                " If anyio/trio is imported it will assume that is also available and"
+                " print suggestions with [asyncio|anyio/trio]."
+            ),
+        )
 
     @staticmethod
     def parse_options(options: Namespace):
@@ -342,6 +355,7 @@ class Plugin:
             startable_in_context_manager=options.startable_in_context_manager,
             trio200_blocking_calls=options.trio200_blocking_calls,
             anyio=options.anyio,
+            asyncio=options.asyncio,
             disable_noqa=options.disable_noqa,
         )
 

@@ -1,3 +1,4 @@
+# NOASYNCIO
 from typing import Any
 
 import anyio

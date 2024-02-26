@@ -175,7 +175,7 @@ select = ASYNC220
         "[anyio|trio]",
     )
     err_file = str(Path(__file__).parent / "eval_files" / "anyio_trio.py")
-    expected = f"{err_file}:10:5: ASYNC220 {err_msg}\n"
+    expected = f"{err_file}:12:5: ASYNC220 {err_msg}\n"
     from flake8.main.cli import main
 
     returnvalue = main(

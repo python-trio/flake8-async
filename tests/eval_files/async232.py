@@ -1,4 +1,5 @@
 # type: ignore
+# NOASYNCIO
 import io
 from io import BufferedRandom, BufferedReader, BufferedWriter, TextIOWrapper
 from typing import Any, Optional

@@ -1,4 +1,5 @@
 # NOANYIO
+# NOASYNCIO
 import trio
 
 try:

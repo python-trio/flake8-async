@@ -1,4 +1,5 @@
 # type: ignore
+# NOASYNCIO
 from contextlib import asynccontextmanager
 
 import trio

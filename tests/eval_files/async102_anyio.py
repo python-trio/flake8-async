@@ -1,8 +1,9 @@
+# NOASYNCIO
 # type: ignore
 import anyio
 from anyio import get_cancelled_exc_class
 
-# this one is fine to also run with ASYNC
+# this one is fine to also run with trio
 
 
 async def foo(): ...

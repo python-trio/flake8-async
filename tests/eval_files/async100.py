@@ -1,5 +1,6 @@
 # type: ignore
 # AUTOFIX
+# NOASYNCIO
 
 import trio
 

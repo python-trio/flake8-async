@@ -11,6 +11,8 @@ from .helpers import disabled_by_default, error_class, get_matching_call, has_de
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+LIBRARIES = ("trio", "anyio", "asyncio")
+
 
 @error_class
 class Visitor106(Flake8AsyncVisitor):
@@ -19,12 +21,12 @@ class Visitor106(Flake8AsyncVisitor):
     }
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node.module in ("trio", "anyio"):
+        if node.module in LIBRARIES:
             self.error(node, node.module)
 
     def visit_Import(self, node: ast.Import):
         for name in node.names:
-            if name.name in ("trio", "anyio") and name.asname is not None:
+            if name.name in LIBRARIES and name.asname is not None:
                 self.error(node, name.name)
 
 

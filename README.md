@@ -33,7 +33,7 @@ pip install flake8-async
 - **ASYNC103**: `except BaseException`, `except trio.Cancelled` or a bare `except:` with a code path that doesn't re-raise. If you don't want to re-raise `BaseException`, add a separate handler for `trio.Cancelled` before.
 - **ASYNC104**: `Cancelled` and `BaseException` must be re-raised - when a user tries to `return` or `raise` a different exception.
 - **ASYNC105**: Calling a trio async function without immediately `await`ing it.
-- **ASYNC106**: `trio`/`anyio` must be imported with `import trio`/`import anyio` for the linter to work.
+- **ASYNC106**: `trio`/`anyio`/`asyncio` must be imported with `import trio`/`import anyio`/`import asyncio` for the linter to work.
 - **ASYNC109**: Async function definition with a `timeout` parameter - use `trio.[fail/move_on]_[after/at]` instead
 - **ASYNC110**: `while <condition>: await trio.sleep()` should be replaced by a `trio.Event`.
 - **ASYNC111**: Variable, from context manager opened inside nursery, passed to `start[_soon]` might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.

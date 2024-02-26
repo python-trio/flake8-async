@@ -1,5 +1,6 @@
 # type: ignore
 # ARG --enable=ASYNC230,ASYNC231
+# NOASYNCIO
 import io
 import os
 

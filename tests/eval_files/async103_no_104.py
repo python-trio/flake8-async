@@ -1,3 +1,4 @@
+# NOASYNCIO
 # ARG --enable=ASYNC103
 # check that partly disabling a visitor works
 from typing import Any

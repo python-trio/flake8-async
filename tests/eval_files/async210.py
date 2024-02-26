@@ -1,4 +1,5 @@
 # type: ignore
+# NOASYNCIO
 import urllib
 
 import httpx

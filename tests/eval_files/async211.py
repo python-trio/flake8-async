@@ -1,4 +1,5 @@
 # type: ignore
+# NOASYNCIO
 from urllib3 import PoolManager
 
 

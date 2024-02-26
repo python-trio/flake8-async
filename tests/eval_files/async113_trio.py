@@ -1,4 +1,5 @@
 # mypy: disable-error-code="arg-type,call-overload,misc"
+# NOASYNCIO
 import contextlib
 import contextlib as arbitrary_import_alias_for_contextlib
 import functools

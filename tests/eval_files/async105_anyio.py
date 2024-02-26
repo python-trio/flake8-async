@@ -1,4 +1,6 @@
 # NOTRIO
+# NOASYNCIO
+# BASE_LIBRARY anyio
 import anyio
 
 

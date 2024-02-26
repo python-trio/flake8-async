@@ -1,4 +1,5 @@
 # ARG --enable=ASYNC103,ASYNC104
+# NOASYNCIO
 # NOANYIO
 
 from typing import Any

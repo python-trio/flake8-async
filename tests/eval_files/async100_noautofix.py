@@ -1,3 +1,4 @@
+# NOASYNCIO
 import trio
 
 

@@ -1,3 +1,4 @@
+# NOASYNCIO
 # NOANYIO - don't run it with substitutions
 import anyio
 import trio
