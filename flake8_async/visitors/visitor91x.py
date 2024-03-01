@@ -149,8 +149,11 @@ class CommonVisitors(cst.CSTTransformer, ABC):
         # possible TODO: generate an error if transforming+visiting is done in a
         # single pass and emit-error-on-transform can be enabled/disabled. The error can't
         # be generated in the yield/return since it doesn't know if it will be autofixed.
-        if self.add_statement is None or not self.should_autofix(original_node):
+        if self.add_statement is None:
             return updated_node
+
+        # methods setting self.add_statement should have called self.should_autofix
+        assert self.should_autofix(original_node)
         curr_add_statement = self.add_statement
         self.add_statement = None
 
