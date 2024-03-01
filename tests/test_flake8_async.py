@@ -207,7 +207,12 @@ def find_magic_markers(
     markers = (f.name for f in fields(found_markers))
     pattern = rf'# ({"|".join(markers)})'
     for f in re.findall(pattern, content):
-        setattr(found_markers, f, True)
+        if f == "BASE_LIBRARY":
+            m = re.search(r"# BASE_LIBRARY (\w*)\n", content)
+            assert m, "invalid 'BASE_LIBRARY' marker"
+            found_markers.BASE_LIBRARY = m.groups()[0]
+        else:
+            setattr(found_markers, f, True)
     return found_markers
 
 
@@ -229,16 +234,16 @@ def test_eval(
     magic_markers = find_magic_markers(content)
     # if autofixing, columns may get messed up
     ignore_column = autofix
+    only_check_not_crash = False
 
-    if library == "anyio" and magic_markers.NOANYIO:
-        pytest.skip("file marked with NOANYIO")
-    if library == "asyncio" and magic_markers.NOASYNCIO:
-        pytest.skip("file marked with NOANYIO")
-    if library == "trio" and magic_markers.NOTRIO:
-        pytest.skip("file marked with NOTRIO")
-
-    if library == "asyncio" and autofix:
-        pytest.skip("no support for asyncio+autofix currently")
+    # file would raise different errors if transformed to a different library
+    # so we run the checker against it solely to check that it doesn't crash
+    if (
+        (library == "anyio" and magic_markers.NOANYIO)
+        or (library == "asyncio" and magic_markers.NOASYNCIO)
+        or (library == "trio" and magic_markers.NOTRIO)
+    ):
+        only_check_not_crash = True
 
     if library != magic_markers.BASE_LIBRARY:
         content = replace_library(
@@ -252,7 +257,9 @@ def test_eval(
         # replace all instances of some error with noqa
         content = re.sub(r"#[\s]*(error|ASYNC\d\d\d):.*", "# noqa", content)
 
-    expected, parsed_args, enable = _parse_eval_file(test, content)
+    expected, parsed_args, enable = _parse_eval_file(
+        test, content, only_parse_args=only_check_not_crash
+    )
     if library != "trio":
         parsed_args.insert(0, f"--{library}")
     if autofix:
@@ -265,16 +272,26 @@ def test_eval(
 
     plugin = Plugin.from_source(content)
     errors = assert_expected_errors(
-        plugin, *expected, args=parsed_args, ignore_column=ignore_column
+        plugin,
+        *expected,
+        args=parsed_args,
+        ignore_column=ignore_column,
+        only_check_not_crash=only_check_not_crash,
     )
 
-    if library == "anyio":
-        # check that error messages refer to 'anyio', or to neither library
+    if only_check_not_crash:
+        return
+
+    # check that error messages refer to current library, or to no library
+    if test not in ("ASYNC103_BOTH_IMPORTED", "ASYNC103_ALL_IMPORTED"):
         for error in errors:
             message = error.message.format(*error.args)
-            assert "anyio" in message or "trio" not in message
+            assert library in message or not any(
+                lib in message for lib in ("anyio", "asyncio", "trio")
+            )
 
-    if autofix and not noqa:
+    # asyncio does not support autofix atm, so should not modify content
+    if autofix and not noqa and library != "asyncio":
         check_autofix(
             test,
             plugin,
@@ -310,7 +327,9 @@ def test_autofix(test: str):
     assert plugin.module.code == content, "autofixed file changed when autofixed again"
 
 
-def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], str]:
+def _parse_eval_file(
+    test: str, content: str, only_parse_args: bool = False
+) -> tuple[list[Error], list[str], str]:
     # version check
     check_version(test)
     test = test.split("_")[0]
@@ -339,6 +358,9 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
             parsed_args.append(argument)
             if m := re.match(r"--enable=(.*)", argument):
                 enabled_codes = m.groups()[0]
+
+        if only_parse_args:
+            continue
 
         # skip commented out lines
         if not line or line[0] == "#":
@@ -471,6 +493,7 @@ def assert_expected_errors(
     *expected: Error,
     args: list[str] | None = None,
     ignore_column: bool = False,
+    only_check_not_crash: bool = False,
 ) -> list[Error]:
     # initialize default option values
     initialize_options(plugin, args)
@@ -481,6 +504,15 @@ def assert_expected_errors(
     if ignore_column:
         for e in *errors, *expected_:
             e.col = -1
+
+    if only_check_not_crash:
+        # Check that this file in fact does report different errors.
+        # Exclude empty errors+expected_ due to noqa runs.
+        assert errors != expected_ or errors == expected_ == [], (
+            "eval file appears to give all the correct errors."
+            " Maybe you can remove the `# NO[ANYIO/TRIO/ASYNCIO]` magic marker?"
+        )
+        return errors
 
     print_first_diff(errors, expected_)
     assert_correct_lines_and_codes(errors, expected_)

@@ -93,6 +93,9 @@ class TryState:
 
 
 def checkpoint_statement(library: str) -> cst.SimpleStatementLine:
+    # logic before this should stop code from wanting to insert the non-existing
+    # asyncio.lowlevel.checkpoint
+    assert library != "asyncio"
     return cst.SimpleStatementLine(
         [cst.Expr(cst.parse_expression(f"await {library}.lowlevel.checkpoint()"))]
     )
@@ -111,6 +114,7 @@ class CommonVisitors(cst.CSTTransformer, ABC):
         self.noautofix: bool = False
         self.add_statement: cst.SimpleStatementLine | None = None
 
+        # used for inserting import if there's none
         self.explicitly_imported_library: dict[str, bool] = {
             "trio": False,
             "anyio": False,
@@ -250,8 +254,12 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.try_state = TryState()
 
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
-        return not self.noautofix and super().should_autofix(
-            node, "ASYNC911" if self.has_yield else "ASYNC910"
+        return (
+            not self.noautofix
+            and super().should_autofix(
+                node, "ASYNC911" if self.has_yield else "ASYNC910"
+            )
+            and self.library != ("asyncio",)
         )
 
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
@@ -359,7 +367,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     ) -> cst.Return:
         if not self.async_function:
             return updated_node
-        if self.check_function_exit(original_node):
+        if self.check_function_exit(original_node) and self.should_autofix(
+            original_node
+        ):
             self.add_statement = self.checkpoint_statement()
         # avoid duplicate error messages
         self.uncheckpointed_statements = set()

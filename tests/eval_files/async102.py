@@ -1,5 +1,6 @@
 # type: ignore
 # NOASYNCIO
+# asyncio has different mechanisms for shielded scopes, so would raise additional errors in this file.
 from contextlib import asynccontextmanager
 
 import trio

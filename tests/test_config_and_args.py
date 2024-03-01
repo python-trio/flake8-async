@@ -174,13 +174,24 @@ select = ASYNC220
         "subprocess.Popen",
         "[anyio|trio]",
     )
-    err_file = str(Path(__file__).parent / "eval_files" / "anyio_trio.py")
-    expected = f"{err_file}:12:5: ASYNC220 {err_msg}\n"
+    err_file = Path(__file__).parent / "eval_files" / "anyio_trio.py"
+
+    # find the line with the expected error
+    for i, line in enumerate(err_file.read_text().split("\n")):
+        if "# ASYNC220: " in line:
+            # line numbers start at 1, enumerate starts at 0
+            lineno = i + 1
+            break
+    else:
+        raise AssertionError("could not find error in file")
+
+    # construct the full error message
+    expected = f"{err_file}:{lineno}:5: ASYNC220 {err_msg}\n"
     from flake8.main.cli import main
 
     returnvalue = main(
         argv=[
-            err_file,
+            str(err_file),
             "--config",
             str(tmp_path / ".flake8"),
         ]
