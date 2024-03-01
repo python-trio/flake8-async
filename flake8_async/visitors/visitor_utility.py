@@ -118,7 +118,7 @@ class VisitorLibraryHandler(Flake8AsyncVisitor):
         if self.options.anyio:
             self.add_library("anyio")
         if self.options.asyncio:
-            self.add_library("anyio")
+            self.add_library("asyncio")
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
