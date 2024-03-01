@@ -1,4 +1,4 @@
-# NOASYNCIO
+# This raises the same errors on trio/asyncio, which is a bit silly, but inconsequential
 from typing import Any
 
 import anyio

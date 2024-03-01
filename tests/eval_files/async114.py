@@ -1,5 +1,7 @@
-# NOASYNCIO
 import trio
+
+# async114 does not care about the imported library, so will raise errors regardless
+# of trio/anyio/asyncio
 
 # ARG --startable-in-context-manager=foo
 

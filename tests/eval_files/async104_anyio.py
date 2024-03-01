@@ -1,5 +1,5 @@
 # type: ignore
-# NOASYNCIO
+# BASE_LIBRARY ANYIO
 import anyio
 
 try:

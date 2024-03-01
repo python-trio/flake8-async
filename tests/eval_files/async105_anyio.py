@@ -1,6 +1,6 @@
 # NOTRIO
-# NOASYNCIO
 # BASE_LIBRARY anyio
+# asyncio obv will not raise any errors on this file
 import anyio
 
 

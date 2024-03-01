@@ -1,4 +1,3 @@
-# NOASYNCIO
 # type: ignore
 import anyio
 from anyio import get_cancelled_exc_class
