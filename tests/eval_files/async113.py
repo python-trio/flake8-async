@@ -1,4 +1,5 @@
 # mypy: disable-error-code="arg-type,attr-defined"
+# NOASYNCIO
 from contextlib import asynccontextmanager
 
 import anyio

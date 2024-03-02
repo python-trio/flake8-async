@@ -109,7 +109,8 @@ def check_autofix(
     plugin: Plugin,
     unfixed_code: str,
     generate_autofix: bool,
-    anyio: bool = False,
+    library: str = "trio",
+    base_library: str = "trio",
 ):
     # the source code after it's been visited by current transformers
     visited_code = plugin.module.code
@@ -144,9 +145,13 @@ def check_autofix(
     # if running against anyio, since "eval_files/{test.py}" have replaced trio->anyio,
     # meaning it's replaced in visited_code, we also replace it in previous generated code
     # and in the previous diff
-    if anyio:
-        previous_autofixed = replace_library(previous_autofixed)
-        autofix_diff_content = replace_library(autofix_diff_content)
+    if base_library != library:
+        previous_autofixed = replace_library(
+            previous_autofixed, original=base_library, new=library
+        )
+        autofix_diff_content = replace_library(
+            autofix_diff_content, original=base_library, new=library
+        )
 
     # save any difference in the autofixed code
     diff = diff_strings(previous_autofixed, visited_code)
@@ -160,7 +165,7 @@ def check_autofix(
 
     # if --generate-autofix is specified, which it may be during development,
     # just silently overwrite the content.
-    if generate_autofix and not anyio:
+    if generate_autofix and base_library == library:
         autofix_files[test].write_text(visited_code)
         autofix_diff_file.write_text(added_autofix_diff)
         return
@@ -183,10 +188,16 @@ def check_autofix(
 # markers in the same pass as we parse out errors etc.
 @dataclass
 class MagicMarkers:
+    # Exclude checking a library against a file
     NOANYIO: bool = False
     NOTRIO: bool = False
+    NOASYNCIO: bool = False
+    # File should raise no errors with this library
     ANYIO_NO_ERROR: bool = False
-    ASYNC_NO_ERROR: bool = False
+    TRIO_NO_ERROR: bool = False
+    ASYNCIO_NO_ERROR: bool = False
+    # eval file is written using this library, so no substitution is required
+    BASE_LIBRARY: str = "trio"
 
 
 def find_magic_markers(
@@ -196,7 +207,12 @@ def find_magic_markers(
     markers = (f.name for f in fields(found_markers))
     pattern = rf'# ({"|".join(markers)})'
     for f in re.findall(pattern, content):
-        setattr(found_markers, f, True)
+        if f == "BASE_LIBRARY":
+            m = re.search(r"# BASE_LIBRARY (\w*)\n", content)
+            assert m, "invalid 'BASE_LIBRARY' marker"
+            found_markers.BASE_LIBRARY = m.groups()[0]
+        else:
+            setattr(found_markers, f, True)
     return found_markers
 
 
@@ -204,31 +220,35 @@ def find_magic_markers(
 # when testing the same file
 @pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])
 @pytest.mark.parametrize("autofix", [False, True], ids=["noautofix", "autofix"])
-@pytest.mark.parametrize("anyio", [False, True], ids=["trio", "anyio"])
+@pytest.mark.parametrize("library", ["trio", "anyio", "asyncio"])
 @pytest.mark.parametrize("noqa", [False, True], ids=["normal", "noqa"])
 def test_eval(
     test: str,
     path: Path,
     autofix: bool,
-    anyio: bool,
+    library: str,
     noqa: bool,
     generate_autofix: bool,
 ):
     content = path.read_text()
     magic_markers = find_magic_markers(content)
-    if anyio and magic_markers.NOANYIO:
-        pytest.skip("file marked with NOANYIO")
-
     # if autofixing, columns may get messed up
     ignore_column = autofix
+    only_check_not_crash = False
 
-    if magic_markers.NOTRIO:
-        if not anyio:
-            pytest.skip("file marked with NOTRIO")
+    # file would raise different errors if transformed to a different library
+    # so we run the checker against it solely to check that it doesn't crash
+    if (
+        (library == "anyio" and magic_markers.NOANYIO)
+        or (library == "asyncio" and magic_markers.NOASYNCIO)
+        or (library == "trio" and magic_markers.NOTRIO)
+    ):
+        only_check_not_crash = True
 
-        # if test is marked NOTRIO, it's not written to require substitution
-    elif anyio:
-        content = replace_library(content)
+    if library != magic_markers.BASE_LIBRARY:
+        content = replace_library(
+            content, original=magic_markers.BASE_LIBRARY, new=library
+        )
 
         # if substituting we're messing up columns
         ignore_column = True
@@ -237,30 +257,49 @@ def test_eval(
         # replace all instances of some error with noqa
         content = re.sub(r"#[\s]*(error|ASYNC\d\d\d):.*", "# noqa", content)
 
-    expected, parsed_args, enable = _parse_eval_file(test, content)
-    if anyio:
-        parsed_args.insert(0, "--anyio")
+    expected, parsed_args, enable = _parse_eval_file(
+        test, content, only_parse_args=only_check_not_crash
+    )
+    if library != "trio":
+        parsed_args.insert(0, f"--{library}")
     if autofix:
         parsed_args.append(f"--autofix={enable}")
 
-    if (anyio and magic_markers.ANYIO_NO_ERROR) or (
-        not anyio and magic_markers.ASYNC_NO_ERROR
+    if (library == "anyio" and magic_markers.ANYIO_NO_ERROR) or (
+        library == "trio" and magic_markers.TRIO_NO_ERROR
     ):
         expected = []
 
     plugin = Plugin.from_source(content)
     errors = assert_expected_errors(
-        plugin, *expected, args=parsed_args, ignore_column=ignore_column
+        plugin,
+        *expected,
+        args=parsed_args,
+        ignore_column=ignore_column,
+        only_check_not_crash=only_check_not_crash,
     )
 
-    if anyio:
-        # check that error messages refer to 'anyio', or to neither library
+    if only_check_not_crash:
+        return
+
+    # check that error messages refer to current library, or to no library
+    if test not in ("ASYNC103_BOTH_IMPORTED", "ASYNC103_ALL_IMPORTED"):
         for error in errors:
             message = error.message.format(*error.args)
-            assert "anyio" in message or "trio" not in message
+            assert library in message or not any(
+                lib in message for lib in ("anyio", "asyncio", "trio")
+            )
 
-    if autofix and not noqa:
-        check_autofix(test, plugin, content, generate_autofix, anyio=anyio)
+    # asyncio does not support autofix atm, so should not modify content
+    if autofix and not noqa and library != "asyncio":
+        check_autofix(
+            test,
+            plugin,
+            content,
+            generate_autofix,
+            library=library,
+            base_library=magic_markers.BASE_LIBRARY,
+        )
     else:
         # make sure content isn't modified
         assert content == plugin.module.code
@@ -288,7 +327,9 @@ def test_autofix(test: str):
     assert plugin.module.code == content, "autofixed file changed when autofixed again"
 
 
-def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], str]:
+def _parse_eval_file(
+    test: str, content: str, only_parse_args: bool = False
+) -> tuple[list[Error], list[str], str]:
     # version check
     check_version(test)
     test = test.split("_")[0]
@@ -317,6 +358,9 @@ def _parse_eval_file(test: str, content: str) -> tuple[list[Error], list[str], s
             parsed_args.append(argument)
             if m := re.match(r"--enable=(.*)", argument):
                 enabled_codes = m.groups()[0]
+
+        if only_parse_args:
+            continue
 
         # skip commented out lines
         if not line or line[0] == "#":
@@ -449,6 +493,7 @@ def assert_expected_errors(
     *expected: Error,
     args: list[str] | None = None,
     ignore_column: bool = False,
+    only_check_not_crash: bool = False,
 ) -> list[Error]:
     # initialize default option values
     initialize_options(plugin, args)
@@ -459,6 +504,15 @@ def assert_expected_errors(
     if ignore_column:
         for e in *errors, *expected_:
             e.col = -1
+
+    if only_check_not_crash:
+        # Check that this file in fact does report different errors.
+        # Exclude empty errors+expected_ due to noqa runs.
+        assert errors != expected_ or errors == expected_ == [], (
+            "eval file appears to give all the correct errors."
+            " Maybe you can remove the `# NO[ANYIO/TRIO/ASYNCIO]` magic marker?"
+        )
+        return errors
 
     print_first_diff(errors, expected_)
     assert_correct_lines_and_codes(errors, expected_)

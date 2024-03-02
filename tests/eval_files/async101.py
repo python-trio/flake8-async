@@ -1,3 +1,4 @@
+# NOASYNCIO
 # type: ignore
 import contextlib
 import contextlib as bla

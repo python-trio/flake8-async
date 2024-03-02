@@ -1,3 +1,4 @@
+# NOASYNCIO
 # AUTOFIX
 import trio
 

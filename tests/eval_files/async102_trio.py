@@ -1,3 +1,4 @@
+# NOASYNCIO
 # NOANYIO - since anyio.Cancelled does not exist
 import trio
 

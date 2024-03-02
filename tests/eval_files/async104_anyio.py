@@ -1,4 +1,5 @@
 # type: ignore
+# BASE_LIBRARY ANYIO
 import anyio
 
 try:

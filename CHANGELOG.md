@@ -3,6 +3,12 @@
 
 ## Future
 - Removed TRIO117, MultiError removed in trio 0.24.0
+- Renamed the library from flake8-trio to flake8-async, to indicate the checker supports more than just `trio`.
+- Renamed all error codes from TRIOxxx to ASYNCxxx
+- Renamed the binary from flake8-trio to flake8-async
+- Lots of internal renaming.
+- Added asyncio support for ASYNC106
+- added `--library`
 
 ## 23.5.1
 - TRIO91X now supports comprehensions

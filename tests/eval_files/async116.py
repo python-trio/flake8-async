@@ -1,4 +1,5 @@
 # type: ignore
+# NOASYNCIO
 import math
 from math import inf
 

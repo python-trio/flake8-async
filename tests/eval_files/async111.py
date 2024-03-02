@@ -1,4 +1,5 @@
 # type: ignore
+# NOASYNCIO
 from typing import Any
 
 import trio

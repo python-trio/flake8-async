@@ -1,4 +1,5 @@
 # ARG --enable=ASYNC103,ASYNC104
+# NOASYNCIO
 try:
     ...
 # raise different exception
@@ -13,7 +14,7 @@ except BaseException as e:
 try:
     ...
 except BaseException as e:
-    # see https://github.com/Zac-HD/flake8-trio/pull/8#discussion_r932737341
+    # see https://github.com/python-trio/flake8-async/pull/8#discussion_r932737341
     raise BaseException() from e  # error: 4
 
 

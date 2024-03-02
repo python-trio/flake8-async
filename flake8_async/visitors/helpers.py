@@ -237,6 +237,9 @@ def critical_except(node: ast.ExceptHandler) -> Statement | None:
             "trio.Cancelled",
             "anyio.get_cancelled_exc_class()",
             "get_cancelled_exc_class()",
+            "asyncio.exceptions.CancelledError",
+            "exceptions.CancelledError",
+            "CancelledError",
         ):
             return name
         return None

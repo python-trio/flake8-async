@@ -1,3 +1,4 @@
+# NOASYNCIO
 # ARG --enable=ASYNC103,ASYNC104
 
 from typing import Any

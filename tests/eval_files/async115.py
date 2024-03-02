@@ -1,4 +1,5 @@
 # type: ignore
+# NOASYNCIO
 import time
 
 import trio

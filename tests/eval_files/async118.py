@@ -1,3 +1,7 @@
+# NOTRIO
+# NOASYNCIO
+# This raises the same errors on trio/asyncio, which is a bit silly, but inconsequential
+# marked not to run the tests though as error messages will only refer to anyio
 from typing import Any
 
 import anyio

@@ -1,8 +1,11 @@
 # type: ignore
+# NOTRIO
+# NOASYNCIO
+# BASE_LIBRARY anyio
+# this test will raise the same errors with trio/asyncio, despite [trio|asyncio].get_cancelled_exc_class not existing
+# marked not to run the tests though as error messages will only refer to anyio
 import anyio
 from anyio import get_cancelled_exc_class
-
-# this one is fine to also run with ASYNC
 
 
 async def foo(): ...

@@ -32,6 +32,7 @@ class Options:
     startable_in_context_manager: Collection[str]
     trio200_blocking_calls: dict[str, str]
     anyio: bool
+    asyncio: bool
     disable_noqa: bool
 
 

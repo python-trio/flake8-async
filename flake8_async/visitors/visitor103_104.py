@@ -22,8 +22,30 @@ _suggestion = " Consider adding an `except {}: raise` before this exception hand
 _suggestion_dict: dict[tuple[str, ...], str] = {
     ("anyio",): "anyio.get_cancelled_exc_class()",
     ("trio",): "trio.Cancelled",
+    ("asyncio",): "asyncio.exceptions.CancelledError",
 }
-_suggestion_dict[("anyio", "trio")] = "[" + "|".join(_suggestion_dict.values()) + "]"
+# TODO: ugly
+for a, b in (("anyio", "trio"), ("anyio", "asyncio"), ("asyncio", "trio")):
+    _suggestion_dict[(a, b)] = (
+        "[" + "|".join((_suggestion_dict[(a,)], _suggestion_dict[(b,)])) + "]"
+    )
+_suggestion_dict[
+    (
+        "anyio",
+        "asyncio",
+        "trio",
+    )
+] = (
+    "["
+    + "|".join(
+        (
+            _suggestion_dict[("anyio",)],
+            _suggestion_dict[("asyncio",)],
+            _suggestion_dict[("trio",)],
+        )
+    )
+    + "]"
+)
 
 _error_codes = {
     "ASYNC103": _async103_common_msg,
@@ -56,6 +78,7 @@ class Visitor103_104(Flake8AsyncVisitor):
         marker = critical_except(node)
 
         if marker is None:
+            # not a critical exception handler
             return
 
         # If previous excepts have handled trio.Cancelled, don't do anything - namely
@@ -69,6 +92,13 @@ class Visitor103_104(Flake8AsyncVisitor):
         ):
             error_code = "ASYNC103"
             self.cancelled_caught.add("anyio")
+        elif marker.name in (
+            "asyncio.exceptions.CancelledError",
+            "exceptions.CancelledError",
+            "CancelledError",
+        ):
+            error_code = "ASYNC103"
+            self.cancelled_caught.add("asyncio")
         else:
             if self.cancelled_caught:
                 return
@@ -76,7 +106,7 @@ class Visitor103_104(Flake8AsyncVisitor):
                 error_code = f"ASYNC103_{self.library_str}"
             else:
                 error_code = f"ASYNC103_{'_'.join(sorted(self.library))}"
-            self.cancelled_caught.update("trio", "anyio")
+            self.cancelled_caught.update("trio", "anyio", "asyncio")
 
         # Don't save the state of cancelled_caught, that's handled in Try and would
         # reset it between each except

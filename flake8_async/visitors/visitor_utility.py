@@ -117,11 +117,13 @@ class VisitorLibraryHandler(Flake8AsyncVisitor):
         # see imports
         if self.options.anyio:
             self.add_library("anyio")
+        if self.options.asyncio:
+            self.add_library("asyncio")
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
             name = alias.name
-            if name in ("trio", "anyio") and alias.asname is None:
+            if name in ("trio", "anyio", "asyncio") and alias.asname is None:
                 self.add_library(name)
 
 
@@ -134,11 +136,17 @@ class VisitorLibraryHandler_cst(Flake8AsyncVisitor_cst):
         # see imports
         if self.options.anyio:
             self.add_library("anyio")
+        if self.options.asyncio:
+            self.add_library("asyncio")
 
     def visit_Import(self, node: cst.Import):
         for alias in node.names:
             if m.matches(
-                alias, m.ImportAlias(name=m.Name("trio") | m.Name("anyio"), asname=None)
+                alias,
+                m.ImportAlias(
+                    name=m.Name("trio") | m.Name("anyio") | m.Name("asyncio"),
+                    asname=None,
+                ),
             ):
                 assert isinstance(alias.name.value, str)
                 self.add_library(alias.name.value)
