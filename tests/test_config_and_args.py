@@ -177,10 +177,8 @@ select = ASYNC220
     err_file = Path(__file__).parent / "eval_files" / "anyio_trio.py"
 
     # find the line with the expected error
-    for i, line in enumerate(err_file.read_text().split("\n")):
+    for lineno, line in enumerate(err_file.read_text().split("\n"), start=1):
         if "# ASYNC220: " in line:
-            # line numbers start at 1, enumerate starts at 0
-            lineno = i + 1
             break
     else:
         raise AssertionError("could not find error in file")
