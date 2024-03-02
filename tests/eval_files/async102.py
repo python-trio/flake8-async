@@ -142,7 +142,7 @@ async def foo():
 
 
 # change of functionality, no longer treated as safe
-# https://github.com/Zac-HD/flake8-trio/issues/54
+# https://github.com/python-trio/flake8-async/issues/54
 @asynccontextmanager
 async def foo2():
     try:

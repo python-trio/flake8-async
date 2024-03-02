@@ -362,7 +362,7 @@ async def foo_try_7():  # safe
         pass
 
 
-# https://github.com/Zac-HD/flake8-trio/issues/45
+# https://github.com/python-trio/flake8-async/issues/45
 async def to_queue(iter_func, queue):
     async with iter_func() as it:
         async for x in it:
@@ -472,7 +472,7 @@ async def foo_range_5():  # error: 0, "exit", Statement("function definition", l
         await foo()
 
 
-# https://github.com/Zac-HD/flake8-trio/issues/47
+# https://github.com/python-trio/flake8-async/issues/47
 async def f():
     while True:
         if ...:

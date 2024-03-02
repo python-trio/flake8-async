@@ -177,7 +177,9 @@ select = ASYNC220
     err_file = Path(__file__).parent / "eval_files" / "anyio_trio.py"
 
     # find the line with the expected error
-    for lineno, line in enumerate(err_file.read_text().split("\n"), start=1):
+    for lineno, line in enumerate(  # noqa: B007 # lineno not used in loop body
+        err_file.read_text().split("\n"), start=1
+    ):
         if "# ASYNC220: " in line:
             break
     else:

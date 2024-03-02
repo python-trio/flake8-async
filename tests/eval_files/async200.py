@@ -46,7 +46,7 @@ async def afoo():
     bar()  # ASYNC200: 4, "bar", "BAR"
 
     # don't error on directly awaited expressions
-    # https://github.com/Zac-HD/flake8-trio/issues/85
+    # https://github.com/python-trio/flake8-async/issues/85
     await bar()
     print(await bar())
 

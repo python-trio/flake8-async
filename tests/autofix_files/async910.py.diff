@@ -196,7 +196,7 @@
 +    await trio.lowlevel.checkpoint()
 
 
- # https://github.com/Zac-HD/flake8-trio/issues/47
+ # https://github.com/python-trio/flake8-async/issues/47
 @@ x,6 x,7 @@
  # should error
  async def foo_comprehension_2():  # error: 0, "exit", Statement("function definition", lineno)
