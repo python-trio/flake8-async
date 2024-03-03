@@ -148,7 +148,7 @@ class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
     def library_str(self) -> str:
         if len(self.library) == 1:
             return self.library[0]
-        return "[" + "|".join(self.library) + "]"
+        return "[" + "/".join(self.library) + "]"
 
     def add_library(self, name: str) -> None:
         if name not in self.__state.library:
