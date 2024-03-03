@@ -27,7 +27,7 @@ _suggestion_dict: dict[tuple[str, ...], str] = {
 # TODO: ugly
 for a, b in (("anyio", "trio"), ("anyio", "asyncio"), ("asyncio", "trio")):
     _suggestion_dict[(a, b)] = (
-        "[" + "|".join((_suggestion_dict[(a,)], _suggestion_dict[(b,)])) + "]"
+        "[" + "/".join((_suggestion_dict[(a,)], _suggestion_dict[(b,)])) + "]"
     )
 _suggestion_dict[
     (
@@ -110,7 +110,7 @@ class Visitor103_104(Flake8AsyncVisitor):
 
         # Don't save the state of cancelled_caught, that's handled in Try and would
         # reset it between each except
-        # Don't need to reset the values of unraised_[break|continue] since that's handled
+        # Don't need to reset the values of unraised_[break/continue] since that's handled
         # by visit_For, but need to save the state of them to not mess up loops we're
         # nested inside
         self.save_state(

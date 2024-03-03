@@ -293,9 +293,9 @@ class Plugin:
             required=False,
             default=False,
             help=(
-                "Change the default library to be anyio instead of trio."
-                " If trio is imported it will assume both are available and print"
-                " suggestions with [anyio|trio]."
+                "Change the default library for suggestions to be anyio instead of trio."
+                " If asyncio/trio is imported it will assume that is also available and"
+                " print suggestions with [asyncio/anyio/trio]."
             ),
         )
         add_argument(
@@ -306,9 +306,10 @@ class Plugin:
             required=False,
             default=False,
             help=(
-                "Change the default library to be asyncio instead of trio."
+                "Change the default library for suggestions to be asyncio instead of"
+                " trio."
                 " If anyio/trio is imported it will assume that is also available and"
-                " print suggestions with [asyncio|anyio/trio]."
+                " print suggestions with [asyncio/anyio/trio]."
             ),
         )
 
