@@ -1,6 +1,6 @@
 # type: ignore
 # ARG --enable=ASYNC220,ASYNC221,ASYNC222
-# NOASYNCIO
+# NOASYNCIO - specifies error message differently
 
 
 async def foo():

@@ -1,5 +1,5 @@
-# NOANYIO
-# NOASYNCIO
+# ANYIO_NO_ERROR # not supported, and no plans to
+# ASYNCIO_NO_ERROR # not supported, and no plans to
 from typing import Any
 from collections.abc import Coroutine
 

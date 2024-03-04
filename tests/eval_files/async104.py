@@ -1,5 +1,4 @@
 # ARG --enable=ASYNC103,ASYNC104
-# NOASYNCIO
 try:
     ...
 # raise different exception

@@ -1,7 +1,8 @@
-# NOTRIO
-# NOASYNCIO
-# This raises the same errors on trio/asyncio, which is a bit silly, but inconsequential
-# marked not to run the tests though as error messages will only refer to anyio
+# `get_cancelled_exc_class` will trigger errors even if anyio isn't imported, out of
+# an abundance of caution. But `anyio.get_cancelled_exc_class` will not
+# NOTRIO # anyio-specific check, see above
+# NOASYNCIO # anyio-specific check, see above
+# BASE_LIBRARY anyio
 from typing import Any
 
 import anyio

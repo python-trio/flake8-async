@@ -1,4 +1,4 @@
-# NOASYNCIO
+# ASYNCIO_NO_ERROR - no nursery/cancelscope in asyncio
 # type: ignore
 import contextlib
 import contextlib as bla

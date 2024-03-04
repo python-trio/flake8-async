@@ -1,5 +1,5 @@
 # type: ignore
-# NOASYNCIO
+# ASYNCIO_NO_ERROR # no asyncio.lowlevel.checkpoint()
 import time
 
 import trio

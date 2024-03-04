@@ -83,7 +83,7 @@ class Error:
 
     def cmp(self):
         # column may be ignored/modified when autofixing, so sort on that last
-        return self.line, self.code, self.args, self.col
+        return self.line, self.code, self.args, self.message, self.col
 
     # for sorting in tests
     def __lt__(self, other: Error) -> bool:

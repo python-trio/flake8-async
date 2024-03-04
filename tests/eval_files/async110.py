@@ -1,5 +1,5 @@
 # type: ignore
-# NOASYNCIO
+# ASYNCIO_NO_ERROR - not yet supported # TODO
 import trio
 import trio as noerror
 

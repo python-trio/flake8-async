@@ -169,13 +169,26 @@ class Visitor212(Visitor200):
 # Process invocations 202
 @error_class
 class Visitor22X(Visitor200):
+    # not the prettiest, as it requires duplicating eval files, and will give
+    # nonsensical error messages if using asyncio+trio/anyio
     error_codes: Mapping[str, str] = {
         "ASYNC220": (
             "Sync call {} in async function, use "
             "`await nursery.start({}.run_process, ...)`."
         ),
+        "ASYNC220_asyncio": (
+            "Sync call {} in async function, use "
+            "`asyncio.create_subprocess_[exec/shell]."
+        ),
         "ASYNC221": "Sync call {} in async function, use `await {}.run_process(...)`.",
+        "ASYNC221_asyncio": (
+            "Sync call {} in async function, use "
+            "`asyncio.create_subprocess_[exec/shell]."
+        ),
         "ASYNC222": "Sync call {} in async function, wrap in `{}.to_thread.run_sync()`.",
+        "ASYNC222_asyncio": (
+            "Sync call {} in async function, use `asyncio.loop.run_in_executor`."
+        ),
     }
 
     def visit_blocking_call(self, node: ast.Call):
@@ -222,7 +235,14 @@ class Visitor22X(Visitor200):
                     error_code = "ASYNC220"
                     break
 
-        if error_code is not None:
+        if error_code is None:
+            return
+        if self.library == ("asyncio",):
+            self.error(node, func_name, error_code=error_code + "_asyncio")
+        else:
+            # the asyncio + anyio/trio case is probably not worth special casing,
+            # so we simply suggest e.g. `[trio/asyncio/anyio].run_process()` despite
+            # asyncio.run_process not existing
             self.error(node, func_name, self.library_str, error_code=error_code)
 
 
@@ -231,6 +251,14 @@ class Visitor23X(Visitor200):
     error_codes: Mapping[str, str] = {
         "ASYNC230": "Sync call {0} in async function, use `{1}.open_file(...)`.",
         "ASYNC231": "Sync call {0} in async function, use `{1}.wrap_file({0})`.",
+        "ASYNC230_asyncio": (
+            "Sync call {0} in async function, "
+            " use a library such as aiofiles or anyio."
+        ),
+        "ASYNC231_asyncio": (
+            "Sync call {0} in async function, "
+            " use a library such as aiofiles or anyio."
+        ),
     }
 
     def visit_Call(self, node: ast.Call):
@@ -249,16 +277,23 @@ class Visitor23X(Visitor200):
             error_code = "ASYNC231"
         else:
             return
-        self.error(node, func_name, self.library_str, error_code=error_code)
+        if self.library == ("asyncio",):
+            self.error(node, func_name, error_code=error_code + "_asyncio")
+        else:
+            self.error(node, func_name, self.library_str, error_code=error_code)
 
 
 @error_class
 class Visitor232(Visitor200):
     error_codes: Mapping[str, str] = {
         "ASYNC232": (
-            "Blocking sync call {1} on file object {0}, wrap the file object"
+            "Blocking sync call {1} on file object {0}, wrap the file object "
             "in `{2}.wrap_file()` to get an async file object."
-        )
+        ),
+        "ASYNC232_asyncio": (
+            "Blocking sync call {1} on file object {0}, wrap the file object "
+            " to get an async file object."
+        ),
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -279,13 +314,30 @@ class Visitor232(Visitor200):
             and (anno := self.variables.get(node.func.value.id))
             and (anno in io_file_types or f"io.{anno}" in io_file_types)
         ):
-            self.error(node, node.func.attr, node.func.value.id, self.library_str)
+            if self.library == ("asyncio",):
+                self.error(
+                    node,
+                    node.func.attr,
+                    node.func.value.id,
+                    error_code="ASYNC232_asyncio",
+                )
+            else:
+                self.error(
+                    node,
+                    node.func.attr,
+                    node.func.value.id,
+                    self.library_str,
+                    error_code="ASYNC232",
+                )
 
 
 @error_class
 class Visitor24X(Visitor200):
     error_codes: Mapping[str, str] = {
         "ASYNC240": "Avoid using os.path, prefer using {1}.Path objects.",
+        "ASYNC240_asyncio": (
+            "Avoid using os.path, use a library such as aiopath or anyio."
+        ),
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -324,10 +376,11 @@ class Visitor24X(Visitor200):
     def visit_Call(self, node: ast.Call):
         if not self.async_function:
             return
+        error_code = "ASYNC240_asyncio" if self.library == ("asyncio",) else "ASYNC240"
         func_name = ast.unparse(node.func)
         if func_name in self.imports_from_ospath:
-            self.error(node, func_name, self.library_str)
+            self.error(node, func_name, self.library_str, error_code=error_code)
         elif (m := re.fullmatch(r"os\.path\.(?P<func>.*)", func_name)) and m.group(
             "func"
         ) in self.os_funcs:
-            self.error(node, m.group("func"), self.library_str)
+            self.error(node, m.group("func"), self.library_str, error_code=error_code)

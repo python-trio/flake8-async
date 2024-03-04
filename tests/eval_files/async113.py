@@ -1,11 +1,11 @@
 # mypy: disable-error-code="arg-type,attr-defined"
-# NOASYNCIO
+# NOASYNCIO - with two "base libraries" this file will raise errors even if substituting one of them
 from contextlib import asynccontextmanager
 
 import anyio
 import trio
 
-# NOANYIO - requires no substitution check
+# NOANYIO - this file checks both libraries
 
 
 @asynccontextmanager

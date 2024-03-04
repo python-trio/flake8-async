@@ -1,5 +1,7 @@
 # type: ignore
-# NOASYNCIO
+# ASYNC112: Nursery body with only a call to nursery.start[_soon] and not passing itself as a parameter can be replaced with a regular function call.
+# ASYNCIO_NO_ERROR - # TODO: expand check to work with asyncio.TaskGroup
+# ANYIO_NO_ERROR - # TODO: expand check to work with anyio.TaskGroup
 import functools
 from functools import partial
 

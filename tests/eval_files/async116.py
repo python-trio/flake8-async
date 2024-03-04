@@ -1,5 +1,5 @@
 # type: ignore
-# NOASYNCIO
+# ASYNCIO_NO_ERROR - no asyncio.sleep_forever, so check intentionally doesn't trigger.
 import math
 from math import inf
 

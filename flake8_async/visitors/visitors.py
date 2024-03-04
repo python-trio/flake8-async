@@ -93,7 +93,9 @@ class Visitor112(Flake8AsyncVisitor):
             var_name = item.optional_vars.id
 
             # check for trio.open_nursery
-            nursery = get_matching_call(item.context_expr, "open_nursery")
+            nursery = get_matching_call(
+                item.context_expr, "open_nursery", base=("trio",)
+            )
 
             # `isinstance(..., ast.Call)` is done in get_matching_call
             body_call = cast("ast.Call", node.body[0].value)
@@ -209,7 +211,7 @@ class Visitor114(Flake8AsyncVisitor):
             self.error(node, node.name)
 
 
-# Suggests replacing all `trio.sleep(0)` with the more suggestive
+# Suggests replacing all `[trio|anyio].sleep(0)` with the more suggestive
 # `trio.lowlevel.checkpoint()`
 @error_class
 class Visitor115(Flake8AsyncVisitor):
