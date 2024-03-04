@@ -48,13 +48,13 @@ Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
 - **ASYNC210**: Sync HTTP call in async function, use `httpx.AsyncClient`. This and the other ASYNC21x checks look for usage of `urllib3` and `httpx.Client`, and recommend using `httpx.AsyncClient` as that's the largest http client supporting anyio/trio.
 - **ASYNC211**: Likely sync HTTP call in async function, use `httpx.AsyncClient`. Looks for `urllib3` method calls on pool objects, but only matching on the method signature and not the object.
 - **ASYNC212**: Blocking sync HTTP call on httpx object, use httpx.AsyncClient.
-- **ASYNC220**: Sync process call in async function, use `await nursery.start([trio|anyio].run_process, ...)`.
-- **ASYNC221**: Sync process call in async function, use `await [trio|anyio].run_process(...)`.
-- **ASYNC222**: Sync `os.*` call in async function, wrap in `await [trio|anyio].to_thread.run_sync()`.
-- **ASYNC230**: Sync IO call in async function, use `[trio|anyio].open_file(...)`.
-- **ASYNC231**: Sync IO call in async function, use `[trio|anyio].wrap_file(...)`.
+- **ASYNC220**: Sync process call in async function, use `await nursery.start([trio|anyio].run_process, ...)`. `asyncio` users can use [`asyncio.create_subprocess_[exec/shell]`](https://docs.python.org/3/library/asyncio-subprocess.html).
+- **ASYNC221**: Sync process call in async function, use `await [trio|anyio].run_process(...)`. `asyncio` users can use [`asyncio.create_subprocess_[exec/shell]`](https://docs.python.org/3/library/asyncio-subprocess.html).
+- **ASYNC222**: Sync `os.*` call in async function, wrap in `await [trio|anyio].to_thread.run_sync()`. `asyncio` users can use [`asyncio.loop.run_in_executor`](https://docs.python.org/3/library/asyncio-subprocess.html).
+- **ASYNC230**: Sync IO call in async function, use `[trio|anyio].open_file(...)`. `asyncio` users need to use a library such as [aiofiles](https://pypi.org/project/aiofiles/), or switch to [anyio](https://github.com/agronholm/anyio).
+- **ASYNC231**: Sync IO call in async function, use `[trio|anyio].wrap_file(...)`. `asyncio` users need to use a library such as [aiofiles](https://pypi.org/project/aiofiles/), or switch to [anyio](https://github.com/agronholm/anyio).
 - **ASYNC232**: Blocking sync call on file object, wrap the file object in `[trio|anyio].wrap_file()` to get an async file object.
-- **ASYNC240**: Avoid using `os.path` in async functions, prefer using `[trio|anyio].Path` objects.
+- **ASYNC240**: Avoid using `os.path` in async functions, prefer using `[trio|anyio].Path` objects. `asyncio` users should consider [aiopath](https://pypi.org/project/aiopath) or [anyio](https://github.com/agronholm/anyio).
 
 ### Warnings disabled by default
 - **ASYNC900**: Async generator without `@asynccontextmanager` not allowed. You might want to enable this on a codebase since async generators are inherently unsafe and cleanup logic might not be performed. See https://github.com/python-trio/flake8-async/issues/211 and https://discuss.python.org/t/using-exceptiongroup-at-anthropic-experience-report/20888/6 for discussion.
