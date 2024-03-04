@@ -1,5 +1,5 @@
 # `get_cancelled_exc_class` will trigger errors even if anyio isn't imported, out of
-# an abundance of caution. But `anyio.get_cancelled_exc_class` will not
+# an abundance of caution. But `anyio.get_cancelled_exc_class` will not.
 # NOTRIO # anyio-specific check, see above
 # NOASYNCIO # anyio-specific check, see above
 # BASE_LIBRARY anyio

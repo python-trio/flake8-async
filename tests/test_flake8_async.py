@@ -258,7 +258,7 @@ def test_eval(
         content = re.sub(r"#[\s]*(error|ASYNC\d\d\d):.*", "# noqa", content)
 
     expected, parsed_args, enable = _parse_eval_file(
-        test, content, only_parse_args=only_check_not_crash
+        test, content, only_check_not_crash=only_check_not_crash
     )
     if library != "trio":
         parsed_args.insert(0, f"--{library}")
@@ -286,12 +286,12 @@ def test_eval(
         return
 
     # Check that error messages refer to current library, or to no library.
-    # 103_[BOTH/ALL]_IMPORTED will contain messages that refer to anyio regardless of
-    # current library
-    # 23X_asyncio messages does not mention asyncio
     if test not in (
+        # 103_[BOTH/ALL]_IMPORTED will contain messages that refer to anyio regardless of
+        # current library
         "ASYNC103_BOTH_IMPORTED",
         "ASYNC103_ALL_IMPORTED",
+        # 23X_asyncio messages does not mention asyncio
         "ASYNC23X_ASYNCIO",
     ):
         for error in errors:
@@ -338,7 +338,7 @@ def test_autofix(test: str):
 
 
 def _parse_eval_file(
-    test: str, content: str, only_parse_args: bool = False
+    test: str, content: str, only_check_not_crash: bool = False
 ) -> tuple[list[Error], list[str], str]:
     # version check
     check_version(test)
@@ -406,7 +406,7 @@ def _parse_eval_file(
 
             if err_code == "error":
                 err_code = test
-            if only_parse_args and err_code + alt_code not in ERROR_CODES:
+            if only_check_not_crash and err_code + alt_code not in ERROR_CODES:
                 continue
             error_class = ERROR_CODES[err_code + alt_code]
             message = error_class.error_codes[err_code + alt_code]
