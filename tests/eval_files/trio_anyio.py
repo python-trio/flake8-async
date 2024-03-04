@@ -6,4 +6,4 @@ import anyio  # isort: skip
 
 
 async def foo():
-    subprocess.Popen()  # ASYNC220: 4, 'subprocess.Popen', "[trio|anyio]"
+    subprocess.Popen()  # ASYNC220: 4, 'subprocess.Popen', "[trio/anyio]"

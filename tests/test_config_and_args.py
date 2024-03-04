@@ -172,7 +172,7 @@ select = ASYNC220
 
     err_msg = Visitor22X.error_codes["ASYNC220"].format(
         "subprocess.Popen",
-        "[anyio|trio]",
+        "[anyio/trio]",
     )
     err_file = Path(__file__).parent / "eval_files" / "anyio_trio.py"
 
