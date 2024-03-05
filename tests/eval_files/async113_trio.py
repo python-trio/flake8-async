@@ -12,8 +12,8 @@ import trio
 
 # ARG --startable-in-context-manager=custom_startable_function
 
-# ANYIO_NO_ERROR - anyio uses TaskGroups, not nurseries
-# ASYNCIO_NO_ERROR - no nurseries in asyncio
+# ANYIO_NO_ERROR - anyio uses TaskGroups. Checked in async113.py & async113_anyio.py
+# ASYNCIO_NO_ERROR - asyncio uses TaskGroups. Checked in async113.py
 
 
 @asynccontextmanager

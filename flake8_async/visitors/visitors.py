@@ -171,6 +171,7 @@ class Visitor113(Flake8AsyncVisitor):
                 in (
                     "trio.Nursery",
                     "anyio.TaskGroup",
+                    "asyncio.TaskGroup",
                 )
             )
 

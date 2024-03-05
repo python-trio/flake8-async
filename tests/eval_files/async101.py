@@ -1,4 +1,6 @@
-# ASYNCIO_NO_ERROR - no nursery/cancelscope in asyncio
+# ASYNCIO_NO_ERROR - nursery/cancelscope in asyncio is called taskgroup/timeout
+# Note: this one *shouldn't* be giving the same errors for anyio (but it currently does)
+# since it has TaskGroups instead of nurseries. #TODO #215
 # type: ignore
 import contextlib
 import contextlib as bla

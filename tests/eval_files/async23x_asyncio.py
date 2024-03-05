@@ -17,7 +17,9 @@ async def foo():
     # sync call is awaited, so it can't be sync
     await open("")
 
-    # asyncio.wrap_file does not exist
+    # asyncio.wrap_file does not exist, so check that it doesn't trigger the
+    # protection that e.g. `trio.wrap_file` would give.
+    # In theory we could support detecting equivalent `wrap_file`s from other libraries
     await asyncio.wrap_file(open(""))  # ASYNC230_asyncio: 28, 'open'
     await asyncio.wrap_file(os.fdopen(0))  # ASYNC231_asyncio: 28, 'os.fdopen'
 

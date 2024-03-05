@@ -15,6 +15,11 @@ async def file_text(f: io.TextIOWrapper):
     # there might be non-sync calls on TextIOWrappers? - but it will currently trigger
     # on all calls
     f.anything()  # ASYNC232_asyncio: 4, 'anything', 'f'
+    f.aoeuaoeuoaeuaoeuaoeu()  # ASYNC232_asyncio: 4, 'aoeuaoeuaoeuaoeuaoeu', 'f'
+
+
+# Test different file types for the type tracker
+# We use f.read() in all of them for simplicity, but any method call would trigger the same error
 
 
 async def file_binary_read(f: io.BufferedReader):
