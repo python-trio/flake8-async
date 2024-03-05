@@ -15,7 +15,7 @@ async def file_text(f: io.TextIOWrapper):
     # there might be non-sync calls on TextIOWrappers? - but it will currently trigger
     # on all calls
     f.anything()  # ASYNC232_asyncio: 4, 'anything', 'f'
-    f.aoeuaoeuoaeuaoeuaoeu()  # ASYNC232_asyncio: 4, 'aoeuaoeuaoeuaoeuaoeu', 'f'
+    f.aoeuaoeuaoeuaoeuaoeu()  # ASYNC232_asyncio: 4, 'aoeuaoeuaoeuaoeuaoeu', 'f'
 
 
 # Test different file types for the type tracker
