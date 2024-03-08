@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## 24.3.8
+## 24.3.1
 - Removed TRIO117, MultiError removed in trio 0.24.0
 - Renamed the library from flake8-trio to flake8-async, to indicate the checker supports more than just `trio`.
 - Renamed all error codes from TRIOxxx to ASYNCxxx
