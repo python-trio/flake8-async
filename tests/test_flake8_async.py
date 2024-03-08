@@ -216,12 +216,11 @@ def find_magic_markers(
     return found_markers
 
 
-# This could be optimized not to reopen+reread+reparse the same file over and over
-# when testing the same file
-@pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])
+# Caching test file content makes ~0 difference to runtime
+@pytest.mark.parametrize("noqa", [False, True], ids=["normal", "noqa"])
 @pytest.mark.parametrize("autofix", [False, True], ids=["noautofix", "autofix"])
 @pytest.mark.parametrize("library", ["trio", "anyio", "asyncio"])
-@pytest.mark.parametrize("noqa", [False, True], ids=["normal", "noqa"])
+@pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])
 def test_eval(
     test: str,
     path: Path,
@@ -232,6 +231,7 @@ def test_eval(
 ):
     content = path.read_text()
     magic_markers = find_magic_markers(content)
+
     # if autofixing, columns may get messed up
     ignore_column = autofix
     only_check_not_crash = False
