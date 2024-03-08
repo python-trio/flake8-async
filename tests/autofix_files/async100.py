@@ -1,6 +1,6 @@
 # type: ignore
 # AUTOFIX
-# NOASYNCIO
+# ASYNCIO_NO_ERROR # timeout primitives are named differently in asyncio
 
 import trio
 

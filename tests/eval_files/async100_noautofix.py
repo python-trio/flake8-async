@@ -1,4 +1,4 @@
-# NOASYNCIO
+# ASYNCIO_NO_ERROR - no asyncio.move_on_after
 import trio
 
 

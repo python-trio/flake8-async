@@ -1,5 +1,6 @@
 # type: ignore
-# NOASYNCIO # see async232_asyncio.py
+# NOTRIO # see async232.py
+# NOANYIO # see async232.py
 import io
 from io import BufferedRandom, BufferedReader, BufferedWriter, TextIOWrapper
 from typing import Any, Optional
@@ -8,13 +9,13 @@ blah: Any = None
 
 
 async def file_text(f: io.TextIOWrapper):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
-    f.readlines()  # ASYNC232: 4, 'readlines', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
+    f.readlines()  # ASYNC232_asyncio: 4, 'readlines', 'f'
 
     # there might be non-sync calls on TextIOWrappers? - but it will currently trigger
     # on all calls
-    f.anything()  # ASYNC232: 4, 'anything', 'f', "trio"
-    f.aoeuaoeuaoeuaoeu()  # ASYNC232: 4, 'aoeuaoeuaoeuaoeu', 'f', "trio"
+    f.anything()  # ASYNC232_asyncio: 4, 'anything', 'f'
+    f.aoeuaoeuaoeuaoeuaoeu()  # ASYNC232_asyncio: 4, 'aoeuaoeuaoeuaoeuaoeu', 'f'
 
 
 # Test different file types for the type tracker
@@ -22,47 +23,47 @@ async def file_text(f: io.TextIOWrapper):
 
 
 async def file_binary_read(f: io.BufferedReader):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_binary_write(f: io.BufferedWriter):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_binary_readwrite(f: io.BufferedRandom):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_text_(f: TextIOWrapper):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_binary_read_(f: BufferedReader):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_binary_write_(f: BufferedWriter):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_binary_readwrite_(f: BufferedRandom):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_text_3(f: TextIOWrapper = blah):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_text_4(f: TextIOWrapper | None):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     if f:
-        f.read()  # ASYNC232: 8, 'read', 'f', "trio"
+        f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
 async def file_text_4_left(f: None | TextIOWrapper):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     if f:
-        f.read()  # ASYNC232: 8, 'read', 'f', "trio"
+        f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
 # not handled
@@ -76,25 +77,25 @@ async def file_text_4_non_none(f: TextIOWrapper | int):
 
 
 async def file_text_5(f: TextIOWrapper | None = None):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     if f:
-        f.read()  # ASYNC232: 8, 'read', 'f', "trio"
+        f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
 async def file_text_6(f: Optional[TextIOWrapper] = None):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     if f:
-        f.read()  # ASYNC232: 8, 'read', 'f', "trio"
+        f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
 # posonly
 async def file_text_7(f: TextIOWrapper = blah, /):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 # keyword-only
 async def file_text_8(*, f: TextIOWrapper = blah):
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def file_text_9(lf: list[TextIOWrapper]):
@@ -114,7 +115,7 @@ async def open_file_2():
 
 async def open_file_3():
     with open("") as f:
-        f.read()  # ASYNC232: 8, 'read', 'f', "trio"
+        f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
 async def open_file_4():
@@ -123,14 +124,14 @@ async def open_file_4():
 
 async def open_file_5():
     f = open("")
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 async def open_file_6():
     ff = open("")
     f = ff
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
-    ff.read()  # ASYNC232: 4, 'read', 'ff', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
+    ff.read()  # ASYNC232_asyncio: 4, 'read', 'ff'
 
 
 async def noerror():
@@ -140,19 +141,19 @@ async def noerror():
 
 def sync_fun(f: TextIOWrapper):
     async def async_fun():
-        f.read()  # ASYNC232: 8, 'read', 'f', "trio"
+        f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
 def sync_fun_2():
     f = open("")
 
     async def async_fun():
-        f.read()  # ASYNC232: 8, 'read', 'f', "trio"
+        f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
 async def type_assign():
     f: TextIOWrapper = ...
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 # define global variables
@@ -170,16 +171,16 @@ async def async_wrapper(f: TextIOWrapper):
 
         f.read()
 
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     lambda f: f.read()
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 # and show that they're still marked as TextIOWrappers
 async def global_vars():
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
-    g.read()  # ASYNC232: 4, 'read', 'g', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
+    g.read()  # ASYNC232_asyncio: 4, 'read', 'g'
 
 
 # If the type is explicitly overridden, it will not error
@@ -187,11 +188,11 @@ async def overridden_type(f: TextIOWrapper):
     f: int = 7
     f.read()
     f: TextIOWrapper = ...
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     f: int = 7
     f.read()
     f: TextIOWrapper = ...
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 # ***** Known unhandled cases *****
@@ -201,9 +202,9 @@ async def overridden_type(f: TextIOWrapper):
 async def implicit_overridden_type():
     f: TextIOWrapper = ...
     f = arbitrary_function()
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     f = 7
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 # Tuple assignments are completely ignored
@@ -229,13 +230,13 @@ async def attribute_access_on_object():
 # to the type
 async def type_restricting_1(f: Optional[TextIOWrapper] = None):
     if f is None:
-        f.read()  # ASYNC232: 8, 'read', 'f', "trio"
+        f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
 async def type_restricting_2(f: Optional[TextIOWrapper] = None):
     if isinstance(f, TextIOWrapper):
         return
-    f.read()  # ASYNC232: 4, 'read', 'f', "trio"
+    f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
 
 
 # Classes are not supported, partly due to not handling attributes at all,

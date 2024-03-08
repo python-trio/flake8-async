@@ -1,6 +1,6 @@
 # type: ignore
 # ARG --enable=ASYNC230,ASYNC231
-# NOASYNCIO
+# NOASYNCIO # see async23x_asyncio.py
 import io
 import os
 

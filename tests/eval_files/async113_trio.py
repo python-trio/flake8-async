@@ -1,5 +1,5 @@
 # mypy: disable-error-code="arg-type,call-overload,misc"
-# NOASYNCIO
+# ASYNC113: Using nursery.start_soon in __aenter__ doesn't wait for the task to begin. Consider replacing with nursery.start.
 import contextlib
 import contextlib as arbitrary_import_alias_for_contextlib
 import functools
@@ -11,7 +11,9 @@ from typing import Any
 import trio
 
 # ARG --startable-in-context-manager=custom_startable_function
-# NOANYIO
+
+# ANYIO_NO_ERROR - anyio uses TaskGroups. Checked in async113.py & async113_anyio.py
+# ASYNCIO_NO_ERROR - asyncio uses TaskGroups. Checked in async113.py
 
 
 @asynccontextmanager

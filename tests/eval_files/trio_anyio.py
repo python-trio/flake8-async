@@ -1,7 +1,6 @@
 # type: ignore
 # ARG --enable=ASYNC220
 # NOANYIO
-# NOASYNCIO  # TODO
 import trio  # isort: skip
 import anyio  # isort: skip
 

@@ -1,5 +1,4 @@
 # AUTOFIX
-# NOANYIO # TODO
 # ARG --enable=ASYNC911
 import trio
 
