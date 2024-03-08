@@ -42,12 +42,16 @@ else:
 
 def get_releases() -> Iterable[Version]:
     valid_pattern = re.compile(r"^## (\d\d\.\d?\d\.\d?\d)$")
+    invalid_pattern = re.compile(r"^## ")
     with open(CHANGELOG, encoding="utf-8") as f:
         lines = f.readlines()
     for line in lines:
         version_match = valid_pattern.match(line)
         if version_match:
             yield Version.from_string(version_match.group(1))
+        else:
+            # stop lines such as `## Future` making it through to main/
+            assert not invalid_pattern.match(line)
 
 
 def test_last_release_against_changelog() -> None:

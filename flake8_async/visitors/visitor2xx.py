@@ -6,6 +6,7 @@
 220&221 looks for subprocess and os calls that should be wrapped.
 230&231 looks for os.open and os.fdopen that should be wrapped.
 240 looks for os.path functions that interact with the disk in various ways.
+250 looks for input() that should be wrapped
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ class Visitor200(Flake8AsyncVisitor):
             self.error(node, key, blocking_calls[key])
 
 
-# used by Visitor212 and Visitor232
+# used by Visitor212 and Visitor232 - ??
 
 
 @error_class
@@ -384,3 +385,26 @@ class Visitor24X(Visitor200):
             "func"
         ) in self.os_funcs:
             self.error(node, m.group("func"), self.library_str, error_code=error_code)
+
+
+wrappers: Mapping[str, str] = {
+    "trio": "trio.to_thread.run_sync",
+    "anyio": "anyio.to_thread.run_sync",
+    "asyncio": "asyncio.loop.run_in_executor",
+}
+
+
+@error_class
+class Visitor25X(Visitor200):
+    error_codes: Mapping[str, str] = {
+        "ASYNC250": ("Blocking sync call `input()` in async function. Wrap in `{}`."),
+    }
+
+    def visit_Call(self, node: ast.Call):
+        if not self.async_function:
+            return
+        if isinstance(node.func, ast.Name) and node.func.id == "input":
+            if len(self.library) == 1:
+                self.error(node, wrappers[self.library_str])
+            else:
+                self.error(node, "/".join(wrappers[lib] for lib in self.library))
