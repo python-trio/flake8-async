@@ -458,20 +458,24 @@ class SyncTransformer(ast.NodeTransformer):
     def visit_Await(self, node: ast.Await):
         return self.generic_visit(node.value)
 
-    def replace_async(self, node: ast.AST, target: type[ast.AST]) -> ast.AST:
+    def replace_async(
+        self, node: ast.AST, target: type[ast.AST], *args: object
+    ) -> ast.AST:
         node = self.generic_visit(node)
-        newnode = target()
+        # py313 gives DeprecationWarning if missing posargs, so we pass them even if we
+        # overwrite __dict__ directly afterwards
+        newnode = target(*args)
         newnode.__dict__ = node.__dict__
         return newnode
 
-    def visit_AsyncFunctionDef(self, node: ast.AST):
-        return self.replace_async(node, ast.FunctionDef)
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        return self.replace_async(node, ast.FunctionDef, node.name, node.args)
 
-    def visit_AsyncWith(self, node: ast.AST):
+    def visit_AsyncWith(self, node: ast.AsyncWith):
         return self.replace_async(node, ast.With)
 
-    def visit_AsyncFor(self, node: ast.AST):
-        return self.replace_async(node, ast.For)
+    def visit_AsyncFor(self, node: ast.AsyncFor):
+        return self.replace_async(node, ast.For, node.target, node.iter)
 
 
 @pytest.mark.parametrize(("test", "path"), test_files)
