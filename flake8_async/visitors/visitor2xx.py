@@ -398,13 +398,25 @@ wrappers: Mapping[str, str] = {
 class Visitor25X(Visitor200):
     error_codes: Mapping[str, str] = {
         "ASYNC250": ("Blocking sync call `input()` in async function. Wrap in `{}`."),
+        "ASYNC251": (
+            "Blocking sync call `time.sleep(...)` in async function."
+            " Use `await {}.sleep(...)`."
+        ),
     }
 
     def visit_Call(self, node: ast.Call):
         if not self.async_function:
             return
-        if isinstance(node.func, ast.Name) and node.func.id == "input":
+        func_name = ast.unparse(node.func)
+        if func_name == "input":
+            error_code = "ASYNC250"
             if len(self.library) == 1:
-                self.error(node, wrappers[self.library_str])
+                msg_param = wrappers[self.library_str]
             else:
-                self.error(node, "/".join(wrappers[lib] for lib in self.library))
+                msg_param = "[" + "/".join(wrappers[lib] for lib in self.library) + "]"
+        elif func_name == "time.sleep":
+            error_code = "ASYNC251"
+            msg_param = self.library_str
+        else:
+            return
+        self.error(node, msg_param, error_code=error_code)

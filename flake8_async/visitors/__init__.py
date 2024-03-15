@@ -25,7 +25,7 @@ default_disabled_error_codes: list[str] = []
 utility_visitors: set[type[Flake8AsyncVisitor]] = set()
 utility_visitors_cst: set[type[Flake8AsyncVisitor_cst]] = set()
 
-# Import all visitors so their decorators run, filling the above containers
+# Import all files with visitors so their decorators run, filling the above containers
 # This has to be done at the end to avoid circular imports
 from . import (
     visitor2xx,

@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 24.3.3
+- Add ASYNC251: `time.sleep()` in async method.
+
 ## 24.3.2
 - Add ASYNC250: blocking sync call `input()` in async method.
 
