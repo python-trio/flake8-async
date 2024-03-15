@@ -413,7 +413,7 @@ class Visitor25X(Visitor200):
             if len(self.library) == 1:
                 msg_param = wrappers[self.library_str]
             else:
-                msg_param = "[" + "/".join(wrappers[lib] for lib in self.library) + "]"
+                msg_param = "/".join(wrappers[lib] for lib in self.library)
         elif func_name == "time.sleep":
             error_code = "ASYNC251"
             msg_param = self.library_str
