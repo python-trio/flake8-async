@@ -8,13 +8,13 @@ ci:
 
 repos:
     - repo: https://github.com/psf/black
-      rev: 24.2.0
+      rev: 24.3.0
       hooks:
           - id: black
             args: [--preview]
 
     - repo: https://github.com/PyCQA/autoflake
-      rev: v2.3.0
+      rev: v2.3.1
       hooks:
           - id: autoflake
 
@@ -36,7 +36,7 @@ repos:
           - id: mypy
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.353
+      rev: v1.1.354
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -78,7 +78,7 @@ repos:
             args: ['--markdown-linebreak-ext=md,markdown']
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.3.2
+      rev: v0.3.3
       hooks:
           - id: ruff
 
