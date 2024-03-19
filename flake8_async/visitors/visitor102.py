@@ -55,6 +55,15 @@ class Visitor102(Flake8AsyncVisitor):
     # if we're inside a finally, and we're not inside a scope that doesn't have
     # both a timeout and shield
     def visit_Await(self, node: ast.Await | ast.AsyncFor | ast.AsyncWith):
+        if (
+            self._critical_scope is not None
+            and self._critical_scope.name == "try/finally"
+            and isinstance(node, ast.Await)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr == "aclose"
+        ):
+            return
         if self._critical_scope is not None and not any(
             cm.has_timeout and cm.shielded for cm in self._trio_context_managers
         ):
