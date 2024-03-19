@@ -1,6 +1,9 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 24.3.4
+- ASYNC110 (don't loop sleep) now also warns if looping `[trio/anyio].lowlevel.checkpoint()`
+
 ## 24.3.3
 - Add ASYNC251: `time.sleep()` in async method.
 
