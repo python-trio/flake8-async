@@ -1,5 +1,10 @@
 # type: ignore
-# exclude finally: await x.aclose() from async102
+
+# exclude finally: await x.aclose() from async102, with trio/anyio
+# ANYIO_NO_ERROR
+# TRIO_NO_ERROR
+# See also async102_aclose_args.py - which makes sure trio/anyio raises errors if there
+# are arguments to aclose().
 
 
 async def foo():
@@ -10,9 +15,8 @@ async def foo():
     try:
         ...
     except BaseException:
-        # still not allowed in BaseException
-        await x.aclose()  # ASYNC102: 8, Statement("BaseException", lineno-2)
+        await x.aclose()  # ASYNC102: 8, Statement("BaseException", lineno-1)
+        await x.y.aclose()  # ASYNC102: 8, Statement("BaseException", lineno-2)
     finally:
-        # but these will no longer raise any errors
-        await x.aclose()
-        await x.y.aclose()
+        await x.aclose()  # ASYNC102: 8, Statement("try/finally", lineno-6)
+        await x.y.aclose()  # ASYNC102: 8, Statement("try/finally", lineno-7)

@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## 24.3.4
+## 24.3.5
 - ASYNC102 (no await inside finally or critical except) no longer raises warnings for calls to `aclose()` on objects. See https://github.com/python-trio/flake8-async/issues/156
 
 ## 24.3.3

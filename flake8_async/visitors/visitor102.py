@@ -52,24 +52,35 @@ class Visitor102(Flake8AsyncVisitor):
         self._trio_context_managers: list[Visitor102.TrioScope] = []
         self.cancelled_caught = False
 
-    # if we're inside a finally, and we're not inside a scope that doesn't have
-    # both a timeout and shield
-    def visit_Await(self, node: ast.Await | ast.AsyncFor | ast.AsyncWith):
-        if (
-            self._critical_scope is not None
-            and self._critical_scope.name == "try/finally"
-            and isinstance(node, ast.Await)
-            and isinstance(node.value, ast.Call)
-            and isinstance(node.value.func, ast.Attribute)
-            and node.value.func.attr == "aclose"
-        ):
-            return
+    # if we're inside a finally or critical except, and we're not inside a scope that
+    # doesn't have both a timeout and shield
+    def async_call_checker(
+        self, node: ast.Await | ast.AsyncFor | ast.AsyncWith
+    ) -> None:
         if self._critical_scope is not None and not any(
             cm.has_timeout and cm.shielded for cm in self._trio_context_managers
         ):
             self.error(node, self._critical_scope)
 
-    visit_AsyncFor = visit_Await
+    def is_safe_aclose_call(self, node: ast.Await) -> bool:
+        return (
+            # don't mark calls safe in asyncio-only files
+            # a more defensive option would be `asyncio not in self.library`
+            self.library != ("asyncio",)
+            and isinstance(node.value, ast.Call)
+            # only known safe if no arguments
+            and not node.value.args
+            and not node.value.keywords
+            and isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr == "aclose"
+        )
+
+    def visit_Await(self, node: ast.Await):
+        # allow calls to `.aclose()`
+        if not (self.is_safe_aclose_call(node)):
+            self.async_call_checker(node)
+
+    visit_AsyncFor = async_call_checker
 
     def visit_With(self, node: ast.With | ast.AsyncWith):
         self.save_state(node, "_trio_context_managers", copy=True)
@@ -91,7 +102,7 @@ class Visitor102(Flake8AsyncVisitor):
             break
 
     def visit_AsyncWith(self, node: ast.AsyncWith):
-        self.visit_Await(node)
+        self.async_call_checker(node)
         self.visit_With(node)
 
     def visit_Try(self, node: ast.Try):
@@ -103,6 +114,10 @@ class Visitor102(Flake8AsyncVisitor):
         self.visit_nodes(node.body, node.handlers, node.orelse)
 
         self._trio_context_managers = []
+        # node.finalbody does not have a lineno, so we give the position of the try
+        # it'd be possible to estimate the lineno given the last except and the first
+        # statement in the finally, but it would be very hard to get it perfect with
+        # comments and empty lines and stuff.
         self._critical_scope = Statement("try/finally", node.lineno, node.col_offset)
         self.visit_nodes(node.finalbody)
 
