@@ -4,6 +4,10 @@ For the full list of built-in configuration values, see the documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path("..").resolve()))
 import flake8_async
 
 # -- Project information -----------------------------------------------------
@@ -24,7 +28,7 @@ release = version
 extensions: list[str] = []
 
 templates_path = ["_templates"]
-exclude_patterns: list[str] = []
+exclude_patterns: list[str] = ["_build", "Thumbs.db", ".DS_Store"]
 
 # Warn about all references to unknown targets
 nitpicky = True
