@@ -65,7 +65,19 @@ class Visitor110(Flake8AsyncVisitor):
             len(node.body) == 1
             and isinstance(node.body[0], ast.Expr)
             and isinstance(node.body[0].value, ast.Await)
-            and get_matching_call(node.body[0].value.value, "sleep", "sleep_until")
+            and (
+                get_matching_call(node.body[0].value.value, "sleep", "sleep_until")
+                or (
+                    # get_matching_call doesn't (currently) support checking for trio.x.y
+                    isinstance(call := node.body[0].value.value, ast.Call)
+                    and isinstance(call.func, ast.Attribute)
+                    and call.func.attr == "checkpoint"
+                    and isinstance(call.func.value, ast.Attribute)
+                    and call.func.value.attr == "lowlevel"
+                    and isinstance(call.func.value.value, ast.Name)
+                    and call.func.value.value.id in ("trio", "anyio")
+                )
+            )
         ):
             self.error(node, self.library_str)
 

@@ -69,3 +69,8 @@ async def foo():
 
     while await trio.sleep():
         ...
+
+    # also error when looping .lowlevel.checkpoint, which is equivalent to .sleep(0)
+    # see https://github.com/python-trio/flake8-async/issues/201
+    while ...:  # ASYNC110: 4, "trio"
+        await trio.lowlevel.checkpoint()
