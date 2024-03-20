@@ -44,7 +44,9 @@ def test_messages_documented():
         if not file_path.is_file():
             continue
 
-        if m := re.search(r"async\d\d\d", str(file_path)):
+        # only look in the stem (final part of the path), so as not to get tripped
+        # up by [git worktree] directories with an exception code in the name
+        if m := re.search(r"^async\d\d\d", str(file_path.stem)):
             documented_errors["eval_files"].add(m.group().upper())
 
         with open(file_path) as file:
