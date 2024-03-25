@@ -19,7 +19,7 @@ repos:
           - id: autoflake
 
     - repo: https://github.com/asottile/pyupgrade
-      rev: v3.15.1
+      rev: v3.15.2
       hooks:
           - id: pyupgrade
             args: [--py39-plus]
@@ -36,7 +36,7 @@ repos:
           - id: mypy
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.354
+      rev: v1.1.355
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -78,7 +78,7 @@ repos:
             args: ['--markdown-linebreak-ext=md,markdown']
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.3.3
+      rev: v0.3.4
       hooks:
           - id: ruff
 
