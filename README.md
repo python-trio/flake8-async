@@ -25,7 +25,7 @@ pip install flake8-async
 ## List of warnings
 - **ASYNC100**: A `with [trio/anyio].fail_after(...):` or `with [trio/anyio].move_on_after(...):`
   context does not contain any `await` statements.  This makes it pointless, as
-  the timeout can only be triggered by a checkpoint.
+  the timeout can only be triggered by a checkpoint. This check also allows `yield` statements, since checkpoints can happen in the caller we yield to.
 - **ASYNC101**: `yield` inside a trio/anyio nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
 - **ASYNC102**: It's unsafe to await inside `finally:` or `except BaseException/trio.Cancelled/anyio.get_cancelled_exc_class()/asyncio.exceptions.CancelledError` unless you use a shielded cancel scope with a timeout. This is currently not able to detect asyncio shields.
 - **ASYNC103**: `except BaseException/trio.Cancelled/anyio.get_cancelled_exc_class()/asyncio.exceptions.CancelledError`, or a bare `except:` with a code path that doesn't re-raise. If you don't want to re-raise `BaseException`, add a separate handler for `trio.Cancelled`/`anyio.get_cancelled_exc_class()`/`asyncio.exceptions.CancelledError` before.
