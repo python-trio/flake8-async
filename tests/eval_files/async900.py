@@ -1,6 +1,5 @@
 # type: ignore
 # ARG --no-checkpoint-warning-decorator=asynccontextmanager,other_context_manager
-import trio
 from contextlib import asynccontextmanager
 
 
@@ -55,15 +54,3 @@ async def this_is_not_an_async_generator():
 async def another_non_generator():
     def foo():
         yield
-
-
-# issue 226
-async def fn():
-    try:
-        while True:
-            try:
-                await trio.sleep(1)
-            except Exception:
-                pass
-    except Exception:
-        pass
