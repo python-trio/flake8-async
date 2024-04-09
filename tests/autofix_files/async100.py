@@ -114,3 +114,9 @@ async def more_nested_tests():
     with contextlib.suppress(Exception):
         with open("blah") as file:
             print("foo")
+
+
+# Don't trigger for blocks with a yield statement
+async def foo():
+    with trio.fail_after(1):
+        yield

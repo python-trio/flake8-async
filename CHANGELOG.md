@@ -1,8 +1,12 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+
 ## 24.4.1
 - ASYNC91X fix internal error caused by multiple `try/except` incorrectly sharing state.
+
+## 24.3.6
+- ASYNC100 no longer triggers if a context manager contains a `yield`.
 
 ## 24.3.5
 - ASYNC102 (no await inside finally or critical except) no longer raises warnings for calls to `aclose()` on objects in trio/anyio code. See https://github.com/python-trio/flake8-async/issues/156
