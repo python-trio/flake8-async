@@ -205,8 +205,16 @@
 
 
  async def foo_comprehension_3():
-@@ x,3 x,4 @@
+@@ x,6 x,7 @@
 
  async def await_everywhere_except_gen_target():  # error: 0, "exit", Statement("function definition", lineno)
      (await x async for x in bar())
++    await trio.lowlevel.checkpoint()
+
+
+ # Issue #226
+@@ x,3 x,4 @@
+                 pass
+     except Exception:
+         pass
 +    await trio.lowlevel.checkpoint()
