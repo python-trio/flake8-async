@@ -572,3 +572,15 @@ async def await_in_gen_target():
 
 async def await_everywhere_except_gen_target():  # error: 0, "exit", Statement("function definition", lineno)
     (await x async for x in bar())
+
+
+# Issue #226
+async def fn_226():  # error: 0, "exit", Statement("function definition", lineno)
+    try:
+        while foo():
+            try:
+                await trio.sleep(1)
+            except Exception:
+                pass
+    except Exception:
+        pass

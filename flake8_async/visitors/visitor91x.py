@@ -454,7 +454,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     def visit_Try(self, node: cst.Try):
         if not self.async_function:
             return
-        self.save_state(node, "try_state")
+        self.save_state(node, "try_state", copy=True)
         # except & finally guaranteed to enter with checkpoint if checkpointed
         # before try and no yield in try body.
         self.try_state.body_uncheckpointed_statements = (
@@ -596,6 +596,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.save_state(
             node,
             "uncheckpointed_statements",
+            # reference is overwritten below so don't need to copy
+            copy=False,
         )
 
         # inject an artificial uncheckpointed statement that won't raise an error,

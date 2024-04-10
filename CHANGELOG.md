@@ -1,6 +1,10 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+
+## 24.4.1
+- ASYNC91X fix internal error caused by multiple `try/except` incorrectly sharing state.
+
 ## 24.3.6
 - ASYNC100 no longer triggers if a context manager contains a `yield`.
 
