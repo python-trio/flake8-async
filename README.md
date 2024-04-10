@@ -123,6 +123,9 @@ flake8-async **/*.py
 but we prefer using a config file. The file needs to start with a section marker `[flake8]` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.
 Note that it's not currently possible to use a configuration file when running `flake8-async` standalone.
 
+### `ValueError` when trying to `ignore` error codes in config file
+Error codes with more than three letters are not possible to `ignore` in config files since flake8>=6, as flake8 tries to validate correct configuration with a regex. We have decided not to conform to this, as it would be a breaking change for end-users requiring them to update `noqa`s and configurations, we think the `ASYNC` code is much more readable than e.g. `ASYxxx`, and ruff does not enforce such a limit. The easiest option for users hitting this error is to instead use the `--disable` option as documented [below](#--disable). See further discussion and other workarounds in https://github.com/python-trio/flake8-async/issues/230
+
 ### `--enable`
 Comma-separated list of error codes to enable, similar to flake8 --select but is additionally more performant as it will disable non-enabled visitors from running instead of just silencing their errors.
 
