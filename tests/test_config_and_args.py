@@ -210,6 +210,7 @@ trio200-blocking-calls =
   other -> async,
   sync_fns.* -> the_async_equivalent,
 select = ASYNC200
+extend-ignore = E
 """
     )
     assert tmp_path.joinpath("example.py").write_text(
@@ -403,3 +404,33 @@ def test_disable_noqa_ast(
         == "./example.py:1:1: ASYNC106 trio must be imported with `import trio` for the"
         " linter to work.\n"
     )
+
+
+@pytest.mark.xfail(reason="flake8>=6 enforces three-letter error codes in config")
+def test_config_ignore_error_code(tmp_path: Path) -> None:
+    assert tmp_path.joinpath(".flake8").write_text(
+        """
+[flake8]
+ignore = ASYNC100
+"""
+    )
+    res = subprocess.run(
+        ["flake8", "--help"], cwd=tmp_path, capture_output=True, check=False
+    )
+    assert not res.stderr
+    assert res.returncode == 0
+
+
+# but make sure we can disable selected codes
+def test_config_disable_error_code(tmp_path: Path) -> None:
+    # select ASYNC200 and create file that induces ASYNC200
+    _test_trio200_from_config_common(tmp_path)
+    # disable ASYNC200
+    with open(tmp_path.joinpath(".flake8"), "a", encoding="utf-8") as file:
+        file.write("disable = ASYNC200")
+
+    # it now returns no errors
+    res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True, check=True)
+    assert not res.stdout
+    assert not res.stderr
+    assert res.returncode == 0
