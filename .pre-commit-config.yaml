@@ -19,7 +19,7 @@ repos:
           - id: autoflake
 
     - repo: https://github.com/asottile/pyupgrade
-      rev: v3.15.1
+      rev: v3.15.2
       hooks:
           - id: pyupgrade
             args: [--py39-plus]
@@ -36,7 +36,7 @@ repos:
           - id: mypy
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.354
+      rev: v1.1.357
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -64,7 +64,7 @@ repos:
                 - tomli
 
     - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.5.0
+      rev: v4.6.0
       hooks:
           - id: check-merge-conflict
           - id: check-toml
@@ -78,7 +78,7 @@ repos:
             args: ['--markdown-linebreak-ext=md,markdown']
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.3.3
+      rev: v0.3.5
       hooks:
           - id: ruff
 
@@ -88,7 +88,7 @@ repos:
           - id: yamlfmt
 
     - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-      rev: v2.12.0
+      rev: v2.13.0
       hooks:
           - id: pretty-format-toml
             args: [--autofix]

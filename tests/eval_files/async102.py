@@ -252,3 +252,16 @@ async def foo_nested_excepts():
             await foo()
         await foo()
     await foo()
+
+
+# double check that this works nested inside an async for
+async def foo_nested_async_for():
+
+    async for i in trio.bypasslinters:
+        try:
+            ...
+        except BaseException:
+            async for (  # error: 12, Statement("BaseException", lineno-1)
+                j
+            ) in trio.bypasslinters:
+                ...

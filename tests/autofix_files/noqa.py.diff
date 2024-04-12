@@ -1,31 +1,35 @@
 ---
 +++
-@@ x,8 x,9 @@
+@@ x,9 x,10 @@
 
  # fmt: off
  async def foo_no_noqa():
 -    with trio.fail_after(5):  # ASYNC100: 9, 'trio', 'fail_after'
--        yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-2)
-+    await trio.lowlevel.checkpoint()
+-        if foo():
+-            return  # ASYNC910: 12, "return", Statement("function definition", lineno-3)
 +    # ASYNC100: 9, 'trio', 'fail_after'
-+    yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-2)
++    if foo():
++        await trio.lowlevel.checkpoint()
++        return  # ASYNC910: 12, "return", Statement("function definition", lineno-3)
      await trio.lowlevel.checkpoint()
 
 
-@@ x,13 x,14 @@
-
+@@ x,14 x,15 @@
  async def foo_noqa_100():
      with trio.fail_after(5):  # noqa: ASYNC100
-+        await trio.lowlevel.checkpoint()
-         yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-2)
+         if foo():
++            await trio.lowlevel.checkpoint()
+             return  # ASYNC910: 12, "return", Statement("function definition", lineno-3)
      await trio.lowlevel.checkpoint()
 
 
  async def foo_noqa_911():
 -    with trio.fail_after(5):  # ASYNC100: 9, 'trio', 'fail_after'
--        yield  # noqa: ASYNC911
+-        if foo():
+-            return  # noqa: ASYNC910
 +    # ASYNC100: 9, 'trio', 'fail_after'
-+    yield  # noqa: ASYNC911
++    if foo():
++        return  # noqa: ASYNC910
      await trio.lowlevel.checkpoint()
 
 

@@ -416,6 +416,7 @@ def _parse_eval_file(
                 msg = f"Line {lineno}: Failed to format\n {message!r}\nwith\n{args}"
                 raise ParseError(msg) from e
 
+    assert enabled_codes, "no codes enabled. Fix file name or add `# ARGS --enable=...`"
     enabled_codes_list = enabled_codes.split(",")
     for code in enabled_codes_list:
         assert re.fullmatch(

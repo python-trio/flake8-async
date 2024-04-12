@@ -74,8 +74,10 @@ class Visitor100_libcst(Flake8AsyncVisitor_cst):
         if node.asynchronous is not None:
             self.checkpoint()
 
-    def visit_Await(self, node: cst.Await | cst.For | cst.With):
+    def visit_Await(self, node: cst.Await | cst.Yield):
         self.checkpoint()
+
+    visit_Yield = visit_Await
 
     def visit_FunctionDef(self, node: cst.FunctionDef):
         self.save_state(node, "has_checkpoint_stack", copy=True)
