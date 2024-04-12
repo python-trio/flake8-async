@@ -38,4 +38,6 @@ nitpicky = True
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "alabaster"
-html_static_path = ["_static"]
+# We don't currently use the _static directory, and git doesn't allow empty directories,
+# so leaving it commented out for now to silence a warning.
+# `html_static_path = ["_static"]`
