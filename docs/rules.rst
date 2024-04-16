@@ -1,5 +1,9 @@
-List of warnings
-------------------
+****************
+List of rules
+****************
+
+General rules
+=============
 
 - **ASYNC100**: A ``with [trio/anyio].fail_after(...):`` or ``with [trio/anyio].move_on_after(...):`` context does not contain any ``await`` statements.  This makes it pointless, as the timeout can only be triggered by a checkpoint. This check also allows ``yield`` statements, since checkpoints can happen in the caller we yield to.
 - **ASYNC101**: ``yield`` inside a trio/anyio nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
@@ -18,8 +22,8 @@ List of warnings
 - **ASYNC116**: ``[trio/anyio].sleep()`` with >24 hour interval should usually be ``[trio/anyio].sleep_forever()``.
 - **ASYNC118**: Don't assign the value of ``anyio.get_cancelled_exc_class()`` to a variable, since that breaks linter checks and multi-backend programs.
 
-Warnings for blocking sync calls in async functions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Blocking sync calls in async functions
+======================================
 
 Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
 
@@ -38,18 +42,18 @@ Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
 - **ASYNC250**: Builtin ``input()`` should not be called from async function. Wrap in ``[trio/anyio].to_thread.run_sync()`` or ``asyncio.loop.run_in_executor()``.
 - **ASYNC251**: ``time.sleep(...)`` should not be called from async function. Use ``[trio/anyio/asyncio].sleep(...)``.
 
-Warnings disabled by default
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Optional rules disabled by default
+==================================
 
 - **ASYNC900**: Async generator without ``@asynccontextmanager`` not allowed. You might want to enable this on a codebase since async generators are inherently unsafe and cleanup logic might not be performed. See https://github.com/python-trio/flake8-async/issues/211 and https://discuss.python.org/t/using-exceptiongroup-at-anthropic-experience-report/20888/6 for discussion.
 - **ASYNC910**: Exit or ``return`` from async function with no guaranteed checkpoint or exception since function definition. You might want to enable this on a codebase to make it easier to reason about checkpoints, and make the logic of ASYNC911 correct.
 - **ASYNC911**: Exit, ``yield`` or ``return`` from async iterable with no guaranteed checkpoint since possible function entry (yield or function definition)
   Checkpoints are ``await``, ``async for``, and ``async with`` (on one of enter/exit).
 
-Removed warnings
-~~~~~~~~~~~~~~~~
+Removed rules
+================
 
 - **TRIOxxx**: All error codes are now renamed ASYNCxxx
 - **TRIO107**: Renamed to TRIO910
 - **TRIO108**: Renamed to TRIO911
-- **TRIO117**: Don't raise
+- **TRIO117**: "Don't raise or catch ``trio.[NonBase]MultiError``, prefer ``[exceptiongroup.]BaseExceptionGroup``." ``MultiError`` was removed in trio==0.24.0.

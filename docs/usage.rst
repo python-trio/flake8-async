@@ -18,6 +18,8 @@ install and run through flake8
    pip install flake8 flake8-async
    flake8 .
 
+.. _install-run-pre-commit:
+
 install and run with pre-commit
 ===============================
 
@@ -85,9 +87,12 @@ They currently only support a small subset of the rules though, see https://gith
 Configuration
 *************
 
-`You can configure flake8 with command-line options <https://flake8.pycqa.org/en/latest/user/configuration.html>`_,
-but we prefer using a config file. The file needs to start with a section marker ``[flake8]`` and the following options are then parsed using flake8's config parser, and can be used just like any other flake8 options.
-Note that it's not currently possible to use a configuration file when running ``flake8-async`` standalone.
+`You can configure flake8 with command-line options <https://flake8.pycqa.org/en/latest/user/invocation.html>`_,
+but we prefer using a config file. See general documentation for `configuring flake8  <https://flake8.pycqa.org/en/latest/user/configuration.html>`_ which also handles options registered by plugins such as ``flake8-async``.
+
+If you want to use a ``pyproject.toml`` file for configuring flake8 we recommend `pyproject-flake8 <https://github.com/csachs/pyproject-flake8>` or similar.
+
+Note that when running ``flake8-async`` as a standalone it's not currently possible to use a configuration file. Consider using some wrapper that lets you specify command-line flags in a file. For example, :ref:`install-run-pre-commit`, `tox <https://tox.wiki>`, `hatch scripts <https://hatch.pypa.io/1.9/environment/#scripts>`, MakeFiles, etc.
 
 Selecting rules
 ===============
@@ -174,7 +179,7 @@ in addition to the default ``trio.run_process``, ``trio.serve_tcp``, ``trio.serv
      myfun,
      myfun2,
 
-.. async200-blocking-calls:
+.. _async200-blocking-calls:
 
 ``async200-blocking-calls``
 ---------------------------
