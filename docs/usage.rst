@@ -77,7 +77,9 @@ zsh-only
 
 Run through ruff
 ================
-`Ruff <https://github.com/astral-sh/ruff>` is a linter and formatter that reimplements a lot of rules from various flake8 plugins. They currently only support a small subset of the rules though, see https://github.com/astral-sh/ruff/issues/8451 for current status and https://docs.astral.sh/ruff/rules/#flake8-async-async for documentation.
+`Ruff <https://github.com/astral-sh/ruff>`_ is a linter and formatter that reimplements a lot of rules from various flake8 plugins.
+
+They currently only support a small subset of the rules though, see https://github.com/astral-sh/ruff/issues/8451 for current status and https://docs.astral.sh/ruff/rules/#flake8-async-async for documentation.
 
 *************
 Configuration
