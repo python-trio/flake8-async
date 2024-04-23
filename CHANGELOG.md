@@ -1,7 +1,7 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-## 24.4.23
+## 24.4.2
 - Add ASYNC119: yield in contextmanager in async generator.
 
 ## 24.4.1
