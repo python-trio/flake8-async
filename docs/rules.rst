@@ -21,6 +21,9 @@ General rules
 - **ASYNC115**: Replace ``[trio/anyio].sleep(0)`` with the more suggestive ``[trio/anyio].lowlevel.checkpoint()``.
 - **ASYNC116**: ``[trio/anyio].sleep()`` with >24 hour interval should usually be ``[trio/anyio].sleep_forever()``.
 - **ASYNC118**: Don't assign the value of ``anyio.get_cancelled_exc_class()`` to a variable, since that breaks linter checks and multi-backend programs.
+- **ASYNC119**: ``yield`` in context manager in async generator is unsafe, the cleanup may be delayed until ``await`` is no longer allowed. We strongly encourage you to read `PEP 533 <https://peps.python.org/pep-0533/>`_ and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see :ref:`ASYNC900 <async900>` ) in favor of context managers which return an iterable `channel (trio) <https://trio.readthedocs.io/en/stable/reference-core.html#channels>`_, `stream (anyio) <https://anyio.readthedocs.io/en/stable/streams.html#streams>`_, or `queue (asyncio) <https://docs.python.org/3/library/asyncio-queue.html>`_.
+
+  .. TODO: use intersphinx(?) instead of having to specify full URL
 
 Blocking sync calls in async functions
 ======================================
@@ -41,6 +44,8 @@ Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
 - **ASYNC240**: Avoid using ``os.path`` in async functions, prefer using ``[trio/anyio].Path`` objects. ``asyncio`` users should consider `aiopath <https://pypi.org/project/aiopath>`_ or `anyio <https://github.com/agronholm/anyio>`_.
 - **ASYNC250**: Builtin ``input()`` should not be called from async function. Wrap in ``[trio/anyio].to_thread.run_sync()`` or ``asyncio.loop.run_in_executor()``.
 - **ASYNC251**: ``time.sleep(...)`` should not be called from async function. Use ``[trio/anyio/asyncio].sleep(...)``.
+
+.. _async900:
 
 Optional rules disabled by default
 ==================================

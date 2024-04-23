@@ -282,6 +282,47 @@ class Visitor116(Flake8AsyncVisitor):
 
 
 @error_class
+class Visitor119(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC119": "Yield in contextmanager in async generator might not trigger"
+        " cleanup. Use `@asynccontextmanager` or refactor."
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.unsafe_function: ast.AsyncFunctionDef | None = None
+        self.contextmanager: ast.With | ast.AsyncWith | None = None
+
+    def visit_AsyncFunctionDef(
+        self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
+    ):
+        self.save_state(node, "unsafe_function", "contextmanager")
+        self.contextmanager = None
+        if isinstance(node, ast.AsyncFunctionDef) and not has_decorator(
+            node, "asynccontextmanager"
+        ):
+            self.unsafe_function = node
+        else:
+            self.unsafe_function = None
+
+    def visit_With(self, node: ast.With | ast.AsyncWith):
+        self.save_state(node, "contextmanager")
+        self.contextmanager = node
+
+    def visit_Yield(self, node: ast.Yield):
+        if self.unsafe_function is not None and self.contextmanager is not None:
+            # Decision point: the error could point to the method, or context manager,
+            # or the yield.
+            self.error(node)
+            # only warn once per method (?)
+            self.unsafe_function = None
+
+    visit_AsyncWith = visit_With
+    visit_FunctionDef = visit_AsyncFunctionDef
+    visit_Lambda = visit_AsyncFunctionDef
+
+
+@error_class
 @disabled_by_default
 class Visitor900(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
