@@ -13,6 +13,15 @@ async def async_with():
         yield  # error: 8
 
 
+async def warn_on_yeach_yield():
+    with open(""):
+        yield  # error: 8
+        yield  # error: 8
+    with open(""):
+        yield  # error: 8
+        yield  # error: 8
+
+
 async def yield_not_in_contextmanager():
     yield
     with open(""):

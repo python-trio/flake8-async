@@ -45,10 +45,11 @@ Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
 - **ASYNC250**: Builtin ``input()`` should not be called from async function. Wrap in ``[trio/anyio].to_thread.run_sync()`` or ``asyncio.loop.run_in_executor()``.
 - **ASYNC251**: ``time.sleep(...)`` should not be called from async function. Use ``[trio/anyio/asyncio].sleep(...)``.
 
-.. _async900:
 
 Optional rules disabled by default
 ==================================
+
+.. _async900:
 
 - **ASYNC900**: Async generator without ``@asynccontextmanager`` not allowed. You might want to enable this on a codebase since async generators are inherently unsafe and cleanup logic might not be performed. See https://github.com/python-trio/flake8-async/issues/211 and https://discuss.python.org/t/using-exceptiongroup-at-anthropic-experience-report/20888/6 for discussion.
 - **ASYNC910**: Exit or ``return`` from async function with no guaranteed checkpoint or exception since function definition. You might want to enable this on a codebase to make it easier to reason about checkpoints, and make the logic of ASYNC911 correct.
