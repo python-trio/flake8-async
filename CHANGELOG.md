@@ -1,6 +1,8 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 24.4.2
+- Add ASYNC119: yield in contextmanager in async generator.
 
 ## 24.4.1
 - ASYNC91X fix internal error caused by multiple `try/except` incorrectly sharing state.
