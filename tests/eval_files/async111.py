@@ -1,7 +1,9 @@
 # type: ignore
 # ASYNC111: Variable, from context manager opened inside nursery, passed to start[_soon] might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
 # It's possible there's an equivalent asyncio construction/gotcha, but methods are differently named, so this file will not raise any errors
-# ASYNCIO_NO_ERROR # no nurseries in asyncio. Though maybe the bug is relevant for TaskGroups
+# nurseries are named taskgroups in asyncio/anyio
+# ASYNCIO_NO_ERROR
+# ANYIO_NO_ERROR
 from typing import Any
 
 import trio
@@ -242,3 +244,9 @@ with trio.open_nursery() as nursery:
             nursery.start(f)
 
 # fmt: on
+
+# visitor does not care to keep track of the type of nursery/taskgroup, so we
+# raise errors on .create_task() even if it doesn't exist in trio.
+with trio.open_nursery() as nursery:
+    with open("") as f:
+        nursery.create_task(f)  # error: 28, line-1, line-2, "f", "create_task"
