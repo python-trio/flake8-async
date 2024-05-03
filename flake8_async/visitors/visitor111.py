@@ -12,13 +12,21 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
+def is_nursery_like(node: ast.expr) -> bool:
+    return bool(
+        get_matching_call(node, "open_nursery", base="trio")
+        or get_matching_call(node, "create_task_group", base="anyio")
+        or get_matching_call(node, "TaskGroup", base="asyncio")
+    )
+
+
 @error_class
 class Visitor111(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC111": (
             "variable {2} is usable within the context manager on line {0}, but that "
-            "will close before nursery opened on line {1} - this is usually a bug.  "
-            "Nurseries should generally be the inner-most context manager."
+            "will close before nursery/taskgroup opened on line {1} - this is usually "
+            "a bug. Nursery/TaskGroup should generally be the inner-most context manager."
         ),
     }
 
@@ -48,8 +56,7 @@ class Visitor111(Flake8AsyncVisitor):
                     self.TrioContextManager(
                         item.context_expr.lineno,
                         item.optional_vars.id,
-                        get_matching_call(item.context_expr, "open_nursery")
-                        is not None,
+                        is_nursery_like(item.context_expr),
                     )
                 )
 
@@ -75,7 +82,7 @@ class Visitor111(Flake8AsyncVisitor):
         if (
             isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
-            and node.func.attr in ("start", "start_soon")
+            and node.func.attr in ("start", "start_soon", "create_task")
         ):
             self._nursery_call = None
             for i, cm in enumerate(self._context_managers):
