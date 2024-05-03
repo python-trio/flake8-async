@@ -320,6 +320,8 @@ class AttributeCall(NamedTuple):
 def with_has_call(
     node: cst.With, *names: str, base: Iterable[str] = ("trio", "anyio")
 ) -> list[AttributeCall]:
+    if isinstance(base, str):
+        base = (base,)
     res_list: list[AttributeCall] = []
     for item in node.items:
         if res := m.extract(

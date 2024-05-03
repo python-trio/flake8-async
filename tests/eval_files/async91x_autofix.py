@@ -10,6 +10,8 @@ So we make sure that import is added after it.
 
 from typing import Any
 
+import trio
+
 
 def bar() -> Any: ...
 
@@ -109,3 +111,18 @@ def sync_func():
         break
     [... for i in range(5)]
     return
+
+
+# TODO: issue 240
+async def livelocks():
+    while True:
+        ...
+
+
+# this will autofix 910 by adding a checkpoint outside the loop
+async def no_checkpoint():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+    while bar():
+        try:
+            await trio.sleep("1")  # type: ignore[arg-type]
+        except ValueError:
+            ...

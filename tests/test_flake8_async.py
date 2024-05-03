@@ -452,6 +452,7 @@ error_codes_ignored_when_checking_transformed_sync_code = {
     "ASYNC116",
     "ASYNC117",
     "ASYNC118",
+    "ASYNC912",
 }
 
 
@@ -479,7 +480,7 @@ class SyncTransformer(ast.NodeTransformer):
         return self.replace_async(node, ast.For, node.target, node.iter)
 
 
-@pytest.mark.parametrize(("test", "path"), test_files)
+@pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])
 def test_noerror_on_sync_code(test: str, path: Path):
     if any(e in test for e in error_codes_ignored_when_checking_transformed_sync_code):
         return

@@ -18,11 +18,13 @@ from libcst.metadata import PositionProvider
 from ..base import Statement
 from .flake8asyncvisitor import Flake8AsyncVisitor_cst
 from .helpers import (
+    cancel_scope_names,
     disabled_by_default,
     error_class_cst,
     fnmatch_qualified_name_cst,
     func_has_decorator,
     iter_guaranteed_once_cst,
+    with_has_call,
 )
 
 if TYPE_CHECKING:
@@ -243,6 +245,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "{0} from async iterable with no guaranteed checkpoint since {1.name} "
             "on line {1.lineno}."
         ),
+        "ASYNC912": (
+            "CancelScope with no guaranteed checkpoint. This makes it potentially "
+            "impossible to cancel."
+        ),
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -420,8 +426,26 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     def visit_With_body(self, node: cst.With):
         if getattr(node, "asynchronous", None):
             self.uncheckpointed_statements = set()
+        if with_has_call(node, *cancel_scope_names) or with_has_call(
+            node, "timeout", "timeout_at", base="asyncio"
+        ):
+            pos = self.get_metadata(PositionProvider, node).start  # pyright: ignore
+            line: int = pos.line  # pyright: ignore
+            column: int = pos.column  # pyright: ignore
+            self.uncheckpointed_statements.add(Statement("with", line, column))
+            # self.uncheckpointed_statements.add(res[0])
 
-    leave_With_body = visit_With_body
+    def leave_With_body(self, node: cst.With):
+        pos = self.get_metadata(PositionProvider, node).start  # pyright: ignore
+        line: int = pos.line  # pyright: ignore
+        column: int = pos.column  # pyright: ignore
+        s = Statement("with", line, column)
+        if s in self.uncheckpointed_statements:
+            self.error(node, error_code="ASYNC912")
+            self.uncheckpointed_statements.remove(s)
+
+        if getattr(node, "asynchronous", None):
+            self.uncheckpointed_statements = set()
 
     # error if no checkpoint since earlier yield or function entry
     def leave_Yield(
