@@ -63,6 +63,7 @@ Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
 - **ASYNC910**: Exit or `return` from async function with no guaranteed checkpoint or exception since function definition. You might want to enable this on a codebase to make it easier to reason about checkpoints, and make the logic of ASYNC911 correct.
 - **ASYNC911**: Exit, `yield` or `return` from async iterable with no guaranteed checkpoint since possible function entry (yield or function definition)
   Checkpoints are `await`, `async for`, and `async with` (on one of enter/exit).
+- **ASYNC912**: TODO: write
 
 ### Removed Warnings
 - **TRIOxxx**: All error codes are now renamed ASYNCxxx

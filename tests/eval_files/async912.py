@@ -1,30 +1,67 @@
 # ASYNCIO_NO_ERROR
+# ARG --enable=ASYNC100,ASYNC912
+# asyncio is tested in async912_asyncio. Cancelscopes in anyio are named the same
+# as in trio, so they're also tested with this file.
+
+# ASYNC100 has autofixes, but ASYNC912 does not. This leaves us with the option
+# of not testing both in the same file, or running with NOAUTOFIX.
+# NOAUTOFIX
+
 import trio
 
 
+def bar() -> bool:
+    return False
+
+
 async def foo():
-    with trio.move_on_after(0.1):  # error: 4
+    # trivial cases where there is absolutely no `await` only triggers ASYNC100
+    with trio.move_on_after(0.1):  # ASYNC100: 9, "trio", "move_on_after"
         ...
-    with trio.move_on_at(0.1):  # error: 4
+    with trio.move_on_at(0.1):  # ASYNC100: 9, "trio", "move_on_at"
         ...
-    with trio.fail_after(0.1):  # error: 4
+    with trio.fail_after(0.1):  # ASYNC100: 9, "trio", "fail_after"
         ...
-    with trio.fail_at(0.1):  # error: 4
+    with trio.fail_at(0.1):  # ASYNC100: 9, "trio", "fail_at"
         ...
-    with trio.CancelScope(0.1):  # error: 4
+    with trio.CancelScope(0.1):  # ASYNC100: 9, "trio", "CancelScope"
         ...
 
+    with trio.move_on_after(0.1):  # ASYNC912: 4
+        if bar():
+            await trio.lowlevel.checkpoint()
+    with trio.move_on_at(0.1):  # ASYNC912: 4
+        while bar():
+            await trio.lowlevel.checkpoint()
+    with trio.fail_after(0.1):  # ASYNC912: 4
+        try:
+            await trio.lowlevel.checkpoint()
+        except:
+            ...
+    with trio.fail_at(0.1):  # ASYNC912: 4
+        if bar():
+            await trio.lowlevel.checkpoint()
+    with trio.CancelScope(0.1):  # ASYNC912: 4
+        if bar():
+            await trio.lowlevel.checkpoint()
+    # ASYNC912 generally shares the same logic as other 91x codes, check respective
+    # eval files for more comprehensive tests.
+
+    # check we don't trigger on all context managers
     with open(""):
         ...
 
     with trio.move_on_after(0.1):
         await trio.lowlevel.checkpoint()
 
-    with trio.move_on_after(0.1):  # error: 4
-        with trio.move_on_after(0.1):  # error: 8
-            ...
+    with trio.move_on_after(0.1):  # ASYNC912: 4
+        with trio.move_on_after(0.1):  # ASYNC912: 8
+            if bar():
+                await trio.lowlevel.checkpoint()
 
-    with trio.move_on_after(0.1):  # TODO: should probably raise an error?
+    # We don't know which cancelscope will trigger first, so to avoid false
+    # positives on tricky-but-valid cases we don't raise any error for the outer one.
+    with trio.move_on_after(0.1):
         with trio.move_on_after(0.1):
             await trio.lowlevel.checkpoint()
 
@@ -40,28 +77,31 @@ async def foo():
 
     # TODO: should probably raise the error at the call, rather than at the with statement
     # fmt: off
-    with (  # error: 4
+    with (  # ASYNC912: 4
             # a
             # b
             trio.move_on_after(0.1)
             # c
             ):
-        ...
+        if bar():
+            await trio.lowlevel.checkpoint()
 
-    with (  # error: 4
+    with (  # ASYNC912: 4
             open(""),
             trio.move_on_at(5),
             open(""),
             ):
-        ...
+        if bar():
+            await trio.lowlevel.checkpoint()
     # fmt: on
 
     # TODO: only raises one error currently, can make it raise 2(?)
-    with (  # error: 4
+    with (  # ASYNC912: 4
         trio.move_on_after(0.1),
         trio.fail_at(5),
     ):
-        ...
+        if bar():
+            await trio.lowlevel.checkpoint()
 
 
 # TODO: issue #240
@@ -79,7 +119,7 @@ def condition() -> bool:
 
 
 async def livelocks_2():
-    with trio.move_on_after(0.1):  # error: 4
+    with trio.move_on_after(0.1):  # ASYNC912: 4
         while condition():
             try:
                 await trio.sleep("1")  # type: ignore
@@ -98,7 +138,7 @@ async def livelocks_3():
 
 
 # raises an error...?
-with trio.move_on_after(10):  # error: 0
+with trio.move_on_after(10):  # ASYNC100: 5, "trio", "move_on_after"
     ...
 
 

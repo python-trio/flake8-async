@@ -1,4 +1,6 @@
 # AUTOFIX
+# asyncio will raise the same errors, but does not have autofix available
+# ASYNCIO_NO_AUTOFIX
 from __future__ import annotations
 
 """Docstring for file

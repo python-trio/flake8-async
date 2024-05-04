@@ -1,4 +1,7 @@
+# TODO: When was this file added? Why?
+
 # AUTOFIX
+# ASYNCIO_NO_AUTOFIX
 # ARG --enable=ASYNC911
 import trio
 

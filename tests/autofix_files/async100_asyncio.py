@@ -11,10 +11,10 @@ import asyncio.timeouts
 
 async def foo():
     # py>=3.11 re-exports these in the main asyncio namespace
-    with asyncio.timeout_at(10):  # error: 9, "asyncio", "timeout_at"
-        ...
-    with asyncio.timeout(10):  # error: 9, "asyncio", "timeout"
-        ...
+    # error: 9, "asyncio", "timeout_at"
+    ...
+    # error: 9, "asyncio", "timeout"
+    ...
 
     # TODO
     with asyncio.timeouts.timeout_at(10):

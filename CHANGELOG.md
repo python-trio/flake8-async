@@ -1,6 +1,8 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 24.5.1
+- Add ASYNC912: no checkpoints in with statement are guaranteed to run.
 
 ## 24.4.1
 - ASYNC91X fix internal error caused by multiple `try/except` incorrectly sharing state.

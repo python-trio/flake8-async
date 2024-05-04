@@ -30,7 +30,6 @@ utility_visitors_cst: set[type[Flake8AsyncVisitor_cst]] = set()
 from . import (
     visitor2xx,
     visitor91x,
-    visitor100,
     visitor101,
     visitor102,
     visitor103_104,

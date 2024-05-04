@@ -58,6 +58,10 @@ def disabled_by_default(error_class: type[T_EITHER]) -> type[T_EITHER]:
     return error_class
 
 
+def disable_codes_by_default(*codes: str) -> None:
+    default_disabled_error_codes.extend(codes)
+
+
 def utility_visitor(c: type[T]) -> type[T]:
     assert not hasattr(c, "error_codes")
     c.error_codes = {}
