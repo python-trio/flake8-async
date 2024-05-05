@@ -27,21 +27,21 @@ async def foo():
     with trio.CancelScope(0.1):  # ASYNC100: 9, "trio", "CancelScope"
         ...
 
-    with trio.move_on_after(0.1):  # ASYNC912: 4
+    with trio.move_on_after(0.1):  # ASYNC912: 9
         if bar():
             await trio.lowlevel.checkpoint()
-    with trio.move_on_at(0.1):  # ASYNC912: 4
+    with trio.move_on_at(0.1):  # ASYNC912: 9
         while bar():
             await trio.lowlevel.checkpoint()
-    with trio.fail_after(0.1):  # ASYNC912: 4
+    with trio.fail_after(0.1):  # ASYNC912: 9
         try:
             await trio.lowlevel.checkpoint()
         except:
             ...
-    with trio.fail_at(0.1):  # ASYNC912: 4
+    with trio.fail_at(0.1):  # ASYNC912: 9
         if bar():
             await trio.lowlevel.checkpoint()
-    with trio.CancelScope(0.1):  # ASYNC912: 4
+    with trio.CancelScope(0.1):  # ASYNC912: 9
         if bar():
             await trio.lowlevel.checkpoint()
     # ASYNC912 generally shares the same logic as other 91x codes, check respective
@@ -54,8 +54,8 @@ async def foo():
     with trio.move_on_after(0.1):
         await trio.lowlevel.checkpoint()
 
-    with trio.move_on_after(0.1):  # ASYNC912: 4
-        with trio.move_on_after(0.1):  # ASYNC912: 8
+    with trio.move_on_after(0.1):  # ASYNC912: 9
+        with trio.move_on_after(0.1):  # ASYNC912: 13
             if bar():
                 await trio.lowlevel.checkpoint()
 
@@ -75,30 +75,28 @@ async def foo():
             await trio.lowlevel.checkpoint()
         await trio.lowlevel.checkpoint()
 
-    # TODO: should probably raise the error at the call, rather than at the with statement
     # fmt: off
-    with (  # ASYNC912: 4
+    with (
             # a
             # b
-            trio.move_on_after(0.1)
+            trio.move_on_after(0.1)  # ASYNC912: 12
             # c
             ):
         if bar():
             await trio.lowlevel.checkpoint()
 
-    with (  # ASYNC912: 4
+    with (
             open(""),
-            trio.move_on_at(5),
+            trio.move_on_at(5),  # ASYNC912: 12
             open(""),
             ):
         if bar():
             await trio.lowlevel.checkpoint()
     # fmt: on
 
-    # TODO: only raises one error currently, can make it raise 2(?)
-    with (  # ASYNC912: 4
-        trio.move_on_after(0.1),
-        trio.fail_at(5),
+    with (
+        trio.move_on_after(0.1),  # ASYNC912: 8
+        trio.fail_at(5),  # ASYNC912: 8
     ):
         if bar():
             await trio.lowlevel.checkpoint()
@@ -119,7 +117,7 @@ def condition() -> bool:
 
 
 async def livelocks_2():
-    with trio.move_on_after(0.1):  # ASYNC912: 4
+    with trio.move_on_after(0.1):  # ASYNC912: 9
         while condition():
             try:
                 await trio.sleep("1")  # type: ignore
@@ -146,3 +144,14 @@ with trio.move_on_after(10):  # ASYNC100: 5, "trio", "move_on_after"
 def sync_func():
     with trio.move_on_after(10):
         ...
+
+
+async def check_yield_logic():
+    # Does not raise any of async100 or async912, as the yield is treated
+    # as a checkpoint because the parent context may checkpoint.
+    with trio.move_on_after(1):
+        yield
+    with trio.move_on_after(1):
+        if bar():
+            await trio.lowlevel.checkpoint()
+        yield

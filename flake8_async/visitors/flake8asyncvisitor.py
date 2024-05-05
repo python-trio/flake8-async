@@ -245,7 +245,7 @@ class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
         return True
 
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
-        if code is None:
+        if code is None:  # pragma: no cover
             assert len(self.error_codes) == 1
             code = next(iter(self.error_codes))
         # this does not currently need to check for `noqa`s, as error() does that

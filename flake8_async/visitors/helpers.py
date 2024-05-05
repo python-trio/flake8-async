@@ -51,6 +51,7 @@ def error_class_cst(error_class: type[T_CST]) -> type[T_CST]:
 
 
 def disabled_by_default(error_class: type[T_EITHER]) -> type[T_EITHER]:
+    """Default-disables all error codes in a class."""
     assert error_class.error_codes  # type: ignore[attr-defined]
     default_disabled_error_codes.extend(
         error_class.error_codes  # type: ignore[attr-defined]
@@ -59,6 +60,7 @@ def disabled_by_default(error_class: type[T_EITHER]) -> type[T_EITHER]:
 
 
 def disable_codes_by_default(*codes: str) -> None:
+    """Default-disables only specified codes."""
     default_disabled_error_codes.extend(codes)
 
 
@@ -325,14 +327,19 @@ def with_has_call(
     node: cst.With, *names: str, base: Iterable[str] = ("trio", "anyio")
 ) -> list[AttributeCall]:
     if isinstance(base, str):
-        base = (base,)
+        base = (base,)  # pragma: no cover
+
+    for b in base:
+        if b.count(".") > 1:  # pragma: no cover
+            raise NotImplementedError("Does not support 3-module bases atm.")
+
     res_list: list[AttributeCall] = []
     for item in node.items:
         if res := m.extract(
             item.item,
             m.Call(
                 func=m.Attribute(
-                    value=m.SaveMatchedNode(m.Name(), name="library"),
+                    value=m.SaveMatchedNode(m.Name() | m.Attribute(), name="library"),
                     attr=m.SaveMatchedNode(
                         oneof_names(*names),
                         name="function",
@@ -341,12 +348,30 @@ def with_has_call(
             ),
         ):
             assert isinstance(item.item, cst.Call)
-            assert isinstance(res["library"], cst.Name)
+            assert isinstance(res["library"], (cst.Name, cst.Attribute))
             assert isinstance(res["function"], cst.Name)
-            if res["library"].value not in base:
+            library_node = res["library"]
+            for library_str in base:
+                if (
+                    isinstance(library_node, cst.Name)
+                    and library_str == library_node.value
+                ):
+                    break
+                if (
+                    isinstance(library_node, cst.Attribute)
+                    and isinstance(library_node.value, cst.Name)
+                    and "." in library_str
+                ):
+                    base_1, base_2 = library_str.split(".")
+                    if (
+                        library_node.attr.value == base_2
+                        and library_node.value.value == base_1
+                    ):
+                        break
+            else:
                 continue
             res_list.append(
-                AttributeCall(item.item, res["library"].value, res["function"].value)
+                AttributeCall(item.item, library_str, res["function"].value)
             )
     return res_list
 

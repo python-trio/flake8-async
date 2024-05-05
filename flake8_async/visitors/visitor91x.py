@@ -33,11 +33,17 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 
-class ArtificialStatement(Statement): ...
+class ArtificialStatement(Statement):
+    """Statement that should not trigger 910/911 on function exit.
+
+    Used by loops and `with` statements.
+    """
 
 
 # Statement injected at the start of loops to track missed checkpoints.
 ARTIFICIAL_STATEMENT = ArtificialStatement("artificial", -1)
+# There's no particular reason why loops use a globally instanced statement, but
+# `with` does not - mostly just an artifact of them being implemented at different times.
 
 
 def func_empty_body(node: cst.FunctionDef) -> bool:
@@ -278,7 +284,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.node_dict: dict[cst.With, list[AttributeCall]] = {}
 
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
-        if code is None:
+        if code is None:  # pragma: no branch
             code = "ASYNC911" if self.has_yield else "ASYNC910"
 
         return (
@@ -451,7 +457,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             self.checkpoint()
         if res := (
             with_has_call(node, *cancel_scope_names)
-            or with_has_call(node, "timeout", "timeout_at", base="asyncio")
+            or with_has_call(
+                node, "timeout", "timeout_at", base=("asyncio", "asyncio.timeouts")
+            )
         ):
             pos = self.get_metadata(PositionProvider, node).start  # pyright: ignore
             line: int = pos.line  # pyright: ignore
@@ -465,6 +473,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             self.has_checkpoint_stack.append(True)
 
     def leave_With(self, original_node: cst.With, updated_node: cst.With):
+        # Uses leave_With instead of leave_With_body because we need access to both
+        # original and updated node
         # ASYNC100
         if not self.has_checkpoint_stack.pop():
             autofix = len(updated_node.items) == 1
@@ -486,8 +496,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             column: int = pos.column  # pyright: ignore
             s = ArtificialStatement("with", line, column)
             if s in self.uncheckpointed_statements:
-                self.error(original_node, error_code="ASYNC912")
                 self.uncheckpointed_statements.remove(s)
+                for res in self.node_dict[original_node]:
+                    self.error(res.node, error_code="ASYNC912")
         if getattr(original_node, "asynchronous", None):
             self.checkpoint()
         return updated_node
@@ -500,7 +511,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             return updated_node
         self.has_yield = True
 
-        # Treat as a checkpoint for ASYNC100
+        # Treat as a checkpoint for ASYNC100, since the context we yield to
+        # may checkpoint.
         self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
 
         if self.check_function_exit(original_node) and self.should_autofix(
@@ -747,7 +759,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # if this is an infinite loop, with no break in it, don't raise
         # alarms about the state after it.
         if self.loop_state.infinite_loop and not self.loop_state.has_break:
-            self.checkpoint()
+            self.uncheckpointed_statements = set()
         else:
             # We may exit from:
             # orelse (covering: no body, body until continue, and all body)

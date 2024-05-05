@@ -3,6 +3,8 @@
 
 ## 24.5.1
 - Add ASYNC912: no checkpoints in with statement are guaranteed to run.
+- ASYNC100 now properly treats async for comprehensions as checkpoints.
+- ASYNC100 now supports autofixing on asyncio.
 
 ## 24.4.1
 - ASYNC91X fix internal error caused by multiple `try/except` incorrectly sharing state.

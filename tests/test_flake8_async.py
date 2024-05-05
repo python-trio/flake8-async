@@ -121,7 +121,6 @@ def check_autofix(
     # the result of doing that. THIS IS DANGEROUS
     assert not (magic_markers.AUTOFIX and magic_markers.NOAUTOFIX)
     if magic_markers.NOAUTOFIX:
-        assert "# AUTOFIX" not in unfixed_code
         print(f"eval file {test} marked with dangerous marker NOAUTOFIX")
         return
 
@@ -133,10 +132,10 @@ def check_autofix(
         # code raises errors on asyncio, but does not support autofixing for it
         or (library == "asyncio" and magic_markers.ASYNCIO_NO_AUTOFIX)
     ):
-        assert unfixed_code == visited_code
+        assert (
+            unfixed_code == visited_code
+        ), "Code changed after visiting, but magic markers say it shouldn't change."
         return
-
-    # if AUTOFIX, and library_NO_ERROR, assert file content isn't changed
 
     # the full generated source code, saved from a previous run
     if test not in autofix_files:

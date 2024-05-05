@@ -12,8 +12,6 @@ So we make sure that import is added after it.
 
 from typing import Any
 
-import trio
-
 
 def bar() -> Any: ...
 
@@ -121,10 +119,12 @@ async def livelocks():
         ...
 
 
-# this will autofix 910 by adding a checkpoint outside the loop
+# this will autofix 910 by adding a checkpoint outside the loop, which doesn't actually
+# help, and the method still isn't guaranteed to checkpoint in case bar() always returns
+# True.
 async def no_checkpoint():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     while bar():
         try:
-            await trio.sleep("1")  # type: ignore[arg-type]
-        except ValueError:
+            await foo("1")  # type: ignore[call-arg]
+        except TypeError:
             ...
