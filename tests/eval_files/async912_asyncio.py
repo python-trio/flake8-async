@@ -22,13 +22,13 @@ async def foo():
         ...
     async with asyncio.timeout_at(10):  # ASYNC100: 15, "asyncio", "timeout_at"
         ...
-    async with asyncio.timeouts.timeout(
+    async with asyncio.timeouts.timeout(  # ASYNC100: 15, "asyncio.timeouts", "timeout"
         10
-    ):  # ASYNC100: 15, "asyncio.timeouts", "timeout"
+    ):
         ...
-    async with asyncio.timeouts.timeout_at(
+    async with asyncio.timeouts.timeout_at(  # ASYNC100: 15, "asyncio.timeouts", "timeout_at"
         10
-    ):  # ASYNC100: 15, "asyncio.timeouts", "timeout_at"
+    ):
         ...
 
     # no errors
