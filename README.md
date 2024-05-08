@@ -41,6 +41,7 @@ pip install flake8-async
 - **ASYNC115**: Replace `[trio/anyio].sleep(0)` with the more suggestive `[trio/anyio].lowlevel.checkpoint()`.
 - **ASYNC116**: `[trio/anyio].sleep()` with >24 hour interval should usually be `[trio/anyio].sleep_forever()`.
 - **ASYNC118**: Don't assign the value of `anyio.get_cancelled_exc_class()` to a variable, since that breaks linter checks and multi-backend programs.
+- **ASYNC119**: `yield` in context manager in async generator is unsafe, the cleanup may be delayed until `await` is no longer allowed. We strongly encourage you to read PEP-533 and use `async with aclosing(...)`, or better yet avoid async generators entirely (see ASYNC900) in favor of context managers which return an iterable channel/queue.
 
 ### Warnings for blocking sync calls in async functions
 Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.

@@ -1,7 +1,7 @@
 # type: ignore
 # ASYNC112: Nursery body with only a call to nursery.start[_soon] and not passing itself as a parameter can be replaced with a regular function call.
-# ASYNCIO_NO_ERROR - # TODO: expand check to work with asyncio.TaskGroup
-# ANYIO_NO_ERROR - # TODO: expand check to work with anyio.TaskGroup
+# ASYNCIO_NO_ERROR
+# ANYIO_NO_ERROR
 import functools
 from functools import partial
 
@@ -81,9 +81,9 @@ with trio.open_nursery() as n:
     n.start_soon(lambda n: n + 1)
 
 
-# body isn't a call to n.start
+# body is a call to await n.start
 async def foo_1():
-    with trio.open_nursery(...) as n:
+    with trio.open_nursery(...) as n:  # error: 9, "n"
         await n.start(...)
 
 

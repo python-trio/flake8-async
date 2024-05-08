@@ -104,17 +104,29 @@ class Visitor112(Flake8AsyncVisitor):
                 continue
             var_name = item.optional_vars.id
 
-            # check for trio.open_nursery
+            # check for trio.open_nursery and anyio.create_task_group
             nursery = get_matching_call(
-                item.context_expr, "open_nursery", base=("trio",)
-            )
+                item.context_expr, "open_nursery", base="trio"
+            ) or get_matching_call(item.context_expr, "create_task_group", base="anyio")
+            start_methods: tuple[str, ...] = ("start", "start_soon")
+            if nursery is None:
+                # check for asyncio.TaskGroup
+                nursery = get_matching_call(
+                    item.context_expr, "TaskGroup", base="asyncio"
+                )
+                if nursery is None:
+                    continue
+                start_methods = ("create_task",)
+
+            body_call = node.body[0].value
+            if isinstance(body_call, ast.Await):
+                body_call = body_call.value
 
             # `isinstance(..., ast.Call)` is done in get_matching_call
-            body_call = cast("ast.Call", node.body[0].value)
+            body_call = cast("ast.Call", body_call)
 
             if (
-                nursery is not None
-                and get_matching_call(body_call, "start", "start_soon", base=var_name)
+                get_matching_call(body_call, *start_methods, base=var_name)
                 # check for presence of <X> as parameter
                 and not any(
                     (isinstance(n, ast.Name) and n.id == var_name)
@@ -279,6 +291,45 @@ class Visitor116(Flake8AsyncVisitor):
                 )
             ):
                 self.error(node, m[2])
+
+
+@error_class
+class Visitor119(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC119": "Yield in contextmanager in async generator might not trigger"
+        " cleanup. Use `@asynccontextmanager` or refactor."
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.unsafe_function: bool = False
+        self.contextmanager: bool = False
+
+    def visit_AsyncFunctionDef(
+        self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
+    ):
+        self.save_state(node, "unsafe_function", "contextmanager")
+        self.contextmanager = False
+        if isinstance(node, ast.AsyncFunctionDef) and not has_decorator(
+            node, "asynccontextmanager"
+        ):
+            self.unsafe_function = True
+        else:
+            self.unsafe_function = False
+
+    def visit_With(self, node: ast.With | ast.AsyncWith):
+        self.save_state(node, "contextmanager")
+        self.contextmanager = True
+
+    def visit_Yield(self, node: ast.Yield):
+        if self.unsafe_function and self.contextmanager:
+            self.error(node)
+
+    visit_AsyncWith = visit_With
+    visit_FunctionDef = visit_AsyncFunctionDef
+    # it's not possible to yield or open context managers in lambda's, so this
+    # one isn't strictly needed afaik.
+    visit_Lambda = visit_AsyncFunctionDef
 
 
 @error_class
