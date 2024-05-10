@@ -11,9 +11,14 @@
 
 import asyncio
 
+from typing import Any
+
 
 def bar() -> bool:
     return False
+
+
+def customWrapper(a: object) -> object: ...
 
 
 async def foo():
@@ -51,3 +56,21 @@ async def foo():
     async with asyncio.timeouts.timeout_at(10):  # ASYNC912: 15
         if bar():
             await foo()
+
+    # double check that helper methods used by visitor don't trigger erroneously
+    timeouts: Any
+    timeout_at: Any
+    async with asyncio.timeout_at.timeouts(10):
+        ...
+    async with timeouts.asyncio.timeout_at(10):
+        ...
+    async with timeouts.timeout_at.asyncio(10):
+        ...
+    async with timeout_at.asyncio.timeouts(10):
+        ...
+    async with timeout_at.timeouts.asyncio(10):
+        ...
+    async with foo.timeout(10):
+        ...
+    async with asyncio.timeouts(10):
+        ...

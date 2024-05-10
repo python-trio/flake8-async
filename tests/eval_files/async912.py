@@ -7,6 +7,8 @@
 # of not testing both in the same file, or running with NOAUTOFIX.
 # NOAUTOFIX
 
+from typing import TypeVar
+
 import trio
 
 
@@ -27,6 +29,7 @@ async def foo():
     with trio.CancelScope(0.1):  # ASYNC100: 9, "trio", "CancelScope"
         ...
 
+    # conditional cases trigger ASYNC912
     with trio.move_on_after(0.1):  # ASYNC912: 9
         if bar():
             await trio.lowlevel.checkpoint()
@@ -51,16 +54,23 @@ async def foo():
     with open(""):
         ...
 
+    # don't error with guaranteed checkpoint
     with trio.move_on_after(0.1):
         await trio.lowlevel.checkpoint()
+    with trio.move_on_after(0.1):
+        if bar():
+            await trio.lowlevel.checkpoint()
+        else:
+            await trio.lowlevel.checkpoint()
 
+    # both scopes error in nested cases
     with trio.move_on_after(0.1):  # ASYNC912: 9
         with trio.move_on_after(0.1):  # ASYNC912: 13
             if bar():
                 await trio.lowlevel.checkpoint()
 
     # We don't know which cancelscope will trigger first, so to avoid false
-    # positives on tricky-but-valid cases we don't raise any error for the outer one.
+    # alarms on tricky-but-valid cases we don't raise any error for the outer one.
     with trio.move_on_after(0.1):
         with trio.move_on_after(0.1):
             await trio.lowlevel.checkpoint()
@@ -75,6 +85,7 @@ async def foo():
             await trio.lowlevel.checkpoint()
         await trio.lowlevel.checkpoint()
 
+    # check correct line gives error
     # fmt: off
     with (
             # a
@@ -94,10 +105,26 @@ async def foo():
             await trio.lowlevel.checkpoint()
     # fmt: on
 
+    # error on each call with multiple matching calls in the same with
     with (
         trio.move_on_after(0.1),  # ASYNC912: 8
         trio.fail_at(5),  # ASYNC912: 8
     ):
+        if bar():
+            await trio.lowlevel.checkpoint()
+
+    # wrapped calls do not raise errors
+    T = TypeVar("T")
+
+    def customWrapper(a: T) -> T:
+        return a
+
+    with customWrapper(trio.fail_at(10)):
+        ...
+    with (res := trio.fail_at(10)):
+        ...
+    # but saving with `as` does
+    with trio.fail_at(10) as res:  # ASYNC912: 9
         if bar():
             await trio.lowlevel.checkpoint()
 
