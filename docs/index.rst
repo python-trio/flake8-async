@@ -25,6 +25,8 @@ Some rules are incorporated into `ruff <https://docs.astral.sh/ruff/rules/#flake
 
 We previously maintained separate flake8-async and flake8-trio plugins, but merged both into this plugin under the more general "flake8-async" name after flake8-trio grew support for anyio and asyncio and became a superset of the former flake8-async.  All flake8-trio error codes were renamed from TRIOxxx to ASYNCxxx and the flake8-trio package is now deprecated.
 
+Changelog: https://github.com/python-trio/flake8-async/blob/main/CHANGELOG.md
+Contributor guide: https://github.com/python-trio/flake8-async/blob/main/CONTRIBUTING.md
 
 *********
 Contents:

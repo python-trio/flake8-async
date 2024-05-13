@@ -25,7 +25,11 @@ setup(
     author="Zac Hatfield-Dodds, John Litborn, and Contributors",
     author_email="zac@zhd.dev",
     packages=find_packages(include=["flake8_async", "flake8_async.*"]),
-    url="https://github.com/python-trio/flake8-async",
+    project_urls={
+        "Homepage": "https://github.com/python-trio/flake8-async",
+        "Documentation": "https://flake8-async.readthedocs.io/",
+        "Changelog": "https://github.com/python-trio/flake8-async/blob/main/CHANGELOG.md",
+    },
     license="MIT",
     description="A highly opinionated flake8 plugin for Trio-related problems.",
     zip_safe=False,
