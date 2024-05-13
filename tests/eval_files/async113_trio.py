@@ -129,3 +129,15 @@ async def contextlib_import_alias_acm():
 # code coverage for non-name, non-attribute decorator
 @None  # type: ignore
 async def foo4(): ...
+
+
+# while contextlib.asynccontextmanager does not allow parens or parameters,
+# the visitor will still raise an error for them.
+@asynccontextmanager()  # type: ignore[call-arg]
+async def foo_paren():
+    nursery.start_soon(trio.run_process)  # error: 4
+
+
+@asynccontextmanager(1, 2, 3)  # type: ignore[call-arg]
+async def foo_params():
+    nursery.start_soon(trio.run_process)  # error: 4

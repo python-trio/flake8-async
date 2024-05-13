@@ -1,6 +1,10 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 24.5.2
+- ASYNC101 now also warns on anyio & asyncio taskgroup.s
+- Fixed a bug where ASYNC101 and ASYNC91x would not recognize decorators with parameters directly imported. I.e. `@fixture(...)` will now suppress errors.
+
 ## 24.5.1
 - Add ASYNC912: no checkpoints in with statement are guaranteed to run.
 - ASYNC100 now properly treats async for comprehensions as checkpoints.
