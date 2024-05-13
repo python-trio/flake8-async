@@ -51,11 +51,17 @@ def error_class_cst(error_class: type[T_CST]) -> type[T_CST]:
 
 
 def disabled_by_default(error_class: type[T_EITHER]) -> type[T_EITHER]:
+    """Default-disables all error codes in a class."""
     assert error_class.error_codes  # type: ignore[attr-defined]
     default_disabled_error_codes.extend(
         error_class.error_codes  # type: ignore[attr-defined]
     )
     return error_class
+
+
+def disable_codes_by_default(*codes: str) -> None:
+    """Default-disables only specified codes."""
+    default_disabled_error_codes.extend(codes)
 
 
 def utility_visitor(c: type[T]) -> type[T]:
@@ -317,30 +323,68 @@ class AttributeCall(NamedTuple):
     function: str
 
 
+# the custom __or__ in libcst breaks pyright type checking. It's possible to use
+# `Union` as a workaround ... except pyupgrade will automatically replace that.
+# So we have to resort to specifying one of the base classes.
+# See https://github.com/Instagram/LibCST/issues/1143
+def build_cst_matcher(attr: str) -> m.BaseExpression:
+    """Build a cst matcher structure with attributes&names matching a string `a.b.c`."""
+    if "." not in attr:
+        return m.Name(value=attr)
+    body, tail = attr.rsplit(".")
+    return m.Attribute(value=build_cst_matcher(body), attr=m.Name(value=tail))
+
+
+def identifier_to_string(attr: cst.Name | cst.Attribute) -> str:
+    if isinstance(attr, cst.Name):
+        return attr.value
+    assert isinstance(attr.value, (cst.Attribute, cst.Name))
+    return identifier_to_string(attr.value) + "." + attr.attr.value
+
+
 def with_has_call(
     node: cst.With, *names: str, base: Iterable[str] = ("trio", "anyio")
 ) -> list[AttributeCall]:
+    """Check if a with statement has a matching call, returning a list with matches.
+
+    `names` specify the names of functions to match, `base` specifies the
+    library/module(s) the function must be in.
+    The list elements in the return value are named tuples with the matched node,
+    base and function.
+
+    Examples_
+
+    `with_has_call(node, "bar", base="foo")` matches foo.bar.
+    `with_has_call(node, "bar", "bee", base=("foo", "a.b.c")` matches
+      `foo.bar`, `foo.bee`, `a.b.c.bar`, and `a.b.c.bee`.
+
+    """
+    if isinstance(base, str):
+        base = (base,)  # pragma: no cover
+
+    # build matcher, using SaveMatchedNode to save the base and the function name.
+    matcher = m.Call(
+        func=m.Attribute(
+            value=m.SaveMatchedNode(
+                m.OneOf(*(build_cst_matcher(b) for b in base)), name="base"
+            ),
+            attr=m.SaveMatchedNode(
+                oneof_names(*names),
+                name="function",
+            ),
+        )
+    )
+
     res_list: list[AttributeCall] = []
     for item in node.items:
-        if res := m.extract(
-            item.item,
-            m.Call(
-                func=m.Attribute(
-                    value=m.SaveMatchedNode(m.Name(), name="library"),
-                    attr=m.SaveMatchedNode(
-                        oneof_names(*names),
-                        name="function",
-                    ),
-                )
-            ),
-        ):
+        if res := m.extract(item.item, matcher):
             assert isinstance(item.item, cst.Call)
-            assert isinstance(res["library"], cst.Name)
+            assert isinstance(res["base"], (cst.Name, cst.Attribute))
             assert isinstance(res["function"], cst.Name)
-            if res["library"].value not in base:
-                continue
             res_list.append(
-                AttributeCall(item.item, res["library"].value, res["function"].value)
+                AttributeCall(
+                    item.item, identifier_to_string(res["base"]), res["function"].value
+                )
             )
     return res_list
 

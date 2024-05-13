@@ -1,4 +1,5 @@
 # AUTOFIX
+# ASYNCIO_NO_AUTOFIX
 from typing import Any
 
 import pytest

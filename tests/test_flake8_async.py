@@ -109,20 +109,32 @@ def check_autofix(
     plugin: Plugin,
     unfixed_code: str,
     generate_autofix: bool,
+    magic_markers: MagicMarkers,
     library: str = "trio",
-    base_library: str = "trio",
 ):
+    base_library = magic_markers.BASE_LIBRARY
     # the source code after it's been visited by current transformers
     visited_code = plugin.module.code
 
-    if "# AUTOFIX" not in unfixed_code:
-        # if the file is specifically marked with NOAUTOFIX, that means it has visitors
-        # that will autofix with --autofix, but the file explicitly doesn't want to check
-        # the result of doing that. THIS IS DANGEROUS
-        if "# NOAUTOFIX" in unfixed_code:
-            print(f"eval file {test} marked with dangerous marker NOAUTOFIX")
-        else:
-            assert unfixed_code == visited_code
+    # if the file is specifically marked with NOAUTOFIX, that means it has visitors
+    # that will autofix with --autofix, but the file explicitly doesn't want to check
+    # the result of doing that. THIS IS DANGEROUS
+    assert not (magic_markers.AUTOFIX and magic_markers.NOAUTOFIX)
+    if magic_markers.NOAUTOFIX:
+        print(f"eval file {test} marked with dangerous marker NOAUTOFIX")
+        return
+
+    if (
+        # not marked for autofixing
+        not magic_markers.AUTOFIX
+        # file+library does not raise errors
+        or magic_markers.library_no_error(library)
+        # code raises errors on asyncio, but does not support autofixing for it
+        or (library == "asyncio" and magic_markers.ASYNCIO_NO_AUTOFIX)
+    ):
+        assert (
+            unfixed_code == visited_code
+        ), "Code changed after visiting, but magic markers say it shouldn't change."
         return
 
     # the full generated source code, saved from a previous run
@@ -196,8 +208,21 @@ class MagicMarkers:
     ANYIO_NO_ERROR: bool = False
     TRIO_NO_ERROR: bool = False
     ASYNCIO_NO_ERROR: bool = False
+
+    AUTOFIX: bool = False
+    NOAUTOFIX: bool = False
+
+    # File should not get modified when running with asyncio+autofix
+    ASYNCIO_NO_AUTOFIX: bool = False
     # eval file is written using this library, so no substitution is required
     BASE_LIBRARY: str = "trio"
+
+    def library_no_error(self, library: str) -> bool:
+        return {
+            "anyio": self.ANYIO_NO_ERROR,
+            "asyncio": self.ASYNCIO_NO_ERROR,
+            "trio": self.TRIO_NO_ERROR,
+        }[library]
 
 
 def find_magic_markers(
@@ -300,15 +325,14 @@ def test_eval(
                 lib in message for lib in ("anyio", "asyncio", "trio")
             )
 
-    # asyncio does not support autofix atm, so should not modify content
-    if autofix and not noqa and library != "asyncio":
+    if autofix and not noqa:
         check_autofix(
             test,
             plugin,
             content,
             generate_autofix,
             library=library,
-            base_library=magic_markers.BASE_LIBRARY,
+            magic_markers=magic_markers,
         )
     else:
         # make sure content isn't modified
@@ -452,6 +476,7 @@ error_codes_ignored_when_checking_transformed_sync_code = {
     "ASYNC116",
     "ASYNC117",
     "ASYNC118",
+    "ASYNC912",
 }
 
 
@@ -479,7 +504,7 @@ class SyncTransformer(ast.NodeTransformer):
         return self.replace_async(node, ast.For, node.target, node.iter)
 
 
-@pytest.mark.parametrize(("test", "path"), test_files)
+@pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])
 def test_noerror_on_sync_code(test: str, path: Path):
     if any(e in test for e in error_codes_ignored_when_checking_transformed_sync_code):
         return

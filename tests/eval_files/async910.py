@@ -1,4 +1,5 @@
 # AUTOFIX
+# ASYNCIO_NO_AUTOFIX
 # mypy: disable-error-code="unreachable"
 from __future__ import annotations
 

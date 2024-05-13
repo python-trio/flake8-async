@@ -78,3 +78,8 @@
          yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-2) # ASYNC911: 8, "yield", Statement("yield", lineno)
 
          async def bar():
+@@ x,3 x,4 @@
+             await foo("1")  # type: ignore[call-arg]
+         except TypeError:
+             ...
++    await trio.lowlevel.checkpoint()

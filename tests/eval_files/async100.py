@@ -71,10 +71,11 @@ async def function_name():
         ...
 
 
-# Seems like the inner context manager 'hides' the checkpoint.
+# The outer cancelscope can get triggered in more complex cases, so
+# to avoid false positives we don't raise a warning.
 async def does_contain_checkpoints():
-    with trio.fail_after(1):  # false-alarm ASYNC100
-        with trio.CancelScope():  # or any other context manager
+    with trio.fail_after(1):
+        with trio.CancelScope():
             await trio.sleep_forever()
 
 

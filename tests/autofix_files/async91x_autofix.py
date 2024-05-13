@@ -1,4 +1,6 @@
 # AUTOFIX
+# asyncio will raise the same errors, but does not have autofix available
+# ASYNCIO_NO_AUTOFIX
 from __future__ import annotations
 
 """Docstring for file
@@ -124,3 +126,21 @@ def sync_func():
         break
     [... for i in range(5)]
     return
+
+
+# TODO: issue 240
+async def livelocks():
+    while True:
+        ...
+
+
+# this will autofix 910 by adding a checkpoint outside the loop, which doesn't actually
+# help, and the method still isn't guaranteed to checkpoint in case bar() always returns
+# True.
+async def no_checkpoint():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+    while bar():
+        try:
+            await foo("1")  # type: ignore[call-arg]
+        except TypeError:
+            ...
+    await trio.lowlevel.checkpoint()

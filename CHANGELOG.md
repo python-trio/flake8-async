@@ -1,6 +1,11 @@
 # Changelog
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+## 24.5.1
+- Add ASYNC912: no checkpoints in with statement are guaranteed to run.
+- ASYNC100 now properly treats async for comprehensions as checkpoints.
+- ASYNC100 now supports autofixing on asyncio.
+
 ## 24.4.2
 - Add ASYNC119: yield in contextmanager in async generator.
 
