@@ -89,7 +89,8 @@ def _get_identifier(node: ast.expr) -> str:
 
 
 # ignores module and only checks the unqualified name of the decorator
-# used in 101, 113, 900 and 910/911
+# used in 113. cst version used in 101, 900 and 910/911
+# matches @name, @foo.name, @name(...), and @foo.name(...)
 def has_decorator(node: ast.FunctionDef | ast.AsyncFunctionDef, *names: str):
     return any(_get_identifier(dec) in names for dec in node.decorator_list)
 
@@ -343,7 +344,7 @@ def identifier_to_string(attr: cst.Name | cst.Attribute) -> str:
 
 
 def with_has_call(
-    node: cst.With, *names: str, base: Iterable[str] = ("trio", "anyio")
+    node: cst.With, *names: str, base: Iterable[str] | str = ("trio", "anyio")
 ) -> list[AttributeCall]:
     """Check if a with statement has a matching call, returning a list with matches.
 
@@ -395,8 +396,13 @@ def func_has_decorator(func: cst.FunctionDef, *names: str) -> bool:
             func.decorators,
             m.Decorator(
                 decorator=m.OneOf(
+                    # @name
                     oneof_names(*names),
+                    # @foo.name
                     m.Attribute(attr=oneof_names(*names)),
+                    # @name(...)
+                    m.Call(func=oneof_names(*names)),
+                    # @foo.name(...)
                     m.Call(func=m.Attribute(attr=oneof_names(*names))),
                 )
             ),
