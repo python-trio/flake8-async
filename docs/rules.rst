@@ -6,7 +6,8 @@ General rules
 =============
 
 - **ASYNC100**: A ``with [trio/anyio].fail_after(...):`` or ``with [trio/anyio].move_on_after(...):`` context does not contain any ``await`` statements.  This makes it pointless, as the timeout can only be triggered by a checkpoint. This check also allows ``yield`` statements, since checkpoints can happen in the caller we yield to.
-- **ASYNC101**: ``yield`` inside a trio/anyio nursery or cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
+- **ASYNC101**: ``yield`` inside a trio nursery, anyio/asyncio TaskGroup, or in a timeout/cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling. See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP.
+This has substantial overlap with :ref:`ASYNC119 <async119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by `PEP 533 <https://peps.python.org/pep-0533/>`_.
 - **ASYNC102**: It's unsafe to await inside ``finally:`` or ``except BaseException/trio.Cancelled/anyio.get_cancelled_exc_class()/asyncio.exceptions.CancelledError`` unless you use a shielded cancel scope with a timeout. This is currently not able to detect asyncio shields.
 - **ASYNC103**: ``except BaseException/trio.Cancelled/anyio.get_cancelled_exc_class()/asyncio.exceptions.CancelledError``, or a bare ``except:`` with a code path that doesn't re-raise. If you don't want to re-raise ``BaseException``, add a separate handler for ``trio.Cancelled``/``anyio.get_cancelled_exc_class()``/``asyncio.exceptions.CancelledError`` before.
 - **ASYNC104**: ``trio.Cancelled``/``anyio.get_cancelled_exc_class()``/``asyncio.exceptions.CancelledError``/``BaseException`` must be re-raised. The same as ASYNC103, except specifically triggered on ``return`` or a different exception being raised.
@@ -21,6 +22,9 @@ General rules
 - **ASYNC115**: Replace ``[trio/anyio].sleep(0)`` with the more suggestive ``[trio/anyio].lowlevel.checkpoint()``.
 - **ASYNC116**: ``[trio/anyio].sleep()`` with >24 hour interval should usually be ``[trio/anyio].sleep_forever()``.
 - **ASYNC118**: Don't assign the value of ``anyio.get_cancelled_exc_class()`` to a variable, since that breaks linter checks and multi-backend programs.
+
+  .. _async119:
+
 - **ASYNC119**: ``yield`` in context manager in async generator is unsafe, the cleanup may be delayed until ``await`` is no longer allowed. We strongly encourage you to read `PEP 533 <https://peps.python.org/pep-0533/>`_ and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see :ref:`ASYNC900 <async900>` ) in favor of context managers which return an iterable `channel (trio) <https://trio.readthedocs.io/en/stable/reference-core.html#channels>`_, `stream (anyio) <https://anyio.readthedocs.io/en/stable/streams.html#streams>`_, or `queue (asyncio) <https://docs.python.org/3/library/asyncio-queue.html>`_.
 
   .. TODO: use intersphinx(?) instead of having to specify full URL

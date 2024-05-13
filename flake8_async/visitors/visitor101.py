@@ -40,12 +40,22 @@ class Visitor101(Flake8AsyncVisitor_cst):
         self.save_state(node, "_yield_is_error", copy=True)
         # if there's no safe decorator,
         # and it's not yet been determined that yield is error
-        # and this withitem opens a cancelscope:
+        # and this withitem opens a nursery/taskgroup/cancelscope:
         # then yielding is unsafe
         self._yield_is_error = (
             not self._safe_decorator
             and not self._yield_is_error
-            and bool(with_has_call(node, "open_nursery", *cancel_scope_names))
+            # It's not strictly necessary to specify the base, as raising errors on
+            # e.g. anyio.open_nursery isn't much of a problem.
+            and bool(
+                # nursery/taskgroup
+                with_has_call(node, "open_nursery", base="trio")
+                or with_has_call(node, "create_task_group", base="anyio")
+                or with_has_call(node, "TaskGroup", base="asyncio")
+                # cancel scopes
+                or with_has_call(node, "timeout", "timeout_at", base="asyncio")
+                or with_has_call(node, *cancel_scope_names, base=("trio", "anyio"))
+            )
         )
 
     def leave_With(
