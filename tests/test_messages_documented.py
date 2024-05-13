@@ -10,7 +10,7 @@ from typing import cast
 from .test_flake8_async import ERROR_CODES
 
 ROOT_PATH = Path(__file__).parent.parent
-CHANGELOG = ROOT_PATH / "CHANGELOG.md"
+CHANGELOG = ROOT_PATH / "docs" / "changelog.rst"
 RULES_DOC = ROOT_PATH / "docs" / "rules.rst"
 
 # 107, 108 & 117 are removed (but still mentioned in changelog & readme)

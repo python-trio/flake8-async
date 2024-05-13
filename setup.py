@@ -28,7 +28,7 @@ setup(
     project_urls={
         "Homepage": "https://github.com/python-trio/flake8-async",
         "Documentation": "https://flake8-async.readthedocs.io/",
-        "Changelog": "https://flake8-async.readthedocs.io/changelog.html",
+        "Changelog": "https://flake8-async.readthedocs.io/en/latest/changelog.html",
     },
     license="MIT",
     description="A highly opinionated flake8 plugin for Trio-related problems.",
@@ -48,11 +48,7 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
     ],
-    long_description=(
-        local_file("README.md").open().read()
-        + "\n\n"
-        + local_file("CHANGELOG.md").open().read()
-    ),
+    long_description=(local_file("README.md").open().read()),
     long_description_content_type="text/markdown",
     entry_points={
         # You're not allowed to register error codes longer than 3 characters. But flake8

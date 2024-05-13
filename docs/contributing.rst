@@ -10,7 +10,7 @@ Development
 When you wish to add a check to ``flake8-async`` please ensure the following:
 
 - ``rules.rst`` gets an entry about your new warning
-- Add a CHANGELOG entry (see 'Releasing a new version' below)
+- Add a changelog entry (see 'Releasing a new version' below)
 - A test in ``tests/eval_files`` is added for your check. See the "Test generator" heading below.
 
 Checks
@@ -52,7 +52,7 @@ Tip: Use ``--parallel`` and ``--develop``, to save time when modifying and rerun
 
 Meta-tests
 ==========
-To check that all codes are tested and documented there's a test that error codes mentioned in ``docs/rules.rst``, ``CHANGELOG.md`` (matching ``ASYNC\d\d\d``), the keys in ``flake8_async.Error_codes`` and codes parsed from filenames and files in ``tests/eval_files/``, are all equal.
+To check that all codes are tested and documented there's a test that error codes mentioned in ``docs/rules.rst``, ``docs/changelog.rst`` (matching ``ASYNC\d\d\d``), the keys in ``flake8_async.Error_codes`` and codes parsed from filenames and files in ``tests/eval_files/``, are all equal.
 
 Test generator
 ==============
@@ -132,5 +132,5 @@ We want to ship bugfixes or new features as soon as they're ready,
 so our release process is automated:
 
 1. Increment ``__version__`` in ``flake8_async/__init__.py``
-2. Ensure there's a corresponding entry in ``CHANGELOG.md`` with same version
+2. Ensure there's a corresponding entry in ``docs/changelog.rst`` with same version
 3. Merge to main, and CI will do the rest!

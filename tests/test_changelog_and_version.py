@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 ROOT_PATH = Path(__file__).parent.parent
-CHANGELOG = ROOT_PATH / "CHANGELOG.md"
+CHANGELOG = ROOT_PATH / "docs" / "changelog.rst"
 README = ROOT_PATH / "README.md"
 INIT_FILE = ROOT_PATH / "flake8_async" / "__init__.py"
 
@@ -41,21 +41,26 @@ else:
 
 
 def get_releases() -> Iterable[Version]:
-    valid_pattern = re.compile(r"^## (\d\d\.\d?\d\.\d?\d)$")
-    invalid_pattern = re.compile(r"^## ")
+    valid_pattern = re.compile(r"^(\d\d\.\d?\d\.\d?\d)$")
+    header_pattern = re.compile(r"^=+$")
+    last_line_was_date = False
     with open(CHANGELOG, encoding="utf-8") as f:
         lines = f.readlines()
     for line in lines:
         version_match = valid_pattern.match(line)
-        if version_match:
+        if last_line_was_date:
+            assert header_pattern.match(line)
+            last_line_was_date = False
+        elif version_match:
             yield Version.from_string(version_match.group(1))
+            last_line_was_date = True
         else:
-            # stop lines such as `## Future` making it through to main/
-            assert not invalid_pattern.match(line)
+            # stop lines such as `Future\n=====` making it through to main/
+            assert not header_pattern.match(line), line
 
 
 def test_last_release_against_changelog() -> None:
-    """Ensure we have the latest version covered in 'CHANGELOG.md'."""
+    """Ensure we have the latest version covered in 'changelog.rst'."""
     latest_release = next(iter(get_releases()))
     assert latest_release == VERSION
 
