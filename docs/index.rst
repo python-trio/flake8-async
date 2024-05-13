@@ -36,6 +36,7 @@ Contents:
 
    usage
    rules
+   contributing
 
 
 ******************
@@ -47,3 +48,4 @@ Indices and tables
 * :ref:`search`
 * :doc:`usage`
 * :doc:`rules`
+* :doc:`contributing`
