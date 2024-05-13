@@ -11,7 +11,7 @@ from .test_flake8_async import ERROR_CODES
 
 ROOT_PATH = Path(__file__).parent.parent
 CHANGELOG = ROOT_PATH / "CHANGELOG.md"
-README = CHANGELOG.parent / "README.md"
+RULES_DOC = ROOT_PATH / "docs" / "rules.rst"
 
 # 107, 108 & 117 are removed (but still mentioned in changelog & readme)
 # ASYNCxxx_* are fake codes to get different error messages for the same code
@@ -26,7 +26,7 @@ def rename_trio_to_async(s: str) -> str:
 
 def test_messages_documented():
     documented_errors: dict[str, set[str]] = {}
-    for path in (CHANGELOG, README):
+    for path in (CHANGELOG, RULES_DOC):
         with open(path, encoding="utf-8") as f:
             lines = f.readlines()
         filename = path.name
