@@ -28,7 +28,7 @@ setup(
     project_urls={
         "Homepage": "https://github.com/python-trio/flake8-async",
         "Documentation": "https://flake8-async.readthedocs.io/",
-        "Changelog": "https://github.com/python-trio/flake8-async/blob/main/CHANGELOG.md",
+        "Changelog": "https://flake8-async.readthedocs.io/changelog.html",
     },
     license="MIT",
     description="A highly opinionated flake8 plugin for Trio-related problems.",
