@@ -2,8 +2,92 @@
 List of rules
 ****************
 
+.. Esp when writing short descriptions it'd be very handy to link to a glossary, instead of saying stuff like ``except BaseException/trio.Cancelled/anyio.get_cancelled_exc_class()/asyncio.exceptions.CancelledError``
+   it also allows easier use of library-specific terminology without forcing people to know all libraries by heart.
+   It should probably have it's own page in the long run
+
+Glossary
+========
+
+- timeout context
+
+  - https://trio.readthedocs.io/en/stable/reference-core.html#cancellation-and-timeouts
+  - `trio.CancelScope`, `trio.move_on_after`, `trio.move_on_at`, `trio.fail_after`, `trio.fail_at`
+  - https://anyio.readthedocs.io/en/stable/cancellation.html
+  - `anyio.move_on_after`, `anyio.fail_after`, `anyio.CancelScope`
+  - `asyncio.timeout`, `asyncio.timeout_at`
+
 General rules
 =============
+
+
+
+.. term wishlist:
+   nursery-or-cancelscope-or-timeout
+   sensitive-exception / cancelled
+
+.. TODO:
+   async100 does not list cancelscope or asyncio
+   reeeeally need intersphinx now
+
+.. list-table::
+   :widths: 1 18 40
+   :header-rows: 1
+
+   * - Code
+     - Name
+     - Message
+   * - ASYNC100
+     - scope-no-checkpoint
+     - A ``with [trio/anyio].fail_after(...):`` or ``with [trio/anyio].move_on_after(...):`` context does not contain any ``await`` statements.  This makes it pointless, as the timeout can only be triggered by a checkpoint. This check also allows ``yield`` statements, since checkpoints can happen in the caller we yield to.
+   * - ASYNC101
+     - yield-in-nursery-or-scope
+     - ``yield`` inside a trio nursery, anyio/asyncio TaskGroup, or in a timeout/cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
+   * - ASYNC102
+     - await-in-finally-or-cancelled
+     - ``await`` inside ``finally``/``except cancelled`` must have shielded cancelscope with timeout.
+   * - ASYNC103
+     - no-reraise-cancelled
+     - cancelled-catching exception that does not reraise the exception.
+   * - ASYNC104
+     - cancelled-not-raised
+     - cancelled-catching exception does not raise cancelled
+   * - ASYNC105
+     - missing-await
+     - async trio function called without using ``await``
+   * - ASYNC106
+     - bad-async-library-import
+     - trio/anyio/asyncio must be imported with ``import xxx`` for the linter to work.
+   * - ASYNC109
+     - async-function-with-timeout
+     - Async function definition with a ``timeout`` parameter. In structured concurrency the caller should instead use timeout context managers.
+   * - ASYNC110
+     - busy-wait
+     - ``while <condition>: await [trio/anyio].sleep()`` should be replaced by a ``[trio/anyio].Event``.
+   * - ASYNC111
+     - variable-from-cm-in-start-soon
+     - Variable, from context manager opened inside nursery, passed to ``start[_soon]`` might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
+   * - ASYNC112
+     - useless-nursery
+     - Nursery body with only a call to ``nursery.start[_soon]`` and not passing itself as a parameter can be replaced with a regular function call.
+   * - ASYNC113
+     - start-soon-in-aenter
+     - Using ``nursery.start_soon`` in ``__aenter__`` doesn't wait for the task to begin. Consider replacing with ``nursery.start``.
+   * - ASYNC114
+     - startable-not-in-config
+     - Startable function (i.e. has a ``task_status`` keyword parameter) not in ``--startable-in-context-manager`` parameter list, please add it so ASYNC113 can catch errors when using it.
+   * - ASYNC115
+     - sleep-zero
+     - Replace ``[trio/anyio].sleep(0)`` with the more suggestive ``[trio/anyio].lowlevel.checkpoint()``.
+   * - ASYNC116
+     - long-sleep-not-forever
+     - ``[trio/anyio].sleep()`` with >24 hour interval should usually be ``[trio/anyio].sleep_forever()``.
+   * - ASYNC118
+     - cancelled-class-saved
+     - Don't assign the value of ``anyio.get_cancelled_exc_class()`` to a variable, since that breaks linter checks and multi-backend programs.
+   * - ASYNC119
+     - yield-in-cm-in-async-gen
+     - ``yield`` in context manager in async generator is unsafe, the cleanup may be delayed until ``await`` is no longer allowed.
 
 - **ASYNC100**: A ``with [trio/anyio].fail_after(...):`` or ``with [trio/anyio].move_on_after(...):`` context does not contain any ``await`` statements.  This makes it pointless, as the timeout can only be triggered by a checkpoint. This check also allows ``yield`` statements, since checkpoints can happen in the caller we yield to.
 - **ASYNC101**: ``yield`` inside a trio nursery, anyio/asyncio TaskGroup, or in a timeout/cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling. See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP. This has substantial overlap with :ref:`ASYNC119 <async119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by `PEP 533 <https://peps.python.org/pep-0533/>`_.
