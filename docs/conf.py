@@ -25,8 +25,19 @@ release = version
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions: list[str] = []
+extensions: list[str] = [
+    "sphinx.ext.intersphinx",
+]
 
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "anyio": ("https://anyio.readthedocs.io/en/latest/", None),
+    "trio": ("https://trio.readthedocs.io/en/latest/", None),
+    # httpx? Did not seem to work on first try - I think they might not be using
+    # sphinx at all, so probably can't link through intersphinx?
+    # see https://github.com/encode/httpx/discussions/1220
+    # we only have a few references to httpx though, so can just link manually.
+}
 templates_path = ["_templates"]
 exclude_patterns: list[str] = ["_build", "Thumbs.db", ".DS_Store"]
 

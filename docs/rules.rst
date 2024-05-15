@@ -6,21 +6,21 @@ General rules
 =============
 
 - **ASYNC100**: A ``with [trio/anyio].fail_after(...):`` or ``with [trio/anyio].move_on_after(...):`` context does not contain any ``await`` statements.  This makes it pointless, as the timeout can only be triggered by a checkpoint. This check also allows ``yield`` statements, since checkpoints can happen in the caller we yield to.
-- **ASYNC101**: ``yield`` inside a trio nursery, anyio/asyncio TaskGroup, or in a timeout/cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling. See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP. This has substantial overlap with :ref:`ASYNC119 <async119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by `PEP 533 <https://peps.python.org/pep-0533/>`_.
+- **ASYNC101**: ``yield`` inside a :class:`trio.Nursery`/:class:`anyio.abc.TaskGroup`/:py:class:`asyncio.TaskGroup`, or in a timeout/cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling. See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP. This has substantial overlap with :ref:`ASYNC119 <async119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by `PEP 533 <https://peps.python.org/pep-0533/>`_.
 - **ASYNC102**: It's unsafe to await inside ``finally:`` or ``except BaseException/trio.Cancelled/anyio.get_cancelled_exc_class()/asyncio.exceptions.CancelledError`` unless you use a shielded cancel scope with a timeout. This is currently not able to detect asyncio shields.
-- **ASYNC103**: ``except BaseException/trio.Cancelled/anyio.get_cancelled_exc_class()/asyncio.exceptions.CancelledError``, or a bare ``except:`` with a code path that doesn't re-raise. If you don't want to re-raise ``BaseException``, add a separate handler for ``trio.Cancelled``/``anyio.get_cancelled_exc_class()``/``asyncio.exceptions.CancelledError`` before.
-- **ASYNC104**: ``trio.Cancelled``/``anyio.get_cancelled_exc_class()``/``asyncio.exceptions.CancelledError``/``BaseException`` must be re-raised. The same as ASYNC103, except specifically triggered on ``return`` or a different exception being raised.
+- **ASYNC103**: ``except`` :class:`BaseException`/:class:`trio.Cancelled`/:func:`anyio.get_cancelled_exc_class`/:class:`asyncio.CancelledError`, or a bare ``except:`` with a code path that doesn't re-raise. If you don't want to re-raise :class:`BaseException`, add a separate handler for :class:`trio.Cancelled`/:func:`anyio.get_cancelled_exc_class`/:class:`asyncio.CancelledError` before.
+- **ASYNC104**: :class:`trio.Cancelled`/:func:`anyio.get_cancelled_exc_class`/:class:`asyncio.CancelledError`/:class:`BaseException` must be re-raised. The same as ASYNC103, except specifically triggered on ``return`` or a different exception being raised.
 - **ASYNC105**: Calling a trio async function without immediately ``await``\ ing it. This is only supported with trio functions, but you can get similar functionality with a type-checker.
 - **ASYNC106**: ``trio``/``anyio``/``asyncio`` must be imported with ``import trio``/``import anyio``/``import asyncio`` for the linter to work.
 - **ASYNC109**: Async function definition with a ``timeout`` parameter - use ``[trio/anyio].[fail/move_on]_[after/at]`` instead.
 - **ASYNC110**: ``while <condition>: await [trio/anyio].sleep()`` should be replaced by a ``[trio/anyio].Event``.
 - **ASYNC111**: Variable, from context manager opened inside nursery, passed to ``start[_soon]`` might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
 - **ASYNC112**: Nursery body with only a call to ``nursery.start[_soon]`` and not passing itself as a parameter can be replaced with a regular function call.
-- **ASYNC113**: Using ``nursery.start_soon`` in ``__aenter__`` doesn't wait for the task to begin. Consider replacing with ``nursery.start``.
+- **ASYNC113**: Using :meth:`trio.Nursery.start_soon` in ``__aenter__`` doesn't wait for the task to begin. Consider replacing with ``nursery.start``.
 - **ASYNC114**: Startable function (i.e. has a ``task_status`` keyword parameter) not in ``--startable-in-context-manager`` parameter list, please add it so ASYNC113 can catch errors when using it.
 - **ASYNC115**: Replace ``[trio/anyio].sleep(0)`` with the more suggestive ``[trio/anyio].lowlevel.checkpoint()``.
 - **ASYNC116**: ``[trio/anyio].sleep()`` with >24 hour interval should usually be ``[trio/anyio].sleep_forever()``.
-- **ASYNC118**: Don't assign the value of ``anyio.get_cancelled_exc_class()`` to a variable, since that breaks linter checks and multi-backend programs.
+- **ASYNC118**: Don't assign the value of :func:`anyio.get_cancelled_exc_class` to a variable, since that breaks linter checks and multi-backend programs.
 
   .. _async119:
 
