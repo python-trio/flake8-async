@@ -8,7 +8,7 @@ flake8-async
 ############
 
 
-A highly opinionated flake8 plugin for problems related to `Trio <https://github.com/python-trio/trio>`_, `AnyIO <https://github.com/agronholm/anyio>`_, or `asyncio <https://docs.python.org/3/library/asyncio.html>`_.
+A highly opinionated flake8 plugin for problems related to `Trio <https://github.com/python-trio/trio>`__, `AnyIO <https://github.com/agronholm/anyio>`__, or `asyncio <https://docs.python.org/3/library/asyncio.html>`__.
 
 
 This can include anything from outright bugs, to pointless/dead code,
@@ -20,7 +20,7 @@ The plugin may well be too noisy or pedantic depending on your requirements or o
 Pairs well with flake8-bugbear.
 
 
-Some rules are incorporated into `ruff <https://docs.astral.sh/ruff/rules/#flake8-async-async>`_.
+Some rules are incorporated into `ruff <https://docs.astral.sh/ruff/rules/#flake8-async-async>`__.
 
 
 We previously maintained separate flake8-async and flake8-trio plugins, but merged both into this plugin under the more general "flake8-async" name after flake8-trio grew support for anyio and asyncio and became a superset of the former flake8-async.  All flake8-trio error codes were renamed from TRIOxxx to ASYNCxxx and the flake8-trio package is now deprecated.

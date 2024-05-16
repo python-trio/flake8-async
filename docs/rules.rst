@@ -9,26 +9,71 @@ List of rules
 Glossary
 ========
 
-- timeout context
+.. _timeout_context:
 
-  - https://trio.readthedocs.io/en/stable/reference-core.html#cancellation-and-timeouts
-  - `trio.CancelScope`, `trio.move_on_after`, `trio.move_on_at`, `trio.fail_after`, `trio.fail_at`
-  - https://anyio.readthedocs.io/en/stable/cancellation.html
-  - `anyio.move_on_after`, `anyio.fail_after`, `anyio.CancelScope`
-  - `asyncio.timeout`, `asyncio.timeout_at`
+timeout context
+---------------
+Colloquially referred to as a "Timeout" or "CancelScope". A context manager that enforces a timeout on a block of code. Trio/AnyIO timeout functions are implemented with a ``CancelScope``, but you can also directly use ``CancelScope`` as a context manager.
+
+.. I find this to have excessive spacing before/after sublists. Probably requires CSS to fix?
+
+* Trio
+
+  * `Documentation <https://trio.readthedocs.io/en/stable/reference-core.html#cancellation-and-timeouts>`__
+
+  * :class:`trio.CancelScope`, :func:`trio.move_on_after`, :func:`trio.move_on_at`, :func:`trio.fail_after`, :func:`trio.fail_at`
+
+* AnyIO
+
+  * `Documentation <https://anyio.readthedocs.io/en/stable/cancellation.html>`__
+
+  * :class:`anyio.CancelScope`, :func:`anyio.move_on_after`, :func:`anyio.fail_after``
+
+* asyncio
+
+  * `Documentation <https://docs.python.org/3/library/asyncio-task.html#timeouts>`__
+
+  * :func:`asyncio.timeout`, :func:`asyncio.timeout_at`
+
+.. _taskgroup_nursery:
+
+TaskGroup / Nursery
+-------------------
+
+A collection of child Tasks that can run concurrently.
+
+* Trio
+
+  * `Documentation <https://trio.readthedocs.io/en/stable/reference-core.html#tasks-let-you-do-multiple-things-at-once>`__
+  * :class:`trio.Nursery`, created with :func:`trio.open_nursery`
+* AnyIO
+
+  * `Documentation <https://anyio.readthedocs.io/en/stable/tasks.html>`__
+  * :class:`anyio.abc.TaskGroup`, created with :func:`anyio.create_task_group`.
+* asyncio
+
+  * `Documentation <https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup>`__
+  * :class:`asyncio.TaskGroup` (since python 3.11)
+
+
+.. _cancelled:
+
+Cancelled / CancelledError
+--------------------------
+
+  Handling cancellation is very sensitive, and you generally never want to catch a cancellation exception without letting it propagate to the library.
+
+  * Trio: :class:`trio.Cancelled`. `Documentation <https://trio.readthedocs.io/en/stable/reference-core.html#cancellation-and-timeouts>`__
+  * AnyIO: :func:`anyio.get_cancelled_exc_class`. `Documentation <https://anyio.readthedocs.io/en/stable/cancellation.html>`__
+  * asyncio: :class:`asyncio.CancelledError`. `Documentation <https://docs.python.org/3/library/asyncio-task.html#task-cancellation>`__
+
 
 General rules
 =============
 
 
 
-.. term wishlist:
-   nursery-or-cancelscope-or-timeout
-   sensitive-exception / cancelled
-
-.. TODO:
-   async100 does not list cancelscope or asyncio
-   reeeeally need intersphinx now
+.. For some reason using :ref:`timeout_context` fails to find the reference, but :ref:`timeout_context <timeout_context>` works. I have no clue why
 
 .. list-table::
    :widths: 1 18 40
@@ -39,19 +84,19 @@ General rules
      - Message
    * - ASYNC100
      - scope-no-checkpoint
-     - A ``with [trio/anyio].fail_after(...):`` or ``with [trio/anyio].move_on_after(...):`` context does not contain any ``await`` statements.  This makes it pointless, as the timeout can only be triggered by a checkpoint. This check also allows ``yield`` statements, since checkpoints can happen in the caller we yield to.
+     - A :ref:`timeout_context <timeout_context>` does not contain any ``await`` statements.  This makes it pointless, as the timeout can only be triggered by a checkpoint. This check also allows ``yield`` statements, since checkpoints can happen in the caller we yield to.
    * - ASYNC101
-     - yield-in-nursery-or-scope
-     - ``yield`` inside a trio nursery, anyio/asyncio TaskGroup, or in a timeout/cancel scope is only safe when implementing a context manager - otherwise, it breaks exception handling.
+     - yield-in-taskgroup-or-scope
+     - ``yield`` inside a :ref:`TaskGroup/Nursery <taskgroup_nursery>` or :ref:`timeout_context <timeout_context>` is only safe when implementing a context manager - otherwise, it breaks exception handling.
    * - ASYNC102
      - await-in-finally-or-cancelled
-     - ``await`` inside ``finally``/``except cancelled`` must have shielded cancelscope with timeout.
+     - ``await`` inside ``finally`` or :ref:`cancelled-catching <cancelled>` ``except:`` must have shielded cancelscope with timeout.
    * - ASYNC103
      - no-reraise-cancelled
-     - cancelled-catching exception that does not reraise the exception.
+     - :ref:`cancelled <cancelled>`-catching exception that does not reraise the exception.
    * - ASYNC104
      - cancelled-not-raised
-     - cancelled-catching exception does not raise cancelled
+     - :ref:`cancelled <cancelled>`-catching exception does not raise the exception. Triggered on ``return`` or raising a different exception.
    * - ASYNC105
      - missing-await
      - async trio function called without using ``await``
@@ -60,10 +105,10 @@ General rules
      - trio/anyio/asyncio must be imported with ``import xxx`` for the linter to work.
    * - ASYNC109
      - async-function-with-timeout
-     - Async function definition with a ``timeout`` parameter. In structured concurrency the caller should instead use timeout context managers.
+     - Async function definition with a ``timeout`` parameter. In structured concurrency the caller should instead use :ref:`timeout context managers <timeout_context>`.
    * - ASYNC110
      - busy-wait
-     - ``while <condition>: await [trio/anyio].sleep()`` should be replaced by a ``[trio/anyio].Event``.
+     - ``while ...: await [trio/anyio].sleep()`` should be replaced by a :class:`trio.Event`/:class:`anyio.Event`.
    * - ASYNC111
      - variable-from-cm-in-start-soon
      - Variable, from context manager opened inside nursery, passed to ``start[_soon]`` might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
