@@ -33,6 +33,7 @@ Contents:
 
    usage
    rules
+   glossary
    changelog
    contributing
 
@@ -46,5 +47,6 @@ Indices and tables
 * :ref:`search`
 * :doc:`usage`
 * :doc:`rules`
+* :doc:`glossary`
 * :doc:`changelog`
 * :doc:`contributing`
