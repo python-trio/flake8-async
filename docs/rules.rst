@@ -9,11 +9,24 @@ List of rules
 Glossary
 ========
 
+.. _cancel_scope:
+
+cancel scope
+------------
+A cancel scope is a context manager which can request the library cancels
+whatever task is executing in the body of the ``with`` (or ``async with``)
+block.  A cancel scope is the key component of a timeout context, and used in
+TaskGroups / Nurseries to cancel any remaining child tasks if one raises an
+exception.  Trio and AnyIO have an explicit ``CancelScope`` type; in asyncio
+they are implicit.
+
 .. _timeout_context:
 
 timeout context
 ---------------
-Colloquially referred to as a "Timeout" or "CancelScope". A context manager that enforces a timeout on a block of code. Trio/AnyIO timeout functions are implemented with a ``CancelScope``, but you can also directly use ``CancelScope`` as a context manager.
+A context manager that enforces a timeout on a block of code, by cancelling it
+after a specified duration or at a preset time.  The timeout can also be
+rescheduled after creation.
 
 .. I find this to have excessive spacing before/after sublists. Probably requires CSS to fix?
 
