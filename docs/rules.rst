@@ -100,7 +100,7 @@ Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
      - blocking-http-call-pool
      - Likely sync HTTP call in async function, use ``httpx.AsyncClient``. Looks for ``urllib3`` method calls on pool objects, but only matching on the method signature and not the object.
    * - ASYNC212
-     - blocking-sync-http-call-httpx
+     - blocking-http-call-httpx
      - Blocking sync HTTP call on httpx object, use httpx.AsyncClient.
    * - ASYNC220
      - blocking-process-call-1
