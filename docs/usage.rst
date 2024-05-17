@@ -97,6 +97,8 @@ Note that when running ``flake8-async`` as a standalone it's not currently possi
 Selecting rules
 ===============
 
+.. _valueerror_ignore:
+
 ``ValueError`` when trying to ``ignore`` error codes in config file
 -------------------------------------------------------------------
 
@@ -106,8 +108,8 @@ configuration with a regex. We have decided not to conform to this, as it
 would be a breaking change for end-users requiring them to update ``noqa``\ s
 and configurations, we think the ``ASYNC`` code is much more readable than
 e.g. ``ASYxxx``, and ruff does not enforce such a limit. The easiest option
-for users hitting this error is to instead use the ``--disable`` option as
-documented `below <#--disable>`__. See further discussion and other
+for users hitting this error is to instead use our :ref:`--disable` option.
+See further discussion and other
 workarounds in https://github.com/python-trio/flake8-async/issues/230.
 
 
@@ -121,7 +123,7 @@ Comma-separated list of error codes to enable, similar to flake8 --select but is
 ``--disable``
 -------------
 
-Comma-separated list of error codes to disable, similar to flake8 ``--ignore`` but is additionally more performant as it will disable non-enabled visitors from running instead of just silencing their errors. It will also bypass errors introduced in flake8>=6, see above.
+Comma-separated list of error codes to disable, similar to flake8 ``--ignore`` but is additionally more performant as it will disable non-enabled visitors from running instead of just silencing their errors. :ref:`It will also bypass errors introduced in flake8>=6 <valueerror_ignore>`.
 
 ``--autofix``
 -------------
@@ -156,7 +158,8 @@ Comma-separated list of decorators to disable checkpointing checks for, turning 
 
 Decorators-to-match must be identifiers or dotted names only (not PEP-614 expressions), and will match against the name only - e.g. ``foo.bar`` matches ``foo.bar``, ``foo.bar()``, and ``foo.bar(args, here)``, etc.
 
-For example:
+Example
+^^^^^^^
 
 ::
 
@@ -166,12 +169,16 @@ For example:
      ign*,
      *.ignore,
 
+.. _--startable-in-context-manager:
+
 ``startable-in-context-manager``
 --------------------------------
 
-Comma-separated list of methods which should be used with ``.start()`` when opening a context manager,
-in addition to the default ``trio.run_process``, ``trio.serve_tcp``, ``trio.serve_ssl_over_tcp``, and
-``trio.serve_listeners``.  Names must be valid identifiers as per ``str.isidentifier()``. For example:
+Comma-separated list of methods which should be used with :meth:`trio.Nursery.start`/:meth:`anyio.abc.TaskGroup.start` when opening a context manager,
+in addition to the default :func:`trio.run_process`, :func:`trio.serve_tcp`, :func:`trio.serve_ssl_over_tcp`, and :func:`trio.serve_listeners`.  Names must be valid identifiers as per :meth:`str.isidentifier`.
+
+Example
+^^^^^^^
 
 ::
 
@@ -188,9 +195,10 @@ Comma-separated list of pairs of values separated by ``->`` (optional whitespace
 
 The format of the error message is ``User-configured blocking sync call {0} in async function, consider replacing with {1}.``, where ``{0}`` is the pattern the call matches and ``{1}`` is the suggested replacement.
 
-Example:
+Examples
+^^^^^^^^
 
-::
+.. code-block:: none
 
    async200-blocking-calls =
      my_blocking_call -> async.alternative,
