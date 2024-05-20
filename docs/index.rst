@@ -17,7 +17,7 @@ a misunderstanding.
 
 
 The plugin may well be too noisy or pedantic depending on your requirements or opinions, in which case you should consider :ref:`--disable` for those rules.
-Pairs well with flake8-bugbear.
+Pairs well with `flake8-bugbear <https://github.com/PyCQA/flake8-bugbear>`__.
 
 
 Some rules are incorporated into `ruff <https://docs.astral.sh/ruff/rules/#flake8-async-async>`__.
