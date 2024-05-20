@@ -1,6 +1,6 @@
-****************
-List of rules
-****************
+*****
+Rules
+*****
 
 
 General rules
@@ -40,7 +40,7 @@ ASYNC109 : async-function-with-timeout
     Async function definition with a ``timeout`` parameter.
     In structured concurrency the caller should instead use :ref:`timeout context managers <timeout_context>`.
 
-ASYNC110 : busy-wait
+ASYNC110 : async-busy-wait
     ``while ...: await [trio/anyio].sleep()`` should be replaced by a :class:`trio.Event`/:class:`anyio.Event`.
 
 ASYNC111 : variable-from-cm-in-start-soon
@@ -57,7 +57,7 @@ ASYNC113 : start-soon-in-aenter
 ASYNC114 : startable-not-in-config
     Startable function (i.e. has a ``task_status`` keyword parameter) not in :ref:`--startable-in-context-manager <--startable-in-context-manager>` parameter list, please add it so ASYNC113 can catch errors when using it.
 
-ASYNC115 : sleep-zero
+ASYNC115 : async-zero-sleep
     Replace :func:`trio.sleep(0) <trio.sleep>`/:func:`anyio.sleep(0) <anyio.sleep>` with the more suggestive :func:`trio.lowlevel.checkpoint`/:func:`anyio.lowlevel.checkpoint`.
 
 ASYNC116 : long-sleep-not-forever
@@ -78,8 +78,8 @@ Blocking sync calls in async functions
 .. _httpx.Client: https://www.python-httpx.org/api/#client
 .. _httpx.AsyncClient: https://www.python-httpx.org/api/#asyncclient
 .. _urllib3: https://github.com/urllib3/urllib3
-
-Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
+.. _aiofiles: https://pypi.org/project/aiofiles/
+.. _anyio: https://github.com/agronholm/anyio
 
 ASYNC200 : blocking-configured-call
     User-configured error for blocking sync calls in async functions.
@@ -87,9 +87,9 @@ ASYNC200 : blocking-configured-call
 
 ASYNC210 : blocking-http-call
     Sync HTTP call in async function, use `httpx.AsyncClient`_.
-    This and the other ASYNC21x checks look for usage of `urllib3`_ and `httpx.Client`_, and recommend using `httpx.AsyncClient`_ as that's the largest http client supporting anyio/trio.
+    This and the other :ref:`ASYNC21x <ASYNC211>` checks look for usage of `urllib3`_ and `httpx.Client`_, and recommend using `httpx.AsyncClient`_ as that's the largest http client supporting anyio/trio.
 
-ASYNC211 : blocking-http-call-pool
+_`ASYNC211` : blocking-http-call-pool
     Likely sync HTTP call in async function, use `httpx.AsyncClient`_.
     Looks for `urllib3`_ method calls on pool objects, but only matching on the method signature and not the object.
 
@@ -97,25 +97,25 @@ ASYNC212 : blocking-http-call-httpx
     Blocking sync HTTP call on httpx object, use `httpx.AsyncClient`_.
 
 ASYNC220 : blocking-create-subprocess
-    Sync call to :class:`subprocess.Popen` (or equivalent) in async function, use :func:`trio.run_process`/:func:`anyio.run_process` in a :ref:`taskgroup_nursery`. ``asyncio`` users can use `asyncio.create_subprocess_[exec/shell] <https://docs.python.org/3/library/asyncio-subprocess.html>`_.
+    Sync call to :class:`subprocess.Popen` (or equivalent) in async function, use :func:`trio.run_process`/:func:`anyio.run_process`/:ref:`asyncio.create_subprocess_[exec/shell] <asyncio-subprocess>` in a :ref:`taskgroup_nursery`.
 
 ASYNC221 : blocking-run-process
-    Sync call to :func:`subprocess.run` (or equivalent) in async function, use :func:`trio.run_process`/:func:`anyio.run_process`. ``asyncio`` users can use `asyncio.create_subprocess_[exec/shell] <https://docs.python.org/3/library/asyncio-subprocess.html>`_.
+    Sync call to :func:`subprocess.run` (or equivalent) in async function, use :func:`trio.run_process`/:func:`anyio.run_process`/:ref:`asyncio.create_subprocess_[exec/shell] <asyncio-subprocess>`.
 
 ASYNC222 : blocking-process-wait
-    Sync call to :func:`os.wait` (or equivalent) in async function, wrap in :func:`trio.to_thread.run_sync`/:func:`anyio.to_thread.run_sync`. ``asyncio`` users can use `asyncio.loop.run_in_executor <https://docs.python.org/3/library/asyncio-subprocess.html>`_.
+    Sync call to :func:`os.wait` (or equivalent) in async function, wrap in :func:`trio.to_thread.run_sync`/:func:`anyio.to_thread.run_sync`/:meth:`asyncio.loop.run_in_executor`.
 
 ASYNC230 : blocking-open-call
-    Sync call to :func:`open` in async function, use :func:`trio.open_file`/:func:`anyio.open_file`. ``asyncio`` users need to use a library such as `aiofiles <https://pypi.org/project/aiofiles/>`_, or switch to `anyio <https://github.com/agronholm/anyio>`_.
+    Sync call to :func:`open` in async function, use :func:`trio.open_file`/:func:`anyio.open_file`. ``asyncio`` users need to use a library such as `aiofiles`_, or switch to `anyio`_.
 
 ASYNC231 : blocking-fdopen-call
-    Sync call to :func:`os.fdopen` in async function, use :func:`trio.wrap_file`/:func:`anyio.wrap_file`. ``asyncio`` users need to use a library such as `aiofiles <https://pypi.org/project/aiofiles/>`_, or switch to `anyio <https://github.com/agronholm/anyio>`_.
+    Sync call to :func:`os.fdopen` in async function, use :func:`trio.wrap_file`/:func:`anyio.wrap_file`. ``asyncio`` users need to use a library such as `aiofiles`_, or switch to `anyio`_.
 
 ASYNC232 : blocking-file-call
     Blocking sync call on file object, wrap the file object in :func:`trio.wrap_file`/:func:`anyio.wrap_file` to get an async file object.
 
 ASYNC240 : blocking-path-usage
-    Avoid using :mod:`os.path` in async functions, prefer using :class:`trio.Path`/:class:`anyio.Path` objects. ``asyncio`` users should consider `aiopath <https://pypi.org/project/aiopath>`__ or `anyio <https://github.com/agronholm/anyio>`__.
+    Avoid using :mod:`os.path` in async functions, prefer using :class:`trio.Path`/:class:`anyio.Path` objects. ``asyncio`` users should consider `aiopath <https://pypi.org/project/aiopath>`__ or `anyio`_.
 
 ASYNC250 : blocking-input
     Builtin :func:`input` should not be called from async function.

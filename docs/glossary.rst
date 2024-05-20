@@ -74,6 +74,7 @@ A collection of child Tasks that can run concurrently. Internally contains a :re
   * :class:`asyncio.TaskGroup` (since python 3.11)
 
 
+.. _cancellation:
 .. _cancelled:
 
 Cancelled / CancelledError
@@ -81,20 +82,43 @@ Cancelled / CancelledError
 
 Handling cancellation is very sensitive, and you generally never want to catch a cancellation exception without letting it propagate to the library.
 
-  * Trio: :class:`trio.Cancelled`. `Documentation <https://trio.readthedocs.io/en/stable/reference-core.html#cancellation-and-timeouts>`__
-  * AnyIO: :func:`anyio.get_cancelled_exc_class`. `Documentation <https://anyio.readthedocs.io/en/stable/cancellation.html>`__
-  * asyncio: :class:`asyncio.CancelledError`. `Documentation <https://docs.python.org/3/library/asyncio-task.html#task-cancellation>`__
+General documentation on cancellation in the different async libraries:
+
+* `Trio <https://trio.readthedocs.io/en/stable/reference-core.html#cancellation-and-timeouts>`__
+* `AnyIO <https://anyio.readthedocs.io/en/stable/cancellation.html>`__
+* `asyncio <https://docs.python.org/3/library/asyncio-task.html#task-cancellation>`__
+
+Exception classes:
+
+* :class:`trio.Cancelled`
+* :func:`anyio.get_cancelled_exc_class`
+* :class:`asyncio.CancelledError`
 
 .. _checkpoint:
 
 Checkpoint
 ----------
-Checkpoints are ``await``, ``async for``, and ``async with`` (on at least one of enter/exit). TODO write more and link stuff
+Checkpoints are points where the async backend checks for cancellation and invokes scheduling checks. Possible checkpoints are ``await``, ``async for`` (before each iteration, and when exhausting the iterator), and ``async with`` (on at least one of enter/exit).
+
+Trio has extensive and detailed documentation on the concept of :external+trio:ref:`checkpoints <checkpoints>`, and guarantees that all trio async functions will checkpoint (unless they raised an exception).
+
+anyio does not currently have any documentation on checkpoints.
+
+asyncio will checkpoint... ???
+
+To make it easier to reason about checkpoints the :ref:`ASYNC91x <ASYNC910>` rules enforces the same rules as trio for your own project - i.e. all async functions must guarantee a checkpoint (or exception). To make it possible to reason the rules will also assume that all other async functions also adhere to those rules. This means you must be careful if you're using 3rd-party async libraries.
+
 
 .. _channel_stream_queue:
 
 Channel / Stream / Queue
 ------------------------
-* Trio: `channel <https://trio.readthedocs.io/en/stable/reference-core.html#channels>`__
-* AnyIO: `stream <https://anyio.readthedocs.io/en/stable/streams.html#streams>`__
-* asyncio: `queue <https://docs.python.org/3/library/asyncio-queue.html>`__
+Interfaces used for communicating between tasks, processes, the network, etc.
+
+.. anyio streams is a :doc: and not a :label:, so we can't link with intersphinx :(
+
+.. _anyio_streams: https://anyio.readthedocs.io/en/stable/streams.html#streams
+
+* Trio has :ref:`channels <channels>` for python objects and :ref:`streams <abstract-stream-api>` for bytes.
+* AnyIO has ``byte`` and ``object`` `streams <anyio_streams>`_
+* asyncio has :ref:`queues <asyncio-queues>` for python objects and :ref:`streams <asyncio-streams>` for bytes.
