@@ -89,7 +89,7 @@ Handling cancellation is very sensitive, and you generally never want to catch a
 
 Checkpoint
 ----------
-Checkpoints are ``await``, ``async for``, and ``async with`` (on one of enter/exit). TODO write more and link stuff
+Checkpoints are ``await``, ``async for``, and ``async with`` (on at least one of enter/exit). TODO write more and link stuff
 
 .. _channel_stream_queue:
 
