@@ -10,7 +10,7 @@ _`ASYNC100` : cancel-scope-no-checkpoint
     A :ref:`timeout_context` does not contain any :ref:`checkpoints <checkpoint>`.
     This makes it pointless, as the timeout can only be triggered by a checkpoint.
     This check also treats ``yield`` as a checkpoint, since checkpoints can happen in the caller we yield to.
-    See :ref:`ASYNC912` which will in addition guarantee checkpoints on every code path.
+    See :ref:`ASYNC912 <async912>` which will in addition guarantee checkpoints on every code path.
 
 ASYNC101 : yield-in-cancel-scope
     ``yield`` inside a :ref:`taskgroup_nursery` or :ref:`timeout_context` is only safe when implementing a context manager - otherwise, it breaks exception handling.
@@ -141,7 +141,7 @@ _`ASYNC910` : async-function-no-checkpoint
 _`ASYNC911` : async-generator-no-checkpoint
     Exit, ``yield`` or ``return`` from async iterable with no guaranteed :ref:`checkpoint` since possible function entry (``yield`` or function definition).
 
-ASYNC912 : cancel-scope-no-guaranteed-checkpoint
+_`ASYNC912` : cancel-scope-no-guaranteed-checkpoint
     A timeout/cancelscope has :ref:`checkpoints <checkpoint>`, but they're not guaranteed to run.
     Similar to `ASYNC100`_, but it does not warn on trivial cases where there is no checkpoint at all.
     It instead shares logic with `ASYNC910`_ and `ASYNC911`_ for parsing conditionals and branches.
@@ -151,9 +151,9 @@ ASYNC912 : cancel-scope-no-guaranteed-checkpoint
 Autofix support
 ===============
 The following rules support :ref:`autofixing <autofix>`.
-- :ref:`ASYNC100`
-- :ref:`ASYNC910`
-- :ref:`ASYNC911`
+- :ref:`ASYNC100 <ASYNC100>`
+- :ref:`ASYNC910 <ASYNC910>`
+- :ref:`ASYNC911 <ASYNC911>`
 
 Removed rules
 ================
