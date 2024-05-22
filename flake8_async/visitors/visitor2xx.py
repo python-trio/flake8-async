@@ -49,7 +49,7 @@ class Visitor200(Flake8AsyncVisitor):
             self.visit_blocking_call(node)
 
     def visit_blocking_call(self, node: ast.Call):
-        blocking_calls = self.options.trio200_blocking_calls
+        blocking_calls = self.options.async200_blocking_calls
         if key := fnmatch_qualified_name([node.func], *blocking_calls):
             self.error(node, key, blocking_calls[key])
 

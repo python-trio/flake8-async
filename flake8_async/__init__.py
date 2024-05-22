@@ -18,6 +18,7 @@ import os
 import subprocess
 import sys
 import tokenize
+import warnings
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from typing import TYPE_CHECKING
 
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
 
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "24.5.2"
+__version__ = "24.5.3"
 
 
 # taken from https://github.com/Zac-HD/shed
@@ -262,7 +263,7 @@ class Plugin:
         )
         add_argument(
             "--startable-in-context-manager",
-            type=parse_trio114_identifiers,
+            type=parse_async114_identifiers,
             default="",
             required=False,
             help=(
@@ -276,7 +277,18 @@ class Plugin:
         )
         add_argument(
             "--trio200-blocking-calls",
-            type=parse_trio200_dict,
+            type=parse_async200_dict,
+            default={},
+            required=False,
+            help=(
+                "Comma-separated list of key->value pairs, where key is a [dotted] "
+                "function that if found inside an async function will raise ASYNC200, "
+                "suggesting it be replaced with {value}"
+            ),
+        )
+        add_argument(
+            "--async200-blocking-calls",
+            type=parse_async200_dict,
             default={},
             required=False,
             help=(
@@ -348,13 +360,27 @@ class Plugin:
                 code for code in options.enable if not error_has_subidentifier(code)
             )
 
+        # we do not use DeprecationWarning, since that is silenced when run as standalone
+        # or should maybe just print on stderr
+        if options.trio200_blocking_calls:
+            warnings.warn(
+                "trio200-blocking-calls has been deprecated in favor "
+                "of async200-blocking-calls",
+                stacklevel=1,
+            )
+            assert not options.async200_blocking_calls, (
+                "You cannot specify both trio200-blocking-calls and "
+                "async200-blocking-calls. You should only use the latter."
+            )
+            options.async200_blocking_calls = options.trio200_blocking_calls
+
         Plugin._options = Options(
             enabled_codes=enabled_codes,
             autofix_codes=autofix_codes,
             error_on_autofix=options.error_on_autofix,
             no_checkpoint_warning_decorators=options.no_checkpoint_warning_decorators,
             startable_in_context_manager=options.startable_in_context_manager,
-            trio200_blocking_calls=options.trio200_blocking_calls,
+            async200_blocking_calls=options.async200_blocking_calls,
             anyio=options.anyio,
             asyncio=options.asyncio,
             disable_noqa=options.disable_noqa,
@@ -365,7 +391,7 @@ def comma_separated_list(raw_value: str) -> list[str]:
     return [s.strip() for s in raw_value.split(",") if s.strip()]
 
 
-def parse_trio114_identifiers(raw_value: str) -> list[str]:
+def parse_async114_identifiers(raw_value: str) -> list[str]:
     values = comma_separated_list(raw_value)
     for value in values:
         if keyword.iskeyword(value) or not value.isidentifier():
@@ -373,7 +399,7 @@ def parse_trio114_identifiers(raw_value: str) -> list[str]:
     return values
 
 
-def parse_trio200_dict(raw_value: str) -> dict[str, str]:
+def parse_async200_dict(raw_value: str) -> dict[str, str]:
     res: dict[str, str] = {}
     splitter = "->"  # avoid ":" because it's part of .ini file syntax
     values = [s.strip() for s in raw_value.split(",") if s.strip()]

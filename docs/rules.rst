@@ -16,7 +16,13 @@ General rules
 - **ASYNC110**: ``while <condition>: await [trio/anyio].sleep()`` should be replaced by a ``[trio/anyio].Event``.
 - **ASYNC111**: Variable, from context manager opened inside nursery, passed to ``start[_soon]`` might be invalidly accessed while in use, due to context manager closing before the nursery. This is usually a bug, and nurseries should generally be the inner-most context manager.
 - **ASYNC112**: Nursery body with only a call to ``nursery.start[_soon]`` and not passing itself as a parameter can be replaced with a regular function call.
+
+  .. _async113:
+
 - **ASYNC113**: Using :meth:`trio.Nursery.start_soon` in ``__aenter__`` doesn't wait for the task to begin. Consider replacing with ``nursery.start``.
+
+  .. _async114:
+
 - **ASYNC114**: Startable function (i.e. has a ``task_status`` keyword parameter) not in ``--startable-in-context-manager`` parameter list, please add it so ASYNC113 can catch errors when using it.
 - **ASYNC115**: Replace ``[trio/anyio].sleep(0)`` with the more suggestive ``[trio/anyio].lowlevel.checkpoint()``.
 - **ASYNC116**: ``[trio/anyio].sleep()`` with >24 hour interval should usually be ``[trio/anyio].sleep_forever()``.
@@ -33,6 +39,7 @@ Blocking sync calls in async functions
 
 Note: 22X, 23X and 24X has not had asyncio-specific suggestions written.
 
+.. _async200:
 
 - **ASYNC200**: User-configured error for blocking sync calls in async functions. Does nothing by default, see :ref:`async200-blocking-calls` for how to configure it.
 - **ASYNC210**: Sync HTTP call in async function, use ``httpx.AsyncClient``. This and the other ASYNC21x checks look for usage of ``urllib3`` and ``httpx.Client``, and recommend using ``httpx.AsyncClient`` as that's the largest http client supporting anyio/trio.
@@ -55,10 +62,25 @@ Optional rules disabled by default
 .. _async900:
 
 - **ASYNC900**: Async generator without ``@asynccontextmanager`` not allowed. You might want to enable this on a codebase since async generators are inherently unsafe and cleanup logic might not be performed. See https://github.com/python-trio/flake8-async/issues/211 and https://discuss.python.org/t/using-exceptiongroup-at-anthropic-experience-report/20888/6 for discussion.
+
+  .. _async910:
+
 - **ASYNC910**: Exit or ``return`` from async function with no guaranteed checkpoint or exception since function definition. You might want to enable this on a codebase to make it easier to reason about checkpoints, and make the logic of ASYNC911 correct.
+
+  .. _async911:
+
 - **ASYNC911**: Exit, ``yield`` or ``return`` from async iterable with no guaranteed checkpoint since possible function entry (yield or function definition)
   Checkpoints are ``await``, ``async for``, and ``async with`` (on one of enter/exit).
 - **ASYNC912**: A timeout/cancelscope has checkpoints, but they're not guaranteed to run. Similar to ASYNC100, but it does not warn on trivial cases where there is no checkpoint at all. It instead shares logic with ASYNC910 and ASYNC911 for parsing conditionals and branches.
+
+.. _autofix-support:
+
+Autofix support
+===============
+The following rules support :ref:`autofixing <autofix>`.
+- ASYNC100
+- ASYNC910
+- ASYNC911
 
 Removed rules
 ================
