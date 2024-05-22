@@ -30,7 +30,7 @@ class Options:
     error_on_autofix: bool
     no_checkpoint_warning_decorators: Collection[str]
     startable_in_context_manager: Collection[str]
-    trio200_blocking_calls: dict[str, str]
+    async200_blocking_calls: dict[str, str]
     anyio: bool
     asyncio: bool
     disable_noqa: bool

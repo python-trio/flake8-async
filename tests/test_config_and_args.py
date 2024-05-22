@@ -153,7 +153,7 @@ def test_200_options(capsys: pytest.CaptureFixture[str]):
     plugin = Plugin(ast.AST(), [])
     for i, arg in (0, "foo"), (2, "foo->->bar"), (2, "foo->bar->fee"):
         with pytest.raises(SystemExit):
-            initialize_options(plugin, args=[f"--trio200-blocking-calls={arg}"])
+            initialize_options(plugin, args=[f"--async200-blocking-calls={arg}"])
         out, err = capsys.readouterr()
         assert not out, out
         assert all(word in err for word in (str(i), arg, "->"))
@@ -202,11 +202,12 @@ select = ASYNC220
     assert returnvalue == 1
 
 
-def _test_trio200_from_config_common(tmp_path: Path) -> str:
+# `code` parameter temporarily introduced to test deprecation of trio200-blocking-calls
+def _test_async200_from_config_common(tmp_path: Path, code: str = "async200") -> str:
     assert tmp_path.joinpath(".flake8").write_text(
-        """
+        f"""
 [flake8]
-trio200-blocking-calls =
+{code}-blocking-calls =
   other -> async,
   sync_fns.* -> the_async_equivalent,
 select = ASYNC200
@@ -234,7 +235,7 @@ def test_200_from_config_flake8_internals(
     # which breaks breakpoints and hinders debugging
     # TODO: fixture (?) to change working directory
 
-    EXAMPLE_PY_TEXT = _test_trio200_from_config_common(tmp_path)
+    EXAMPLE_PY_TEXT = _test_async200_from_config_common(tmp_path)
     # replace ./ with tmp_path/
     err_msg = str(tmp_path) + EXAMPLE_PY_TEXT[1:]
 
@@ -254,10 +255,21 @@ def test_200_from_config_flake8_internals(
 
 
 def test_200_from_config_subprocess(tmp_path: Path):
-    err_msg = _test_trio200_from_config_common(tmp_path)
+    err_msg = _test_async200_from_config_common(tmp_path)
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True, check=False)
     assert res.returncode == 1
     assert not res.stderr
+    assert res.stdout == err_msg.encode("ascii")
+
+
+def test_trio200_from_config_subprocess(tmp_path: Path):
+    err_msg = _test_async200_from_config_common(tmp_path, code="trio200")
+    res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True, check=False)
+    assert res.returncode == 1
+    assert res.stderr.endswith(
+        b"UserWarning: trio200-blocking-calls has been deprecated in favor of "
+        b"async200-blocking-calls\n  warnings.warn(\n"
+    )
     assert res.stdout == err_msg.encode("ascii")
 
 
@@ -424,7 +436,7 @@ ignore = ASYNC100
 # but make sure we can disable selected codes
 def test_config_disable_error_code(tmp_path: Path) -> None:
     # select ASYNC200 and create file that induces ASYNC200
-    _test_trio200_from_config_common(tmp_path)
+    _test_async200_from_config_common(tmp_path)
     # disable ASYNC200
     with open(tmp_path.joinpath(".flake8"), "a", encoding="utf-8") as file:
         file.write("disable = ASYNC200")

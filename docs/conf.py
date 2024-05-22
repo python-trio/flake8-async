@@ -27,6 +27,7 @@ release = version
 
 extensions: list[str] = [
     "sphinx.ext.intersphinx",
+    "sphinx_codeautolink",
 ]
 
 intersphinx_mapping = {
@@ -38,6 +39,11 @@ intersphinx_mapping = {
     # see https://github.com/encode/httpx/discussions/1220
     # we only have a few references to httpx though, so can just link manually.
 }
+
+# these are disabled by default, might re-disable them if they turn out to be noisy
+codeautolink_warn_on_missing_inventory = True
+codeautolink_warn_on_failed_resolve = True
+
 templates_path = ["_templates"]
 exclude_patterns: list[str] = ["_build", "Thumbs.db", ".DS_Store"]
 

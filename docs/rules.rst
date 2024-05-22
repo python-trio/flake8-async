@@ -6,11 +6,11 @@ Rules
 General rules
 =============
 
-
 _`ASYNC100` : cancel-scope-no-checkpoint
     A :ref:`timeout_context` does not contain any :ref:`checkpoints <checkpoint>`.
     This makes it pointless, as the timeout can only be triggered by a checkpoint.
     This check also treats ``yield`` as a checkpoint, since checkpoints can happen in the caller we yield to.
+    See :ref:`ASYNC912` which will in addition guarantee checkpoints on every code path.
 
 ASYNC101 : yield-in-cancel-scope
     ``yield`` inside a :ref:`taskgroup_nursery` or :ref:`timeout_context` is only safe when implementing a context manager - otherwise, it breaks exception handling.
@@ -50,11 +50,11 @@ ASYNC111 : variable-from-cm-in-start-soon
 ASYNC112 : useless-nursery
     :ref:`taskgroup_nursery` body with only a call to ``.start[_soon]`` and not passing itself as a parameter can be replaced with a regular function call.
 
-ASYNC113 : start-soon-in-aenter
+_`ASYNC113` : start-soon-in-aenter
     Using :meth:`~trio.Nursery.start_soon`/:meth:`~anyio.abc.TaskGroup.start_soon` in ``__aenter__`` doesn't wait for the task to begin.
     Consider replacing with :meth:`~trio.Nursery.start`/:meth:`~anyio.abc.TaskGroup.start`.
 
-ASYNC114 : startable-not-in-config
+_`ASYNC114` : startable-not-in-config
     Startable function (i.e. has a ``task_status`` keyword parameter) not in :ref:`--startable-in-context-manager <--startable-in-context-manager>` parameter list, please add it so ASYNC113 can catch errors when using it.
 
 ASYNC115 : async-zero-sleep
@@ -81,7 +81,7 @@ Blocking sync calls in async functions
 .. _aiofiles: https://pypi.org/project/aiofiles/
 .. _anyio: https://github.com/agronholm/anyio
 
-ASYNC200 : blocking-configured-call
+_`ASYNC200` : blocking-configured-call
     User-configured error for blocking sync calls in async functions.
     Does nothing by default, see :ref:`async200-blocking-calls` for how to configure it.
 
@@ -134,10 +134,9 @@ _`ASYNC900` : unsafe-async-generator
        You might want to enable this on a codebase since async generators are inherently unsafe and cleanup logic might not be performed.
        See `#211 <https://github.com/python-trio/flake8-async/issues/211>`__ and https://discuss.python.org/t/using-exceptiongroup-at-anthropic-experience-report/20888/6 for discussion.
 
-
 _`ASYNC910` : async-function-no-checkpoint
     Exit or ``return`` from async function with no guaranteed :ref:`checkpoint` or exception since function definition.
-    You might want to enable this on a codebase to make it easier to reason about checkpoints, and make the logic of ASYNC911 correct.
+    You might want to enable this on a trio/anyio codebase to make it easier to reason about checkpoints, and make the logic of ASYNC911 correct.
 
 _`ASYNC911` : async-generator-no-checkpoint
     Exit, ``yield`` or ``return`` from async iterable with no guaranteed :ref:`checkpoint` since possible function entry (``yield`` or function definition).
@@ -146,6 +145,15 @@ ASYNC912 : cancel-scope-no-guaranteed-checkpoint
     A timeout/cancelscope has :ref:`checkpoints <checkpoint>`, but they're not guaranteed to run.
     Similar to `ASYNC100`_, but it does not warn on trivial cases where there is no checkpoint at all.
     It instead shares logic with `ASYNC910`_ and `ASYNC911`_ for parsing conditionals and branches.
+
+.. _autofix-support:
+
+Autofix support
+===============
+The following rules support :ref:`autofixing <autofix>`.
+- :ref:`ASYNC100`
+- :ref:`ASYNC910`
+- :ref:`ASYNC911`
 
 Removed rules
 ================
