@@ -16,7 +16,7 @@ to likely performance issues, to minor points of idiom that might signal
 a misunderstanding.
 
 
-The plugin may well be too noisy or pedantic depending on your requirements or opinions, in which case you should consider :ref:`--disable` for those rules.
+The plugin may well be too noisy or pedantic depending on your requirements or opinions, in which case you should consider :ref:`disable` for those rules.
 Pairs well with flake8-bugbear.
 
 

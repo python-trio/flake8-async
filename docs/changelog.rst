@@ -4,6 +4,11 @@ Changelog
 
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+24.5.3
+======
+- Rename config option ``trio200-blocking-calls`` to :ref:`async200-blocking-calls`.
+- ``trio200-blocking-calls`` is now deprecated.
+
 24.5.2
 ======
 - ASYNC101 now also warns on anyio & asyncio taskgroups.
