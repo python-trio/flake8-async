@@ -98,16 +98,21 @@ Exception classes:
 
 Checkpoint
 ----------
-Checkpoints are points where the async backend checks for cancellation and invokes scheduling checks. Possible checkpoints are ``await``, ``async for`` (before each iteration, and when exhausting the iterator), and ``async with`` (on at least one of enter/exit).
+Checkpoints are points where the async backend checks for cancellation and invokes scheduling checks. Regular checkpoints are important to ensure timely behaviour, and to avoid deadlocks.
 
-Trio has extensive and detailed documentation on the concept of :external+trio:ref:`checkpoints <checkpoints>`, and guarantees that all trio async functions will checkpoint (unless they raised an exception).
+Trio has extensive and detailed documentation on the concept of :external+trio:ref:`checkpoints <checkpoints>`, and guarantees that all trio async functions will checkpoint (unless they raised an exception) when ``await``-ed.
+``async for`` on Trio generators will checkpoint before each iteration, and when exhausting the iterator, and ``async with`` will checkpoint on at least one of enter/exit.
 
-anyio does not currently have any documentation on checkpoints.
+asyncio does not place any guarantees on if or when asyncio functions will checkpoint. This means that enabling and adhering to :ref:`ASYNC91x <ASYNC910>` will still not guarantee checkpoints.
 
-asyncio will checkpoint... ???
+For anyio it will depend on the current backend.
 
-To make it easier to reason about checkpoints the :ref:`ASYNC91x <ASYNC910>` rules enforces the same rules as trio for your own project - i.e. all async functions must guarantee a checkpoint (or exception). To make it possible to reason the rules will also assume that all other async functions also adhere to those rules. This means you must be careful if you're using 3rd-party async libraries.
+When using Trio (or an AnyIO library that people might use on Trio), it can be very helpful to ensure that your own code adheres to the same guarantees as Trio.
+For this we supply the :ref:`ASYNC91x <ASYNC910>` rules.
+To make it possible to reason the rules will also assume that all other async functions also adhere to those rules.
+This means you must be careful if you're using 3rd-party async libraries.
 
+To insert a checkpoint with no other side effects, you can use :func:`trio.lowlevel.checkpoint`/:func:`anyio.lowlevel.checkpoint`/:func:`asyncio.sleep(0) <asyncio.sleep>`
 
 .. _channel_stream_queue:
 
