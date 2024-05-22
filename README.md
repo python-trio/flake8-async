@@ -18,3 +18,6 @@ Pairs well with flake8-bugbear.
 Some checks are incorporated into [ruff](https://github.com/astral-sh/ruff).
 
 This plugin was previously known as flake8-trio, and there was a separate small plugin known as flake8-async for asyncio. But this plugin was a superset of the checks in flake8-async, and support for anyio was added, so it's now named flake8-async to more properly convey its usage. At the same time all error codes were renamed from TRIOxxx to ASYNCxxx, as was previously used by the old flake8-async.
+
+## Rules
+https://flake8-async.readthedocs.io/en/latest/rules.html

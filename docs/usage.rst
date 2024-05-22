@@ -54,7 +54,7 @@ Afterwards, run
 install and run as standalone
 =============================
 
-If inside a git repository, running without arguments will run it against all ``*.py`` files in the repository tree.
+If inside a git repository, running without arguments will run it against all ``*.py`` files in the repository.
 
 .. code-block:: sh
 
@@ -103,6 +103,8 @@ Note that when running ``flake8-async`` as a standalone it's not currently possi
 Selecting rules
 ===============
 
+.. _valueerror_ignore:
+
 ``ValueError`` when trying to ``ignore`` error codes in config file
 -------------------------------------------------------------------
 
@@ -135,7 +137,7 @@ Example
 ``disable``
 -------------
 
-Comma-separated list of error codes to disable, similar to flake8 ``--ignore`` but is additionally more performant as it will disable non-enabled visitors from running instead of just silencing their errors. It will also bypass errors introduced in flake8>=6, see above.
+Comma-separated list of error codes to disable, similar to flake8 ``--ignore`` but is additionally more performant as it will disable non-enabled visitors from running instead of just silencing their errors. :ref:`It will also bypass errors introduced in flake8>=6 <valueerror_ignore>`.
 This is parsed after :ref:`enable`, so if a rule is both "enabled" and "disabled" it will be disabled.
 Defaults to "ASYNC9".
 
@@ -167,7 +169,8 @@ Example
 ``error-on-autofix``
 ----------------------
 
-Whether to also print an error message for autofixed errors. Defaults to ``False``
+Whether to also print an error message for autofixed errors.
+Defaults to ``False``
 
 Example
 ^^^^^^^
@@ -183,7 +186,10 @@ Modifying rule behaviour
 ``anyio``
 -----------
 
-Change the default library to be anyio instead of trio. This is mostly used for the sake of printing suggestions in error messages, but may affect some logic. If additional libraries are imported other than the default then rules will assume multiple are available simultaneously. It is currently not possible to set multiple default libraries, other than `anyio`+`asyncio`.
+Change the default library to be anyio instead of trio.
+This is mostly used for the sake of printing suggestions in error messages, but may affect some logic.
+If additional libraries are imported other than the default then rules will assume multiple are available simultaneously.
+It is currently not possible to set multiple default libraries, other than `anyio`+`asyncio`.
 
 Example
 ^^^^^^^
@@ -207,7 +213,9 @@ Example
 ``no-checkpoint-warning-decorators``
 ------------------------------------
 
-Comma-separated list of decorators to disable checkpointing checks for, turning off :ref:`ASYNC910 <async910>` and :ref:`ASYNC911 <async911>` warnings for functions decorated with any decorator matching any in the list. Matching is done with `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_. Defaults to disabling for ``asynccontextmanager``.
+Comma-separated list of decorators to disable checkpointing checks for, turning off :ref:`ASYNC910 <async910>` and :ref:`ASYNC911 <async911>` warnings for functions decorated with any decorator matching against an entry in the list.
+Matching is done with `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_.
+Defaults to disabling for ``asynccontextmanager``.
 
 Decorators-to-match must be identifiers or dotted names only (not PEP-614 expressions), and will match against the name only - e.g. ``foo.bar`` matches ``foo.bar``, ``foo.bar()``, and ``foo.bar(args, here)``, etc.
 
@@ -222,12 +230,14 @@ Example
      ign*,
      *.ignore,
 
+.. _--startable-in-context-manager:
+
 ``startable-in-context-manager``
 --------------------------------
 
-Comma-separated list of methods which should be used with ``.start()`` when opening a context manager,
-in addition to the default ``trio.run_process``, ``trio.serve_tcp``, ``trio.serve_ssl_over_tcp``, and
-``trio.serve_listeners``.  Names must be valid identifiers as per ``str.isidentifier()``.
+Comma-separated list of methods which should be used with :meth:`trio.Nursery.start`/:meth:`anyio.abc.TaskGroup.start` when opening a context manager,
+in addition to the default :func:`trio.run_process`, :func:`trio.serve_tcp`, :func:`trio.serve_ssl_over_tcp`, and :func:`trio.serve_listeners`.
+Names must be valid identifiers as per :meth:`str.isidentifier`.
 Used by :ref:`ASYNC113 <async113>`, and :ref:`ASYNC114 <async114>` will warn when encountering methods not in the list.
 
 Example
@@ -242,9 +252,11 @@ Example
 .. _async200-blocking-calls:
 
 ``async200-blocking-calls``
------------------------------
+---------------------------
 
-Comma-separated list of pairs of values separated by ``->`` (optional whitespace stripped), where the first is a pattern for a call that should raise :ref:`ASYNC200 <async200>` if found inside an async function, and the second is what should be suggested to use instead. It uses fnmatch as per `no-checkpoint-warning-decorators`_ for matching. The part after ``->`` is not used by the checker other than when printing the error, so you could add extra info there if you want.
+Comma-separated list of pairs of values separated by ``->`` (optional whitespace stripped), where the first is a pattern for a call that should raise :ref:`ASYNC200 <async200>` if found inside an async function, and the second is what should be suggested to use instead.
+It uses fnmatch as per `no-checkpoint-warning-decorators`_ for matching.
+The part after ``->`` is not used by the checker other than when printing the error, so you could add extra info there if you want.
 
 The format of the error message is ``User-configured blocking sync call {0} in async function, consider replacing with {1}.``, where ``{0}`` is the pattern the call matches and ``{1}`` is the suggested replacement.
 
