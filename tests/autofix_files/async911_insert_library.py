@@ -5,8 +5,6 @@
 
 
 import trio
-
-
 def condition() -> bool:
     return False
 

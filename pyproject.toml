@@ -8,7 +8,8 @@ remove-duplicate-keys = true
 remove-unused-variables = true
 
 [tool.black]
-extend-exclude = "tests/autofix_files/.*.py"
+# need to use force-exclude since pre-commit directly specifies files
+force-exclude = "tests/autofix_files/.*.py"
 
 [tool.codespell]
 ignore-words-list = 'spawnve'
@@ -19,7 +20,7 @@ profile = "black"
 py_version = "311"
 quiet = true
 skip_gitignore = true
-skip_glob = "tests/eval_files/*"
+skip_glob = "tests/*_files/*"
 
 [tool.mypy]
 check_untyped_defs = true

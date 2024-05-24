@@ -54,6 +54,10 @@ async def foo_conditional_nested():
                 ...
 
 
+# various checks I added for my own sanity to ensure autofixes worked when multiple
+# codes simultaneously want to autofix.
+
+
 async def foo_indef_and_910():
     while True:  # ASYNC913: 4
         await trio.lowlevel.checkpoint()

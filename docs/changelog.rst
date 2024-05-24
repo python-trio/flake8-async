@@ -4,7 +4,7 @@ Changelog
 
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-24.5.3
+24.5.4
 ======
 - Add ASYNC913: Indefinite loop with no guaranteed checkpoint.
 - Fix bugs in ASYNC910 and ASYNC911 autofixing where they sometimes didn't add a library import.

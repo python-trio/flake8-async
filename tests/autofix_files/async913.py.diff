@@ -23,7 +23,7 @@
          if condition():
              await foo()
 
-@@ x,24 x,29 @@
+@@ x,19 x,23 @@
      while True:
          if condition():
              break
@@ -46,6 +46,8 @@
 +                await trio.lowlevel.checkpoint()
                  ...
 
+
+@@ x,6 x,7 @@
 
  async def foo_indef_and_910():
      while True:  # ASYNC913: 4
