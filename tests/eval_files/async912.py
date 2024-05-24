@@ -129,7 +129,7 @@ async def foo():
             await trio.lowlevel.checkpoint()
 
 
-# TODO: issue #240
+# This is handled by ASYNC913, which will raise an error about the loop.
 async def livelocks():
     with trio.move_on_after(0.1):  # should error
         while True:

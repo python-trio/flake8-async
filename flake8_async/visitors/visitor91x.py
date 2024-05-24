@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import libcst as cst
 import libcst.matchers as m
@@ -73,8 +73,8 @@ class LoopState:
     uncheckpointed_before_break: set[Statement] = field(default_factory=set)
 
     artificial_errors: set[cst.Return | cst.Yield] = field(default_factory=set)
-    nodes_needing_checkpoints: list[cst.Return | cst.Yield] = field(
-        default_factory=list
+    nodes_needing_checkpoints: list[cst.Return | cst.Yield | ArtificialStatement] = (
+        field(default_factory=list)
     )
 
     def copy(self):
@@ -215,8 +215,10 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
         self,
         nodes_needing_checkpoint: Sequence[cst.Yield | cst.Return],
         library: tuple[str, ...],
+        explicitly_imported: dict[str, bool],
     ):
         super().__init__()
+        self.explicitly_imported_library = explicitly_imported
         self.nodes_needing_checkpoint = nodes_needing_checkpoint
         self.__library = library
 
@@ -262,6 +264,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "CancelScope with no guaranteed checkpoint. This makes it potentially "
             "impossible to cancel."
         ),
+        "ASYNC913": ("Indefinite loop with no guaranteed checkpoint."),
         "ASYNC100": (
             "{0}.{1} context contains no checkpoints, remove the context or add"
             " `await {0}.lowlevel.checkpoint()`."
@@ -355,6 +358,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             new_body.append(self.checkpoint_statement())
             indentedblock = updated_node.body.with_changes(body=new_body)
             updated_node = updated_node.with_changes(body=indentedblock)
+
+            self.ensure_imported_library()
 
         self.restore_state(original_node)
         return updated_node
@@ -721,6 +726,18 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         if not any_error:
             self.loop_state.nodes_needing_checkpoints = []
 
+        if (
+            self.loop_state.infinite_loop
+            and not self.loop_state.has_break
+            and ARTIFICIAL_STATEMENT in self.uncheckpointed_statements
+            and self.error(node, error_code="ASYNC913")
+        ):
+            # We can override nodes_needing_checkpoints, as that's solely for checkpoints
+            # that error because of the artificial statement injected at the start of
+            # the loop. When inserting a checkpoint at the start of the loop, those
+            # will be remedied
+            self.loop_state.nodes_needing_checkpoints = [ARTIFICIAL_STATEMENT]
+
         # replace artificial statements in else with prebody uncheckpointed statements
         # non-artificial stmts before continue/break/at body end will already be in them
         for stmts in (
@@ -781,15 +798,38 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         | cst.FlattenSentinel[cst.For | cst.While]
         | cst.RemovalSentinel
     ):
-        if self.loop_state.nodes_needing_checkpoints:
+        # don't bother autofixing same-line loops
+        if isinstance(updated_node.body, cst.SimpleStatementSuite):
+            self.restore_state(original_node)
+            return updated_node
+
+        # ASYNC913, indefinite loop with no guaranteed checkpoint
+        if self.loop_state.nodes_needing_checkpoints == [ARTIFICIAL_STATEMENT]:
+            if self.should_autofix(original_node, code="ASYNC913"):
+                # insert checkpoint at start of body
+                new_body = list(updated_node.body.body)
+                new_body.insert(0, self.checkpoint_statement())
+                indentedblock = updated_node.body.with_changes(body=new_body)
+                updated_node = updated_node.with_changes(body=indentedblock)
+
+                self.ensure_imported_library()
+        elif self.loop_state.nodes_needing_checkpoints:
+            assert ARTIFICIAL_STATEMENT not in self.loop_state.nodes_needing_checkpoints
             transformer = InsertCheckpointsInLoopBody(
-                self.loop_state.nodes_needing_checkpoints, self.library
+                cast(
+                    "list[cst.Yield | cst.Return]",
+                    self.loop_state.nodes_needing_checkpoints,
+                ),
+                self.library,
+                self.explicitly_imported_library,
             )
             # type of updated_node expanded to the return type
             updated_node = updated_node.visit(transformer)  # type: ignore
 
+            # include any necessary import added
+            self.add_import.update(transformer.add_import)
+
         self.restore_state(original_node)
-        # https://github.com/afonasev/flake8-return/issues/133
         return updated_node
 
     leave_For = leave_While

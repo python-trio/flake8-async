@@ -1,0 +1,17 @@
+---
++++
+@@ x,6 x,7 @@
+ # ASYNCIO_NO_AUTOFIX
+
+
++import trio
+ def condition() -> bool:
+     return False
+
+@@ x,5 x,6 @@
+ async def foo():
+     await foo()
+     while condition():
++        await trio.lowlevel.checkpoint()
+         yield  # ASYNC911: 8, "yield", Stmt("yield", lineno)
+     await foo()

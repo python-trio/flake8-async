@@ -6,6 +6,12 @@ Changelog
 
 24.5.3
 ======
+- Add ASYNC913: Indefinite loop with no guaranteed checkpoint.
+- Fix bugs in ASYNC910 and ASYNC911 autofixing where they sometimes didn't add a library import.
+- Fix crash in ASYNC911 when trying to autofix a one-line ``while ...: yield``
+
+24.5.3
+======
 - Rename config option ``trio200-blocking-calls`` to :ref:`async200-blocking-calls`.
 - ``trio200-blocking-calls`` is now deprecated.
 

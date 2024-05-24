@@ -1,4 +1,4 @@
-# ARG --enable=ASYNC910,ASYNC911
+# ARG --enable=ASYNC910,ASYNC911,ASYNC913
 from typing import Any
 
 
@@ -72,3 +72,23 @@ async def foo_boolops_2():
         and (yield)  # ASYNC911: 13, "yield", Stmt("yield", line-2, 13)
     )
     await foo()
+
+
+async def foo_sameline_913():
+    # fmt: off
+    while True: ...  # ASYNC913: 4
+    # fmt: on
+
+
+# this previously caused a crash
+async def foo_sameline_911():
+    await foo()
+    # fmt: off
+    while True: yield  # ASYNC911: 16, "yield", Stmt("yield", lineno)
+    # fmt: on
+
+
+# this was guarded by an isinstance check though
+# fmt: off
+async def foo_sameline_910(): print()  # ASYNC910: 0, "exit", Stmt("function definition", line)
+# fmt: on
