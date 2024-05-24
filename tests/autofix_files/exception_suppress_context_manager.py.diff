@@ -1,0 +1,49 @@
+---
++++
+@@ x,21 x,25 @@
+ async def foo_suppress():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with contextlib.suppress():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ async def foo_suppress_1():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with mysuppress():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ async def foo_suppress_2():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with anything.dangerousname():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ async def foo_suppress_3():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with dangerouslibrary.anything():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ # not enabled by default
+@@ x,6 x,7 @@
+         await foo()
+         yield
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ # the `async with` checkpoints, so there's no error
+@@ x,6 x,7 @@
+ async def foo_multiple():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with anything, contextlib.suppress():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ # we only match on *calls*
+@@ x,3 x,4 @@
+ async def foo_suppress_as():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with contextlib.suppress() as my_suppressor:
+         await foo()
++    await trio.lowlevel.checkpoint()

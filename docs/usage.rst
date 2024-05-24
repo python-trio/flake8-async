@@ -56,6 +56,8 @@ install and run as standalone
 
 If inside a git repository, running without arguments will run it against all ``*.py`` files in the repository.
 
+Note that this does not currently support reading config files, and does not respect ``# noqa`` comments.
+
 .. code-block:: sh
 
    pip install flake8-async
@@ -229,6 +231,27 @@ Example
      mydecoratorpackage.checkpointing_decorators.*,
      ign*,
      *.ignore,
+
+``exception-suppress-context-managers``
+---------------------------------------
+
+
+Comma-separated list of contextmanagers which may suppress exceptions
+without reraising, breaking checkpoint guarantees of ASYNC91x.
+``contextlib.suppress`` will be added to the list after parsing.
+Decorators can be dotted or not, as well as support * as a wildcard.
+
+Example
+^^^^^^^
+
+.. code-block:: none
+
+   exception-suppress-context-managers =
+     mysuppressor,
+     dangerouslibrary.*,
+     *.suppress,
+     suppress
+
 
 .. _--startable-in-context-manager:
 

@@ -262,6 +262,18 @@ class Plugin:
             ),
         )
         add_argument(
+            "--exception-suppress-context-managers",
+            default="",
+            required=False,
+            type=comma_separated_list,
+            help=(
+                "Comma-separated list of contextmanagers which may suppress exceptions "
+                "without reraising, breaking checkpoint guarantees of ASYNC91x. "
+                "``contextlib.suppress`` will be added to the list. "
+                "Decorators can be dotted or not, as well as support * as a wildcard. "
+            ),
+        )
+        add_argument(
             "--startable-in-context-manager",
             type=parse_async114_identifiers,
             default="",
@@ -379,6 +391,7 @@ class Plugin:
             autofix_codes=autofix_codes,
             error_on_autofix=options.error_on_autofix,
             no_checkpoint_warning_decorators=options.no_checkpoint_warning_decorators,
+            exception_suppress_context_managers=options.exception_suppress_context_managers,
             startable_in_context_manager=options.startable_in_context_manager,
             async200_blocking_calls=options.async200_blocking_calls,
             anyio=options.anyio,

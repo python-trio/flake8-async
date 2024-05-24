@@ -449,12 +449,28 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     # can't use TypeVar due to libcst's built-in type checking not supporting it
     leave_Raise = leave_Await  # type: ignore
 
+    def _is_exception_suppressing_context_manager(self, node: cst.With) -> bool:
+        return (
+            fnmatch_qualified_name_cst(
+                (x.item for x in node.items if isinstance(x.item, cst.Call)),
+                "contextlib.suppress",
+                *self.options.exception_suppress_context_managers,
+            )
+            is not None
+        )
+
     # Async context managers can reasonably checkpoint on either or both of entry and
     # exit.  Given that we can't tell which, we assume "both" to avoid raising a
     # missing-checkpoint warning when there might in fact be one (i.e. a false alarm).
     def visit_With_body(self, node: cst.With):
         if getattr(node, "asynchronous", None):
             self.checkpoint()
+
+        # if this might suppress exceptions, we cannot treat anything inside it as
+        # checkpointing.
+        if self._is_exception_suppressing_context_manager(node):
+            self.save_state(node, "uncheckpointed_statements", copy=True)
+
         if res := (
             with_has_call(node, *cancel_scope_names)
             or with_has_call(
@@ -499,6 +515,14 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 self.uncheckpointed_statements.remove(s)
                 for res in self.node_dict[original_node]:
                     self.error(res.node, error_code="ASYNC912")
+
+        # if exception-suppressing, restore all uncheckpointed statements from
+        # before the `with`.
+        if self._is_exception_suppressing_context_manager(original_node):
+            prev_checkpoints = self.uncheckpointed_statements
+            self.restore_state(original_node)
+            self.uncheckpointed_statements.update(prev_checkpoints)
+
         if getattr(original_node, "asynchronous", None):
             self.checkpoint()
         return updated_node

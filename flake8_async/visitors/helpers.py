@@ -112,7 +112,8 @@ def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | N
 
 
 def fnmatch_qualified_name_cst(
-    name_list: Iterable[cst.Decorator], *patterns: str
+    name_list: Iterable[cst.Decorator | cst.Call | cst.Attribute | cst.Name],
+    *patterns: str,
 ) -> str | None:
     for name in name_list:
         qualified_name = get_full_name_for_node_or_raise(name)
