@@ -1,6 +1,12 @@
 ---
 +++
-@@ x,3 x,4 @@
+@@ x,8 x,10 @@
+ # ASYNCIO_NO_AUTOFIX
+
+ from contextlib import *
++import trio
+
+
  async def foo():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
      with suppress():
          await foo()

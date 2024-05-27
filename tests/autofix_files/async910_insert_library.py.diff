@@ -1,0 +1,14 @@
+---
++++
+@@ x,9 x,11 @@
+ # ASYNCIO_NO_AUTOFIX
+
+
++import trio
+ def condition() -> bool:
+     return False
+
+
+ async def foo():  # ASYNC910: 0, "exit", Stmt("function definition", line)
+     print()
++    await trio.lowlevel.checkpoint()

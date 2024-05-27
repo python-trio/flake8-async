@@ -5,8 +5,6 @@
 # ASYNCIO_NO_AUTOFIX
 
 from contextlib import *
-
-# NOTE: remove in #255
 import trio
 
 

@@ -146,6 +146,9 @@ _`ASYNC912` : cancel-scope-no-guaranteed-checkpoint
     Similar to `ASYNC100`_, but it does not warn on trivial cases where there is no checkpoint at all.
     It instead shares logic with `ASYNC910`_ and `ASYNC911`_ for parsing conditionals and branches.
 
+_`ASYNC913` : indefinite-loop-no-guaranteed-checkpoint
+    An indefinite loop (e.g. ``while True``) has no guaranteed :ref:`checkpoint <checkpoint>`. This could potentially cause a deadlock.
+
 .. _autofix-support:
 
 Autofix support
@@ -154,6 +157,7 @@ The following rules support :ref:`autofixing <autofix>`.
 - :ref:`ASYNC100 <ASYNC100>`
 - :ref:`ASYNC910 <ASYNC910>`
 - :ref:`ASYNC911 <ASYNC911>`
+- :ref:`ASYNC913 <ASYNC913>`
 
 Removed rules
 ================
