@@ -7,6 +7,7 @@
 # of not testing both in the same file, or running with NOAUTOFIX.
 # NOAUTOFIX
 
+import contextlib
 from typing import TypeVar
 
 import trio
@@ -152,12 +153,18 @@ async def livelocks_2():
                 pass
 
 
-# TODO: add --async912-context-managers=
+# TODO: no-guaranteed-checkpoint-in-infinite-loop
+# https://github.com/python-trio/flake8-async/issues/240
 async def livelocks_3():
-    import contextlib
-
     with trio.move_on_after(0.1):  # should error
         while True:
+            with contextlib.suppress(TypeError):
+                await trio.sleep("1")  # type: ignore
+
+
+async def livelocks_4():
+    with trio.move_on_after(0.1):  # ASYNC912: 9
+        while condition():
             with contextlib.suppress(TypeError):
                 await trio.sleep("1")  # type: ignore
 
