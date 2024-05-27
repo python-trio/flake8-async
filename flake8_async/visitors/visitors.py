@@ -342,9 +342,9 @@ class Visitor119(Flake8AsyncVisitor):
 
 
 @error_class_cst
-class Visitor120(Flake8AsyncVisitor_cst):
+class Visitor300(Flake8AsyncVisitor_cst):
     error_codes: Mapping[str, str] = {
-        "ASYNC120": "asyncio.create_task() called without saving the result"
+        "ASYNC300": "asyncio.create_task() called without saving the result"
     }
 
     def __init__(self, *args: Any, **kwargs: Any):

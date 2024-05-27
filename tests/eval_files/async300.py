@@ -23,7 +23,7 @@ class TaskStorer:
 
 async def foo():
     args: Any
-    asyncio.create_task(*args)  # ASYNC120: 4
+    asyncio.create_task(*args)  # ASYNC300: 4
 
     k = asyncio.create_task(*args)
 
@@ -48,16 +48,16 @@ async def foo():
 
     # more or less esoteric ways of not saving the value
 
-    [asyncio.create_task(*args)]  # ASYNC120: 5
+    [asyncio.create_task(*args)]  # ASYNC300: 5
 
-    (asyncio.create_task(*args) for i in range(10))  # ASYNC120: 5
+    (asyncio.create_task(*args) for i in range(10))  # ASYNC300: 5
 
-    args = 1 if asyncio.create_task(*args) else 2  # ASYNC120: 16
+    args = 1 if asyncio.create_task(*args) else 2  # ASYNC300: 16
 
-    args = (i for i in range(10) if asyncio.create_task(*args))  # ASYNC120: 36
+    args = (i for i in range(10) if asyncio.create_task(*args))  # ASYNC300: 36
 
     # not supported, it can't be used as a context manager
-    with asyncio.create_task(*args) as k:  # type: ignore[attr-defined]  # ASYNC120: 9
+    with asyncio.create_task(*args) as k:  # type: ignore[attr-defined]  # ASYNC300: 9
         ...
 
     # import aliasing is not supported (this would raise ASYNC106 bad-async-library-import)

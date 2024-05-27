@@ -6,7 +6,7 @@ Changelog
 
 24.5.5
 ======
-- Add :ref:`ASYNC120 <async120>` create-task-no-reference
+- Add :ref:`ASYNC300 <async300>` create-task-no-reference
 
 24.5.4
 ======
