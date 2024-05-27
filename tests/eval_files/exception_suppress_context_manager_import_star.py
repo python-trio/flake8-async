@@ -6,9 +6,6 @@
 
 from contextlib import *
 
-# NOTE: remove in #255
-import trio
-
 
 async def foo():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
     with suppress():

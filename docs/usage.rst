@@ -232,6 +232,8 @@ Example
      ign*,
      *.ignore,
 
+.. _exception-suppress-context-managers:
+
 ``exception-suppress-context-managers``
 ---------------------------------------
 
