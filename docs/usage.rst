@@ -237,8 +237,11 @@ Example
 
 
 Comma-separated list of contextmanagers which may suppress exceptions
-without reraising, breaking checkpoint guarantees of ASYNC91x.
-``contextlib.suppress`` will be added to the list after parsing.
+without reraising. For ASYNC91x, these will be parsed in the worst-case scenario,
+where any checkpoints inside the contextmanager are not executed, and all
+exceptions are suppressed.
+``contextlib.suppress`` will be added to the list after parsing, and some basic parsing
+of ``from contextlib import suppress`` is supported.
 Decorators can be dotted or not, as well as support * as a wildcard.
 
 Example
@@ -250,7 +253,6 @@ Example
      mysuppressor,
      dangerouslibrary.*,
      *.suppress,
-     suppress
 
 
 .. _--startable-in-context-manager:
