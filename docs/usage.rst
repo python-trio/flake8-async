@@ -244,6 +244,9 @@ exceptions are suppressed.
 of ``from contextlib import suppress`` is supported.
 Decorators can be dotted or not, as well as support * as a wildcard.
 
+If you want to be extremely pessimistic, you can specify ``*`` as the context manager.
+We may add a whitelist option in the future to support this use-case better.
+
 Example
 ^^^^^^^
 
