@@ -283,6 +283,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.has_checkpoint_stack: list[bool] = []
         self.node_dict: dict[cst.With, list[AttributeCall]] = {}
 
+        # --exception-suppress-context-manager
+        self.suppress_imported_as: list[str] = []
+
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
         if code is None:  # pragma: no branch
             code = "ASYNC911" if self.has_yield else "ASYNC910"
@@ -300,6 +303,28 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
         return checkpoint_statement(self.library[0])
 
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+        # Semi-crude approach to handle `from contextlib import suppress`.
+        # It does not handle the identifier being overridden, or assigned
+        # to other idefintifers. Function scoping is handled though.
+        # The "proper" way would be to add a cst version of
+        # visitor_utility.VisitorTypeTracker, and expand that to handle imports.
+        if isinstance(node.module, cst.Name) and node.module.value == "contextlib":
+            # handle `from contextlib import *`
+            if isinstance(node.names, cst.ImportStar):
+                self.suppress_imported_as.append("suppress")
+                return
+            for alias in node.names:
+                if alias.name.value == "suppress":
+                    if alias.asname is not None:
+                        # `libcst.AsName` is incorrectly typed
+                        # https://github.com/Instagram/LibCST/issues/503
+                        assert isinstance(alias.asname.name, cst.Name)
+                        self.suppress_imported_as.append(alias.asname.name.value)
+                    else:
+                        self.suppress_imported_as.append("suppress")
+                    return
+
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         # don't lint functions whose bodies solely consist of pass or ellipsis
         # @overload functions are also guaranteed to be empty
@@ -316,6 +341,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "loop_state",
             "try_state",
             "has_checkpoint_stack",
+            "suppress_imported_as",
             copy=True,
         )
         self.uncheckpointed_statements = set()
@@ -454,6 +480,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             fnmatch_qualified_name_cst(
                 (x.item for x in node.items if isinstance(x.item, cst.Call)),
                 "contextlib.suppress",
+                *self.suppress_imported_as,
                 *self.options.exception_suppress_context_managers,
             )
             is not None

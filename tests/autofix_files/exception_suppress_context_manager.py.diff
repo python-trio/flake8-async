@@ -25,7 +25,7 @@
 +    await trio.lowlevel.checkpoint()
 
 
- # not enabled by default
+ async def foo_suppress_async911():  # ASYNC911: 0, "exit", Statement("function definition", lineno)
 @@ x,6 x,7 @@
          await foo()
          yield
@@ -42,8 +42,62 @@
 
 
  # we only match on *calls*
-@@ x,3 x,4 @@
+@@ x,6 x,7 @@
  async def foo_suppress_as():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
      with contextlib.suppress() as my_suppressor:
          await foo()
 +    await trio.lowlevel.checkpoint()
+
+
+ # ###############################
+@@ x,6 x,7 @@
+ async def foo_suppress_directly_imported_2():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with suppress():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ # it also supports importing with an alias
+@@ x,12 x,14 @@
+ async def foo_suppress_directly_imported_3():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with adifferentname():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ # and will keep track of all identifiers it's been assigned as
+ async def foo_suppress_directly_imported_4():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with suppress():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ # basic function scoping is supported
+@@ x,9 x,11 @@
+
+     with adifferentname():
+         await foo()
++    await trio.lowlevel.checkpoint()
+     yield  # ASYNC911: 4, "yield", Stmt("function definition", lineno-5)
+     with bar():
+         await foo()
++    await trio.lowlevel.checkpoint()
+     yield  # ASYNC911: 4, "yield", Stmt("yield", lineno-3)
+     await foo()
+
+@@ x,6 x,7 @@
+ async def foo_suppress_directly_imported_restored_after_scope():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with adifferentname():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ # We don't track the identifier being overridden though.
+@@ x,6 x,7 @@
+ async def foo_suppress_directly_imported_5():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with adifferentname():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ # or assignments to different identifiers
