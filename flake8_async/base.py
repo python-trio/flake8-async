@@ -29,6 +29,7 @@ class Options:
     # whether to print an error message even when autofixed
     error_on_autofix: bool
     no_checkpoint_warning_decorators: Collection[str]
+    exception_suppress_context_managers: Collection[str]
     startable_in_context_manager: Collection[str]
     async200_blocking_calls: dict[str, str]
     anyio: bool
