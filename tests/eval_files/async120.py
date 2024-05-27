@@ -76,3 +76,5 @@ async def foo():
     # don't crash
 
     args.nodes[args].append(args)
+    args[1].nodes()
+    args[1].abc.nodes()
