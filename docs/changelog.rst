@@ -4,13 +4,17 @@ Changelog
 
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+24.5.5
+======
+- Add :ref:`ASYNC300 <async300>` create-task-no-reference
+
 24.5.4
 ======
-- Add ASYNC913: Indefinite loop with no guaranteed checkpoint.
-- Fix bugs in ASYNC910 and ASYNC911 autofixing where they sometimes didn't add a library import.
-- Fix crash in ASYNC911 when trying to autofix a one-line ``while ...: yield``
+- Add :ref:`ASYNC913 <async913>`: Indefinite loop with no guaranteed checkpoint.
+- Fix bugs in :ref:`ASYNC910 <async910>` and :ref:`ASYNC911 <async911>` autofixing where they sometimes didn't add a library import.
+- Fix crash in :ref:`ASYNC911 <async911>` when trying to autofix a one-line ``while ...: yield``
 - Add :ref:`exception-suppress-context-managers`. Contextmanagers that may suppress exceptions.
-- ASYNC91x now treats checkpoints inside ``with contextlib.suppress`` as unreliable.
+- :ref:`ASYNC91x <ASYNC910>` now treats checkpoints inside ``with contextlib.suppress`` as unreliable.
 
 24.5.3
 ======

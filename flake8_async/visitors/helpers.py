@@ -337,11 +337,15 @@ def build_cst_matcher(attr: str) -> m.BaseExpression:
     return m.Attribute(value=build_cst_matcher(body), attr=m.Name(value=tail))
 
 
-def identifier_to_string(attr: cst.Name | cst.Attribute) -> str:
+def identifier_to_string(attr: cst.Name | cst.Attribute) -> str | None:
     if isinstance(attr, cst.Name):
         return attr.value
-    assert isinstance(attr.value, (cst.Attribute, cst.Name))
-    return identifier_to_string(attr.value) + "." + attr.attr.value
+    if not isinstance(attr.value, (cst.Attribute, cst.Name)):
+        return None
+    lhs = identifier_to_string(attr.value)
+    if lhs is None:
+        return None
+    return lhs + "." + attr.attr.value
 
 
 def with_has_call(
@@ -383,10 +387,10 @@ def with_has_call(
             assert isinstance(item.item, cst.Call)
             assert isinstance(res["base"], (cst.Name, cst.Attribute))
             assert isinstance(res["function"], cst.Name)
+            base_string = identifier_to_string(res["base"])
+            assert base_string is not None, "subscripts should never get matched"
             res_list.append(
-                AttributeCall(
-                    item.item, identifier_to_string(res["base"]), res["function"].value
-                )
+                AttributeCall(item.item, base_string, res["function"].value)
             )
     return res_list
 

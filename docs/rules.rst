@@ -6,6 +6,9 @@ Rules
 General rules
 =============
 
+Our ``ASYNC1xx`` rules check for semantic problems ranging from fatal errors (e.g. 101),
+to idioms for clearer code (e.g. 116).
+
 _`ASYNC100` : cancel-scope-no-checkpoint
     A :ref:`timeout_context` does not contain any :ref:`checkpoints <checkpoint>`.
     This makes it pointless, as the timeout can only be triggered by a checkpoint.
@@ -71,9 +74,12 @@ _`ASYNC119` : yield-in-cm-in-async-gen
    We strongly encourage you to read `PEP 533 <https://peps.python.org/pep-0533/>`_ and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see `ASYNC900`_ ) in favor of context managers which return an iterable :ref:`channel/stream/queue <channel_stream_queue>`.
 
 
-
 Blocking sync calls in async functions
 ======================================
+
+Our 2xx lint rules warn you to use the async equivalent for slow sync calls which
+would otherwise block the event loop (and therefore cause performance problems,
+or even deadlock).
 
 .. _httpx.Client: https://www.python-httpx.org/api/#client
 .. _httpx.AsyncClient: https://www.python-httpx.org/api/#asyncclient
@@ -126,8 +132,26 @@ ASYNC251 : blocking-sleep
     Use :func:`trio.sleep`/:func:`anyio.sleep`/:func:`asyncio.sleep`.
 
 
+Asyncio-specific rules
+======================
+
+Asyncio *encourages* structured concurrency, with :obj:`asyncio.TaskGroup`, but does not *require* it.
+We therefore provide some additional lint rules for common problems - although we'd also recommend a
+gradual migration to AnyIO, which is much less error-prone.
+
+_`ASYNC300` : create-task-no-reference
+    Calling :func:`asyncio.create_task` without saving the result. A task that isn't referenced elsewhere may get garbage collected at any time, even before it's done.
+    Note that this rule won't check whether the variable the result is saved in is susceptible to being garbage-collected itself. See the asyncio documentation for best practices.
+    You might consider instead using a :ref:`TaskGroup <taskgroup_nursery>` and calling :meth:`asyncio.TaskGroup.create_task` to avoid this problem, and gain the advantages of structured concurrency with e.g. better cancellation semantics.
+
+
 Optional rules disabled by default
 ==================================
+
+Our 9xx rules check for semantics issues, like 1xx rules, but are disabled by default due
+to the higher volume of warnings.  We encourage you to enable them - without guaranteed
+:ref:`checkpoint`\ s timeouts and cancellation can be arbitrarily delayed, and async
+generators are prone to the problems described in :pep:`533`.
 
 _`ASYNC900` : unsafe-async-generator
        Async generator without :func:`@asynccontextmanager <contextlib.asynccontextmanager>` not allowed.
