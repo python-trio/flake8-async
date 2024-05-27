@@ -72,3 +72,7 @@ async def foo():
     # or any lambda thing
     my_lambda = lambda: asyncio.create_task(*args)
     my_lambda(*args)
+
+    # don't crash
+
+    args.nodes[args].append(args)
