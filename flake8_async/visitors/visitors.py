@@ -5,8 +5,17 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any, cast
 
-from .flake8asyncvisitor import Flake8AsyncVisitor
-from .helpers import disabled_by_default, error_class, get_matching_call, has_decorator
+import libcst as cst
+
+from .flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
+from .helpers import (
+    disabled_by_default,
+    error_class,
+    error_class_cst,
+    get_matching_call,
+    has_decorator,
+    identifier_to_string,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -330,6 +339,53 @@ class Visitor119(Flake8AsyncVisitor):
     # it's not possible to yield or open context managers in lambda's, so this
     # one isn't strictly needed afaik.
     visit_Lambda = visit_AsyncFunctionDef
+
+
+@error_class_cst
+class Visitor120(Flake8AsyncVisitor_cst):
+    error_codes: Mapping[str, str] = {
+        "ASYNC120": "asyncio.create_task() called without saving the result"
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.safe_to_create_task: bool = False
+
+    def visit_Assign(self, node: cst.CSTNode):
+        self.save_state(node, "safe_to_create_task")
+        self.safe_to_create_task = True
+
+    def visit_CompIf(self, node: cst.CSTNode):
+        self.save_state(node, "safe_to_create_task")
+        self.safe_to_create_task = False
+
+    def visit_Call(self, node: cst.Call):
+        if (
+            isinstance(node.func, (cst.Name, cst.Attribute))
+            and identifier_to_string(node.func) == "asyncio.create_task"
+            and not self.safe_to_create_task
+        ):
+            self.error(node)
+        self.visit_Assign(node)
+
+    visit_NamedExpr = visit_Assign
+    visit_AugAssign = visit_Assign
+    visit_IfExp_test = visit_CompIf
+
+    # because this is a Flake8AsyncVisitor_cst, we need to manually call restore_state
+    def leave_Assign(
+        self, original_node: cst.CSTNode, updated_node: cst.CSTNode
+    ) -> Any:
+        self.restore_state(original_node)
+        return updated_node
+
+    leave_Call = leave_Assign
+    leave_CompIf = leave_Assign
+    leave_NamedExpr = leave_Assign
+    leave_AugAssign = leave_Assign
+
+    def leave_IfExp_test(self, node: cst.IfExp):
+        self.restore_state(node)
 
 
 @error_class

@@ -70,6 +70,10 @@ _`ASYNC119` : yield-in-cm-in-async-gen
    ``yield`` in context manager in async generator is unsafe, the cleanup may be delayed until ``await`` is no longer allowed.
    We strongly encourage you to read `PEP 533 <https://peps.python.org/pep-0533/>`_ and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see `ASYNC900`_ ) in favor of context managers which return an iterable :ref:`channel/stream/queue <channel_stream_queue>`.
 
+_`ASYNC120` : create-task-no-reference
+    Calling :func:`asyncio.create_task` without saving the result. A task that isn't referenced elsewhere may get garbage collected at any time, even before it's done.
+    Note that this rule won't check whether the variable the result is saved in is susceptible to being garbage-collected itself. See the asyncio documentation for best practices.
+    You might consider instead using a :ref:`TaskGroup <taskgroup_nursery>` and calling :meth:`asyncio.TaskGroup.create_task` to avoid this problem, and gain the advantages of structured concurrency with e.g. better cancellation semantics.
 
 
 Blocking sync calls in async functions
