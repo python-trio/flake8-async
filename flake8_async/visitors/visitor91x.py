@@ -246,7 +246,7 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
     leave_Return = leave_Yield  # type: ignore
 
 
-disable_codes_by_default("ASYNC910", "ASYNC911", "ASYNC912")
+disable_codes_by_default("ASYNC910", "ASYNC911", "ASYNC912", "ASYNC913")
 
 
 @error_class_cst

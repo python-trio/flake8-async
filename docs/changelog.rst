@@ -4,6 +4,10 @@ Changelog
 
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+24.5.6
+======
+- Make :ref:`ASYNC913 <async913>` disabled by default, as originally intended.
+
 24.5.5
 ======
 - Add :ref:`ASYNC300 <async300>` create-task-no-reference
