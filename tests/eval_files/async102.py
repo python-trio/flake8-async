@@ -1,4 +1,5 @@
 # type: ignore
+# ARG --enable=ASYNC102,ASYNC120
 # NOASYNCIO # TODO: support asyncio shields
 from contextlib import asynccontextmanager
 
@@ -170,11 +171,11 @@ async def foo4():
     try:
         ...
     except ValueError:
-        await foo()  # safe
+        await foo()  # ASYNC120: 8, Statement("except", lineno-1)
     except BaseException:
         await foo()  # error: 8, Statement("BaseException", lineno-1)
     except:
-        await foo()
+        await foo()  # ASYNC120: 8, Statement("except", lineno-1)
         # safe, since BaseException will catch Cancelled
         # also fully redundant and will never be executed, but that's for another linter
 
@@ -186,7 +187,7 @@ async def foo5():
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
     except:
-        await foo()
+        await foo()  # ASYNC120: 8, Statement("except", lineno-1)
 
     try:
         ...
@@ -237,20 +238,20 @@ async def foo_nested_excepts():
         try:
             await foo()  # error: 12, Statement("BaseException", lineno-3)
         except BaseException:
-            await foo()  # error: 12, Statement("BaseException", lineno-1)
+            await foo()  # error: 12, Statement("BaseException", lineno-5)
         except:
             # unsafe, because we're waiting inside the parent baseexception
             await foo()  # error: 12, Statement("BaseException", lineno-8)
         await foo()  # error: 8, Statement("BaseException", lineno-9)
     except:
-        await foo()
+        await foo()  # ASYNC120: 8, Statement("except", lineno-1)
         try:
-            await foo()
+            await foo()  # ASYNC120: 12, Statement("except", lineno-3)
         except BaseException:
             await foo()  # error: 12, Statement("BaseException", lineno-1)
         except:
-            await foo()
-        await foo()
+            await foo()  # ASYNC120: 12, Statement("except", lineno-1)
+        await foo()  # ASYNC120: 8, Statement("except", lineno-8)
     await foo()
 
 

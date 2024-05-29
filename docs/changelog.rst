@@ -4,6 +4,10 @@ Changelog
 
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+24.5.7
+======
+- Add :ref:`ASYNC120 <async120>` await-in-except.
+
 24.5.6
 ======
 - Make :ref:`ASYNC913 <async913>` disabled by default, as originally intended.

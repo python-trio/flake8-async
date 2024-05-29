@@ -20,8 +20,10 @@ ASYNC101 : yield-in-cancel-scope
     See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP.
     This has substantial overlap with :ref:`ASYNC119 <ASYNC119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by `PEP 533 <https://peps.python.org/pep-0533/>`_.
 
-ASYNC102 : await-in-finally-or-cancelled
+_`ASYNC102` : await-in-finally-or-cancelled
     ``await`` inside ``finally`` or :ref:`cancelled-catching <cancelled>` ``except:`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
+    If not, the async call will immediately raise a new cancellation, suppressing the cancellation that was caught.
+    See :ref:`ASYNC120 <async120>` for the general case where other exceptions might get suppressed.
     This is currently not able to detect asyncio shields.
 
 ASYNC103 : no-reraise-cancelled
@@ -72,6 +74,12 @@ ASYNC118 : cancelled-class-saved
 _`ASYNC119` : yield-in-cm-in-async-gen
    ``yield`` in context manager in async generator is unsafe, the cleanup may be delayed until ``await`` is no longer allowed.
    We strongly encourage you to read `PEP 533 <https://peps.python.org/pep-0533/>`_ and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see `ASYNC900`_ ) in favor of context managers which return an iterable :ref:`channel/stream/queue <channel_stream_queue>`.
+
+ASYNC120 : await-in-except
+    ``await`` inside ``except`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
+    If not, the async call might get cancelled, suppressing the exception that was caught.
+    This will not trigger when :ref:`ASYNC102 <ASYNC102>` does, and if you don't care about losing non-cancelled exceptions you could disable this rule.
+    This is currently not able to detect asyncio shields.
 
 
 Blocking sync calls in async functions

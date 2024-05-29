@@ -23,6 +23,10 @@ class Visitor102(Flake8AsyncVisitor):
             "await inside {0.name} on line {0.lineno} must have shielded cancel "
             "scope with a timeout."
         ),
+        "ASYNC120": (
+            "await inside {0.name} on line {0.lineno} must have shielded cancel "
+            "scope with a timeout."
+        ),
     }
 
     class TrioScope:
@@ -60,7 +64,11 @@ class Visitor102(Flake8AsyncVisitor):
         if self._critical_scope is not None and not any(
             cm.has_timeout and cm.shielded for cm in self._trio_context_managers
         ):
-            self.error(node, self._critical_scope)
+            if self._critical_scope.name == "except":
+                error_code = "ASYNC120"
+            else:
+                error_code = "ASYNC102"
+            self.error(node, self._critical_scope, error_code=error_code)
 
     def is_safe_aclose_call(self, node: ast.Await) -> bool:
         return (
@@ -122,16 +130,18 @@ class Visitor102(Flake8AsyncVisitor):
         self.visit_nodes(node.finalbody)
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
-        if self.cancelled_caught:
-            return
-        res = critical_except(node)
-        if res is None:
+        # if we're inside a critical scope, a nested except should never override that
+        if self._critical_scope is not None and self._critical_scope.name != "except":
             return
 
         self.save_state(node, "_critical_scope", "_trio_context_managers")
-        self.cancelled_caught = True
         self._trio_context_managers = []
-        self._critical_scope = res
+
+        if self.cancelled_caught or (res := critical_except(node)) is None:
+            self._critical_scope = Statement("except", node.lineno, node.col_offset)
+        else:
+            self._critical_scope = res
+            self.cancelled_caught = True
 
     def visit_Assign(self, node: ast.Assign):
         # checks for <scopename>.shield = [True/False]
