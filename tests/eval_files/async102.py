@@ -111,7 +111,9 @@ async def foo():
         myvar = True
         with trio.open_nursery(10) as s:
             s.shield = myvar
-            await foo()  # safe in theory, error: 12, Statement("try/finally", lineno-6)
+            # this is not safe in theory - because `trio.open_nursery` is an async cm,
+            # so it's not possible to open a nursery at all.
+            await foo()  # error: 12, Statement("try/finally", lineno-8)
     try:
         pass
     finally:

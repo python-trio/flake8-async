@@ -265,8 +265,9 @@ Example
 ``startable-in-context-manager``
 --------------------------------
 
-Comma-separated list of methods which should be used with :meth:`trio.Nursery.start`/:meth:`anyio.abc.TaskGroup.start` when opening a context manager,
-in addition to the default :func:`trio.run_process`, :func:`trio.serve_tcp`, :func:`trio.serve_ssl_over_tcp`, and :func:`trio.serve_listeners`.
+Comma-separated list of methods which should be used with :meth:`trio.Nursery.start`/:meth:`anyio.abc.TaskGroup.start` when opening a context manager.
+This includes startable functions in the trio and anyio standard library by default, namely :func:`trio.run_process`, :func:`trio.serve_tcp`, :func:`trio.serve_ssl_over_tcp`, :func:`trio.serve_listeners`, :func:`trio.serve`, :func:`anyio.run_process`, :func:`anyio.serve_tcp`, :func:`anyio.serve_ssl_over_tcp`, :func:`anyio.serve_listeners`, and :func:`anyio.serve`.
+
 Names must be valid identifiers as per :meth:`str.isidentifier`.
 Used by :ref:`ASYNC113 <async113>`, and :ref:`ASYNC114 <async114>` will warn when encountering methods not in the list.
 

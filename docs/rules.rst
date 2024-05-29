@@ -55,6 +55,8 @@ ASYNC112 : useless-nursery
 
 _`ASYNC113` : start-soon-in-aenter
     Using :meth:`~trio.Nursery.start_soon`/:meth:`~anyio.abc.TaskGroup.start_soon` in ``__aenter__`` doesn't wait for the task to begin.
+    This will only warn about built-in functions and those listed in _`ASYNC114`.
+    If you're starting a function that does not define `task_status`, then neither will trigger.
     Consider replacing with :meth:`~trio.Nursery.start`/:meth:`~anyio.abc.TaskGroup.start`.
 
 _`ASYNC114` : startable-not-in-config

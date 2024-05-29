@@ -87,9 +87,7 @@ class Visitor102(Flake8AsyncVisitor):
 
         # Check for a `with trio.<scope_creator>`
         for item in node.items:
-            call = get_matching_call(
-                item.context_expr, "open_nursery", *cancel_scope_names
-            )
+            call = get_matching_call(item.context_expr, *cancel_scope_names)
             if call is None:
                 continue
 
