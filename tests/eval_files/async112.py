@@ -9,34 +9,34 @@ import trio
 import trio as noterror
 
 # error
-with trio.open_nursery() as n:  # error: 5, "n"
+with trio.open_nursery() as n:  # error: 5, "n", "nursery"
     n.start(...)
 
-with trio.open_nursery(...) as nurse:  # error: 5, "nurse"
+with trio.open_nursery(...) as nurse:  # error: 5, "nurse", "nursery"
     nurse.start_soon(...)
 
-with trio.open_nursery() as n:  # error: 5, "n"
+with trio.open_nursery() as n:  # error: 5, "n", "nursery"
     n.start_soon(n=7)
 
 
 async def foo():
-    async with trio.open_nursery() as n:  # error: 15, "n"
+    async with trio.open_nursery() as n:  # error: 15, "n", "nursery"
         n.start(...)
 
 
 # weird ones with multiple `withitem`s
 # but if split among several `with` they'd all be treated as error (or ASYNC111), so
 # treating as error for now.
-with trio.open_nursery() as n, trio.open("") as n:  # error: 5, "n"
+with trio.open_nursery() as n, trio.open("") as n:  # error: 5, "n", "nursery"
     n.start(...)
 
-with open("") as o, trio.open_nursery() as n:  # error: 20, "n"
+with open("") as o, trio.open_nursery() as n:  # error: 20, "n", "nursery"
     n.start(o)
 
-with trio.open_nursery() as n, trio.open_nursery() as nurse:  # error: 31, "nurse"
+with trio.open_nursery() as n, trio.open_nursery() as nurse:  # error: 31, "nurse", "nursery"
     nurse.start(n.start(...))
 
-with trio.open_nursery() as n, trio.open_nursery() as n:  # error: 5, "n" # error: 31, "n"
+with trio.open_nursery() as n, trio.open_nursery() as n:  # error: 5, "n", "nursery" # error: 31, "n", "nursery"
     n.start(...)
 
 # safe if passing variable as parameter
@@ -83,7 +83,7 @@ with trio.open_nursery() as n:
 
 # body is a call to await n.start
 async def foo_1():
-    with trio.open_nursery(...) as n:  # error: 9, "n"
+    with trio.open_nursery(...) as n:  # error: 9, "n", "nursery"
         await n.start(...)
 
 

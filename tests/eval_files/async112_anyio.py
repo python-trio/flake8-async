@@ -11,13 +11,13 @@ async def bar(*args): ...
 
 
 async def foo():
-    async with anyio.create_task_group() as tg:  # error: 15, "tg"
+    async with anyio.create_task_group() as tg:  # error: 15, "tg", "taskgroup"
         await tg.start_soon(bar())
 
     async with anyio.create_task_group() as tg:
         await tg.start(bar(tg))
 
-    async with anyio.create_task_group() as tg:  # error: 15, "tg"
+    async with anyio.create_task_group() as tg:  # error: 15, "tg", "taskgroup"
         tg.start_soon(bar())
 
     async with anyio.create_task_group() as tg:
