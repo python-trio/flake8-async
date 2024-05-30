@@ -127,7 +127,6 @@ class Visitor112(Flake8AsyncVisitor):
                 nursery_type = "taskgroup"
                 start_methods = ("create_task",)
             else:
-                assert True
                 continue
 
             body_call = node.body[0].value
