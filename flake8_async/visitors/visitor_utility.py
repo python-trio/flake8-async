@@ -64,9 +64,10 @@ class VisitorTypeTracker(Flake8AsyncVisitor):
         self.save_state(node, "variables", copy=True)
 
     def visit_AnnAssign(self, node: ast.AnnAssign):
-        if not isinstance(node.target, ast.Name):
-            return
-        target = node.target.id
+        if not isinstance(node.target, (ast.Name, ast.Attribute)):
+            # target can technically be a subscript
+            return  # pragma: no cover
+        target = ast.unparse(node.target)
         typename = ast.unparse(node.annotation)
         self.variables[target] = typename
 
@@ -87,6 +88,8 @@ class VisitorTypeTracker(Flake8AsyncVisitor):
             self.variables[node.targets[0].id] = value
 
     def visit_With(self, node: ast.With | ast.AsyncWith):
+        # TODO: it's actually the return type of
+        # `ast.unparse(item.context_expr.func).__[a]enter__()` that should be used
         if len(node.items) != 1:
             return
         item = node.items[0]

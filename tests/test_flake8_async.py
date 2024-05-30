@@ -308,7 +308,9 @@ def test_eval(
     )
 
     if only_check_not_crash:
-        return
+        # mark it as skipped to indicate we didn't actually test anything in particular
+        # (it confused me once when I didn't notice a file was marked with NOTRIO)
+        pytest.skip()
 
     # Check that error messages refer to current library, or to no library.
     if test not in (
