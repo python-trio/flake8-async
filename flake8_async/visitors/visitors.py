@@ -95,7 +95,7 @@ class Visitor110(Flake8AsyncVisitor):
 class Visitor112(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC112": (
-            "Redundant nursery {}, consider replacing with directly awaiting "
+            "Redundant {1} {0}, consider replacing with directly awaiting "
             "the function call."
         ),
     }
@@ -113,19 +113,22 @@ class Visitor112(Flake8AsyncVisitor):
                 continue
             var_name = item.optional_vars.id
 
-            # check for trio.open_nursery and anyio.create_task_group
-            nursery = get_matching_call(
-                item.context_expr, "open_nursery", base="trio"
-            ) or get_matching_call(item.context_expr, "create_task_group", base="anyio")
             start_methods: tuple[str, ...] = ("start", "start_soon")
-            if nursery is None:
-                # check for asyncio.TaskGroup
-                nursery = get_matching_call(
-                    item.context_expr, "TaskGroup", base="asyncio"
-                )
-                if nursery is None:
-                    continue
+            # check for trio.open_nursery and anyio.create_task_group
+            if get_matching_call(item.context_expr, "open_nursery", base="trio"):
+                nursery_type = "nursery"
+
+            elif get_matching_call(
+                item.context_expr, "create_task_group", base="anyio"
+            ):
+                nursery_type = "taskgroup"
+            # check for asyncio.TaskGroup
+            elif get_matching_call(item.context_expr, "TaskGroup", base="asyncio"):
+                nursery_type = "taskgroup"
                 start_methods = ("create_task",)
+            else:
+                # incorrectly marked as not covered on py39
+                continue  # pragma: no cover  # https://github.com/nedbat/coveragepy/issues/198
 
             body_call = node.body[0].value
             if isinstance(body_call, ast.Await):
@@ -142,7 +145,7 @@ class Visitor112(Flake8AsyncVisitor):
                     for n in self.walk(*body_call.args, *body_call.keywords)
                 )
             ):
-                self.error(item.context_expr, var_name)
+                self.error(item.context_expr, var_name, nursery_type)
 
     visit_AsyncWith = visit_With
 
@@ -168,8 +171,11 @@ class Visitor113(Flake8AsyncVisitor):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        # this is not entirely correct, it's trio.open_nursery.__aenter__()->trio.Nursery
+        # but VisitorTypeTracker currently does not work like that.
         self.typed_calls["trio.open_nursery"] = "trio.Nursery"
         self.typed_calls["anyio.create_task_group"] = "anyio.TaskGroup"
+        self.typed_calls["asyncio.TaskGroup"] = "asyncio.TaskGroup"
 
         self.async_function = False
         self.asynccontextmanager = False
@@ -196,7 +202,10 @@ class Visitor113(Flake8AsyncVisitor):
             return False
 
         def is_nursery_call(node: ast.expr):
-            if not isinstance(node, ast.Attribute) or node.attr != "start_soon":
+            if not isinstance(node, ast.Attribute) or node.attr not in (
+                "start_soon",
+                "create_task",
+            ):
                 return False
             var = ast.unparse(node.value)
             return ("trio" in self.library and var.endswith("nursery")) or (

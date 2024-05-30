@@ -13,7 +13,7 @@ async def bar(*args): ...
 
 
 async def foo():
-    async with asyncio.TaskGroup() as tg:  # error: 15, "tg"
+    async with asyncio.TaskGroup() as tg:  # error: 15, "tg", "taskgroup"
         tg.create_task(bar())
 
     async with asyncio.TaskGroup() as tg:

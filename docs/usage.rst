@@ -265,8 +265,11 @@ Example
 ``startable-in-context-manager``
 --------------------------------
 
-Comma-separated list of methods which should be used with :meth:`trio.Nursery.start`/:meth:`anyio.abc.TaskGroup.start` when opening a context manager,
-in addition to the default :func:`trio.run_process`, :func:`trio.serve_tcp`, :func:`trio.serve_ssl_over_tcp`, and :func:`trio.serve_listeners`.
+Comma-separated list of functions which should be used with :meth:`trio.Nursery.start`/:meth:`anyio.abc.TaskGroup.start` when opening a context manager.
+We then add known functions from Trio to this list, namely :func:`trio.run_process`, :func:`trio.serve_tcp`, :func:`trio.serve_ssl_over_tcp`, :func:`trio.serve_listeners`, and :meth:`trio.DTLSEndpoint.serve`.
+AnyIO does not have any functions in its API that defines ``task_status``.
+asyncio does not have an equivalent of :meth:`~trio.Nursery.start`, nor ``task_status``, but you could still add functions to this list that you want to be extra careful about when opening in an `asyncio.TaskGroup` in an ``__aenter__``
+
 Names must be valid identifiers as per :meth:`str.isidentifier`.
 Used by :ref:`ASYNC113 <async113>`, and :ref:`ASYNC114 <async114>` will warn when encountering methods not in the list.
 

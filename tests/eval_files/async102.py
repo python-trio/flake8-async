@@ -109,9 +109,19 @@ async def foo():
         pass
     finally:
         myvar = True
-        with trio.open_nursery(10) as s:
-            s.shield = myvar
-            await foo()  # safe in theory, error: 12, Statement("try/finally", lineno-6)
+        with trio.CancelScope(deadline=10) as cs:
+            cs.shield = myvar
+            # safe in theory, but we don't track variable values
+            await foo()  # error: 12, Statement("try/finally", lineno-7)
+    try:
+        pass
+    finally:
+        # false alarm, open_nursery does not block/checkpoint on entry.
+        async with trio.open_nursery() as nursery:  # error: 8, Statement("try/finally", lineno-4)
+            nursery.cancel_scope.deadline = trio.current_time() + 10
+            nursery.cancel_scope.shield = True
+            # false alarm, we currently don't handle nursery.cancel_scope.[deadline/shield]
+            await foo()  # error: 12, Statement("try/finally", lineno-8)
     try:
         pass
     finally:
