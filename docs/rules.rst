@@ -77,7 +77,7 @@ _`ASYNC119` : yield-in-cm-in-async-gen
 
 _`ASYNC120` : await-in-except
     Dangerous :ref:`checkpoint` inside an ``except`` block.
-    If this checkpoint is cancelled, the current active exception will be replaced by the ``Cancelled`` exception, and cannot be reraised later. 
+    If this checkpoint is cancelled, the current active exception will be replaced by the ``Cancelled`` exception, and cannot be reraised later.
     This will not trigger when :ref:`ASYNC102 <ASYNC102>` does, and if you don't care about losing non-cancelled exceptions you could disable this rule.
     This is currently not able to detect asyncio shields.
 
