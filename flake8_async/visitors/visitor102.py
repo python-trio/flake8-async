@@ -24,8 +24,8 @@ class Visitor102(Flake8AsyncVisitor):
             "scope with a timeout."
         ),
         "ASYNC120": (
-            "await inside {0.name} on line {0.lineno} must have shielded cancel "
-            "scope with a timeout."
+            "checkpoint inside {0.name} on line {0.lineno} will discard the active "
+            "exception if cancelled."
         ),
     }
 

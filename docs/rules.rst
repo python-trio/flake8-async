@@ -76,8 +76,8 @@ _`ASYNC119` : yield-in-cm-in-async-gen
    We strongly encourage you to read `PEP 533 <https://peps.python.org/pep-0533/>`_ and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see `ASYNC900`_ ) in favor of context managers which return an iterable :ref:`channel/stream/queue <channel_stream_queue>`.
 
 _`ASYNC120` : await-in-except
-    ``await`` inside ``except`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
-    If not, the async call might get cancelled, suppressing the exception that was caught.
+    Dangerous :ref:`checkpoint` inside an ``except`` block.
+    If this checkpoint is cancelled, the current active exception will be replaced by the ``Cancelled`` exception, and cannot be reraised later. 
     This will not trigger when :ref:`ASYNC102 <ASYNC102>` does, and if you don't care about losing non-cancelled exceptions you could disable this rule.
     This is currently not able to detect asyncio shields.
 
