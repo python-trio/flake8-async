@@ -56,6 +56,15 @@ class Visitor102(Flake8AsyncVisitor):
         self._trio_context_managers: list[Visitor102.TrioScope] = []
         self.cancelled_caught = False
 
+        # list of dangerous awaits inside a non-critical except handler,
+        # which will emit errors upon reaching a raise.
+        # Entries are only added to the list inside except handlers,
+        # so with the `save_state` in visit_ExceptHandler any entries not followed
+        # by a raise will be thrown out when exiting the except handler.
+        self._potential_120: list[
+            tuple[ast.Await | ast.AsyncFor | ast.AsyncWith, Statement]
+        ] = []
+
     # if we're inside a finally or critical except, and we're not inside a scope that
     # doesn't have both a timeout and shield
     def async_call_checker(
@@ -66,10 +75,14 @@ class Visitor102(Flake8AsyncVisitor):
         ):
             # non-critical exception handlers have the statement name set to "except"
             if self._critical_scope.name == "except":
-                error_code = "ASYNC120"
+                self._potential_120.append((node, self._critical_scope))
             else:
-                error_code = "ASYNC102"
-            self.error(node, self._critical_scope, error_code=error_code)
+                self.error(node, self._critical_scope, error_code="ASYNC102")
+
+    def visit_Raise(self, node: ast.Raise):
+        for err_node, scope in self._potential_120:
+            self.error(err_node, scope, error_code="ASYNC120")
+        self._potential_120.clear()
 
     def is_safe_aclose_call(self, node: ast.Await) -> bool:
         return (
@@ -135,8 +148,11 @@ class Visitor102(Flake8AsyncVisitor):
         if self._critical_scope is not None and self._critical_scope.name != "except":
             return
 
-        self.save_state(node, "_critical_scope", "_trio_context_managers")
+        self.save_state(
+            node, "_critical_scope", "_trio_context_managers", "_potential_120"
+        )
         self._trio_context_managers = []
+        self._potential_120 = []
 
         if self.cancelled_caught or (res := critical_except(node)) is None:
             self._critical_scope = Statement("except", node.lineno, node.col_offset)
@@ -158,3 +174,22 @@ class Visitor102(Flake8AsyncVisitor):
                 and isinstance(node.value, ast.Constant)
             ):
                 last_scope.shielded = node.value.value
+
+    def visit_FunctionDef(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda
+    ):
+        self.save_state(
+            node,
+            "_critical_scope",
+            "_trio_context_managers",
+            "_potential_120",
+            "cancelled_caught",
+        )
+        self._critical_scope = None
+        self._trio_context_managers = []
+        self.cancelled_caught = False
+
+        self._potential_120 = []
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+    visit_Lambda = visit_FunctionDef

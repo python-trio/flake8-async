@@ -171,11 +171,11 @@ async def foo4():
     try:
         ...
     except ValueError:
-        await foo()  # ASYNC120: 8, Statement("except", lineno-1)
+        await foo()
     except BaseException:
         await foo()  # error: 8, Statement("BaseException", lineno-1)
     except:
-        await foo()  # ASYNC120: 8, Statement("except", lineno-1)
+        await foo()
         # safe, since BaseException will catch Cancelled
         # also fully redundant and will never be executed, but that's for another linter
 
@@ -187,7 +187,7 @@ async def foo5():
         with trio.CancelScope(deadline=30, shield=True):
             await foo()  # safe
     except:
-        await foo()  # ASYNC120: 8, Statement("except", lineno-1)
+        await foo()
 
     try:
         ...
@@ -244,14 +244,14 @@ async def foo_nested_excepts():
             await foo()  # error: 12, Statement("BaseException", lineno-8)
         await foo()  # error: 8, Statement("BaseException", lineno-9)
     except:
-        await foo()  # ASYNC120: 8, Statement("except", lineno-1)
+        await foo()
         try:
-            await foo()  # ASYNC120: 12, Statement("except", lineno-3)
+            await foo()
         except BaseException:
             await foo()  # error: 12, Statement("BaseException", lineno-1)
         except:
-            await foo()  # ASYNC120: 12, Statement("except", lineno-1)
-        await foo()  # ASYNC120: 8, Statement("except", lineno-8)
+            await foo()
+        await foo()
     await foo()
 
 
@@ -266,3 +266,20 @@ async def foo_nested_async_for():
                 j
             ) in trio.bypasslinters:
                 ...
+
+
+# nested funcdef (previously false alarm)
+async def foo_nested_funcdef():
+    try:
+        ...
+    except:
+
+        async def foobar():
+            await foo()
+
+
+async def foo_nested_funcdef():
+    try:
+        ...
+    except:
+        x = lambda: await foo()

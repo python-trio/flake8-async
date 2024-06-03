@@ -7,6 +7,7 @@ Changelog
 24.5.7
 ======
 - Add :ref:`ASYNC120 <async120>` await-in-except.
+- Fix false alarm with :ref:`ASYNC102 <async102>` with function definitions inside finally/except.
 
 24.5.6
 ======
