@@ -1,8 +1,12 @@
 # type: ignore
+# ARG --enable=ASYNC102,ASYNC120
 
-# exclude finally: await x.aclose() from async102, with trio/anyio
+# exclude finally: await x.aclose() from async102 and async120, with trio/anyio
+
+# These magical markers are the ones that ensure trio & anyio don't raise errors:
 # ANYIO_NO_ERROR
 # TRIO_NO_ERROR
+
 # See also async102_aclose_args.py - which makes sure trio/anyio raises errors if there
 # are arguments to aclose().
 

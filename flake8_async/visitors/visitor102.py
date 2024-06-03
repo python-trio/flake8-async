@@ -64,6 +64,7 @@ class Visitor102(Flake8AsyncVisitor):
         if self._critical_scope is not None and not any(
             cm.has_timeout and cm.shielded for cm in self._trio_context_managers
         ):
+            # non-critical exception handlers have the statement name set to "except"
             if self._critical_scope.name == "except":
                 error_code = "ASYNC120"
             else:
