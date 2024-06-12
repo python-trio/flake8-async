@@ -1,4 +1,5 @@
 # type: ignore
+# ARG --enable=ASYNC102,ASYNC120
 # NOASYNCIO # TODO: support asyncio shields
 from contextlib import asynccontextmanager
 
@@ -180,7 +181,7 @@ async def foo4():
     try:
         ...
     except ValueError:
-        await foo()  # safe
+        await foo()
     except BaseException:
         await foo()  # error: 8, Statement("BaseException", lineno-1)
     except:
@@ -247,7 +248,7 @@ async def foo_nested_excepts():
         try:
             await foo()  # error: 12, Statement("BaseException", lineno-3)
         except BaseException:
-            await foo()  # error: 12, Statement("BaseException", lineno-1)
+            await foo()  # error: 12, Statement("BaseException", lineno-5)
         except:
             # unsafe, because we're waiting inside the parent baseexception
             await foo()  # error: 12, Statement("BaseException", lineno-8)
@@ -275,3 +276,13 @@ async def foo_nested_async_for():
                 j
             ) in trio.bypasslinters:
                 ...
+
+
+# nested funcdef (previously false alarm)
+async def foo_nested_funcdef():
+    try:
+        ...
+    except:
+
+        async def foobar():
+            await foo()

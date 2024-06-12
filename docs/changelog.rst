@@ -4,6 +4,11 @@ Changelog
 
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+24.6.1
+======
+- Add :ref:`ASYNC120 <async120>` await-in-except.
+- Fix false alarm with :ref:`ASYNC102 <async102>` with function definitions inside finally/except.
+
 24.5.6
 ======
 - Make :ref:`ASYNC913 <async913>` disabled by default, as originally intended.

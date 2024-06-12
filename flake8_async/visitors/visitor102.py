@@ -23,6 +23,10 @@ class Visitor102(Flake8AsyncVisitor):
             "await inside {0.name} on line {0.lineno} must have shielded cancel "
             "scope with a timeout."
         ),
+        "ASYNC120": (
+            "checkpoint inside {0.name} on line {0.lineno} will discard the active "
+            "exception if cancelled."
+        ),
     }
 
     class TrioScope:
@@ -52,6 +56,15 @@ class Visitor102(Flake8AsyncVisitor):
         self._trio_context_managers: list[Visitor102.TrioScope] = []
         self.cancelled_caught = False
 
+        # list of dangerous awaits inside a non-critical except handler,
+        # which will emit errors upon reaching a raise.
+        # Entries are only added to the list inside except handlers,
+        # so with the `save_state` in visit_ExceptHandler any entries not followed
+        # by a raise will be thrown out when exiting the except handler.
+        self._potential_120: list[
+            tuple[ast.Await | ast.AsyncFor | ast.AsyncWith, Statement]
+        ] = []
+
     # if we're inside a finally or critical except, and we're not inside a scope that
     # doesn't have both a timeout and shield
     def async_call_checker(
@@ -60,7 +73,16 @@ class Visitor102(Flake8AsyncVisitor):
         if self._critical_scope is not None and not any(
             cm.has_timeout and cm.shielded for cm in self._trio_context_managers
         ):
-            self.error(node, self._critical_scope)
+            # non-critical exception handlers have the statement name set to "except"
+            if self._critical_scope.name == "except":
+                self._potential_120.append((node, self._critical_scope))
+            else:
+                self.error(node, self._critical_scope, error_code="ASYNC102")
+
+    def visit_Raise(self, node: ast.Raise):
+        for err_node, scope in self._potential_120:
+            self.error(err_node, scope, error_code="ASYNC120")
+        self._potential_120.clear()
 
     def is_safe_aclose_call(self, node: ast.Await) -> bool:
         return (
@@ -120,16 +142,21 @@ class Visitor102(Flake8AsyncVisitor):
         self.visit_nodes(node.finalbody)
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
-        if self.cancelled_caught:
-            return
-        res = critical_except(node)
-        if res is None:
+        # if we're inside a critical scope, a nested except should never override that
+        if self._critical_scope is not None and self._critical_scope.name != "except":
             return
 
-        self.save_state(node, "_critical_scope", "_trio_context_managers")
-        self.cancelled_caught = True
+        self.save_state(
+            node, "_critical_scope", "_trio_context_managers", "_potential_120"
+        )
         self._trio_context_managers = []
-        self._critical_scope = res
+        self._potential_120 = []
+
+        if self.cancelled_caught or (res := critical_except(node)) is None:
+            self._critical_scope = Statement("except", node.lineno, node.col_offset)
+        else:
+            self._critical_scope = res
+            self.cancelled_caught = True
 
     def visit_Assign(self, node: ast.Assign):
         # checks for <scopename>.shield = [True/False]
@@ -145,3 +172,24 @@ class Visitor102(Flake8AsyncVisitor):
                 and isinstance(node.value, ast.Constant)
             ):
                 last_scope.shielded = node.value.value
+
+    def visit_FunctionDef(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda
+    ):
+        self.save_state(
+            node,
+            "_critical_scope",
+            "_trio_context_managers",
+            "_potential_120",
+            "cancelled_caught",
+        )
+        self._critical_scope = None
+        self._trio_context_managers = []
+        self.cancelled_caught = False
+
+        self._potential_120 = []
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+    # lambda can't contain await, try, except, raise, with, or assignments.
+    # You also can't do assignment expressions with attributes. So we don't need to
+    # do any special handling for them.
