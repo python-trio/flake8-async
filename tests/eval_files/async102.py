@@ -276,10 +276,3 @@ async def foo_nested_funcdef():
 
         async def foobar():
             await foo()
-
-
-async def foo_nested_funcdef():
-    try:
-        ...
-    except:
-        x = lambda: await foo()

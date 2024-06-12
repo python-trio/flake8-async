@@ -192,4 +192,6 @@ class Visitor102(Flake8AsyncVisitor):
         self._potential_120 = []
 
     visit_AsyncFunctionDef = visit_FunctionDef
-    visit_Lambda = visit_FunctionDef
+    # lambda can't contain await, try, except, raise, with, or assignments.
+    # You also can't do assignment expressions with attributes. So we don't need to
+    # do any special handling for them.
