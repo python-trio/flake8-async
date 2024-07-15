@@ -36,7 +36,7 @@ repos:
           - id: mypy
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.370
+      rev: v1.1.371
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -78,7 +78,7 @@ repos:
             args: ['--markdown-linebreak-ext=md,markdown']
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.5.1
+      rev: v0.5.2
       hooks:
           - id: ruff
 
@@ -88,7 +88,7 @@ repos:
           - id: yamlfmt
 
     - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-      rev: v2.13.0
+      rev: v2.14.0
       hooks:
           - id: pretty-format-toml
             args: [--autofix]
