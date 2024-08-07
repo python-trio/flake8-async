@@ -401,19 +401,25 @@ class Visitor300(Flake8AsyncVisitor_cst):
 @disabled_by_default
 class Visitor900(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "ASYNC900": "Async generator without `@asynccontextmanager` not allowed."
+        "ASYNC900": "Async generator not allowed, unless transformed "
+        "by a known decorator (one of: {})."
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.unsafe_function: ast.AsyncFunctionDef | None = None
+        self.transform_decorators = (
+            "asynccontextmanager",
+            "fixture",
+            *self.options.transform_async_generator_decorators,
+        )
 
     def visit_AsyncFunctionDef(
         self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
     ):
         self.save_state(node, "unsafe_function")
         if isinstance(node, ast.AsyncFunctionDef) and not has_decorator(
-            node, "asynccontextmanager", "fixture"
+            node, *self.transform_decorators
         ):
             self.unsafe_function = node
         else:
@@ -421,7 +427,7 @@ class Visitor900(Flake8AsyncVisitor):
 
     def visit_Yield(self, node: ast.Yield):
         if self.unsafe_function is not None:
-            self.error(self.unsafe_function)
+            self.error(self.unsafe_function, ", ".join(self.transform_decorators))
             self.unsafe_function = None
 
     visit_FunctionDef = visit_AsyncFunctionDef

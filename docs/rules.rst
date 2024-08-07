@@ -161,12 +161,15 @@ Optional rules disabled by default
 Our 9xx rules check for semantics issues, like 1xx rules, but are disabled by default due
 to the higher volume of warnings.  We encourage you to enable them - without guaranteed
 :ref:`checkpoint`\ s timeouts and cancellation can be arbitrarily delayed, and async
-generators are prone to the problems described in :pep:`533`.
+generators are prone to the problems described in :pep:`789` and :pep:`533`.
 
 _`ASYNC900` : unsafe-async-generator
        Async generator without :func:`@asynccontextmanager <contextlib.asynccontextmanager>` not allowed.
        You might want to enable this on a codebase since async generators are inherently unsafe and cleanup logic might not be performed.
-       See `#211 <https://github.com/python-trio/flake8-async/issues/211>`__ and https://discuss.python.org/t/using-exceptiongroup-at-anthropic-experience-report/20888/6 for discussion.
+       See :pep:`789` for control-flow problems, :pep:`533` for delayed cleanup problems.
+       Further decorators can be registered with the ``--transform-async-generator-decorators``
+       config option, e.g. `@trio_util.trio_async_generator
+       <https://trio-util.readthedocs.io/en/latest/index.html#trio_util.trio_async_generator>`_.
 
 _`ASYNC910` : async-function-no-checkpoint
     Exit or ``return`` from async function with no guaranteed :ref:`checkpoint` or exception since function definition.
