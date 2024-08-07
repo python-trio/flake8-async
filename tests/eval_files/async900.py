@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 
 
-async def foo1():  # ASYNC900: 0
+async def foo1():  # ASYNC900: 0, 'asynccontextmanager, fixture, this_is_like_a_context_manager'
     yield
     yield
 
@@ -15,7 +15,7 @@ async def foo2():
 
 @asynccontextmanager
 async def foo3():
-    async def bar():  # ASYNC900: 4
+    async def bar():  # ASYNC900: 4, 'asynccontextmanager, fixture, this_is_like_a_context_manager'
         yield
 
     yield
@@ -37,7 +37,7 @@ async def async_fixtures_can_take_arguments():
 
 # no-checkpoint-warning-decorator now ignored
 @other_context_manager
-async def foo5():  # ASYNC900: 0
+async def foo5():  # ASYNC900: 0, 'asynccontextmanager, fixture, this_is_like_a_context_manager'
     yield
 
 
@@ -53,4 +53,13 @@ async def this_is_not_an_async_generator():
 
 async def another_non_generator():
     def foo():
+        yield
+
+
+# ARG --transform-async-generator-decorators=this_is_like_a_context_manager
+
+
+@this_is_like_a_context_manager()  # OK because of the config, issue #277
+async def some_generator():
+    while True:
         yield

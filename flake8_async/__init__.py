@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "24.6.1"
+__version__ = "24.8.1"
 
 
 # taken from https://github.com/Zac-HD/shed
@@ -262,6 +262,18 @@ class Plugin:
             ),
         )
         add_argument(
+            "--transform-async-generator-decorators",
+            default="",
+            required=False,
+            type=comma_separated_list,
+            help=(
+                "Comma-separated list of decorators to disable ASYNC900 warnings for. "
+                "Decorators can be dotted or not, as well as support * as a wildcard. "
+                "For example, ``--transform-async-generator-decorators=fastapi.Depends,"
+                "trio_util.trio_async_generator``"
+            ),
+        )
+        add_argument(
             "--exception-suppress-context-managers",
             default="",
             required=False,
@@ -391,6 +403,7 @@ class Plugin:
             autofix_codes=autofix_codes,
             error_on_autofix=options.error_on_autofix,
             no_checkpoint_warning_decorators=options.no_checkpoint_warning_decorators,
+            transform_async_generator_decorators=options.transform_async_generator_decorators,
             exception_suppress_context_managers=options.exception_suppress_context_managers,
             startable_in_context_manager=options.startable_in_context_manager,
             async200_blocking_calls=options.async200_blocking_calls,

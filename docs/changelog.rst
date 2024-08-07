@@ -4,6 +4,11 @@ Changelog
 
 *[CalVer, YY.month.patch](https://calver.org/)*
 
+24.8.1
+======
+- Add config option ``transform-async-generator-decorators``, to list decorators which
+  suppress :ref:`ASYNC900 <async900>`.
+
 24.6.1
 ======
 - Add :ref:`ASYNC120 <async120>` await-in-except.
