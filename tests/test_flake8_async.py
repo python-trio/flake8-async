@@ -728,7 +728,7 @@ trio.sleep(0)
     assert errors[1].line != plugin.module.code.split("\n").index("trio.sleep(0)") + 1
 
 
-@pytest.mark.fuzz()
+@pytest.mark.fuzz
 def test_910_permutations():
     """Tests all possible permutations for ASYNC910.
 
@@ -814,7 +814,7 @@ def consume(iterator: Iterable[Any]):
     deque(iterator, maxlen=0)
 
 
-@pytest.mark.fuzz()
+@pytest.mark.fuzz
 class TestFuzz(unittest.TestCase):
     @settings(
         max_examples=1_000, deadline=None, suppress_health_check=[HealthCheck.too_slow]
@@ -847,7 +847,7 @@ def _iter_python_files():
                     yield Path(dirname) / f
 
 
-@pytest.mark.fuzz()
+@pytest.mark.fuzz
 def test_does_not_crash_on_site_code(enable_codes: str):
     for path in _iter_python_files():
         try:

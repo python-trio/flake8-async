@@ -48,11 +48,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
             item.add_marker(skip_fuzz)
 
 
-@pytest.fixture()
+@pytest.fixture
 def generate_autofix(request: pytest.FixtureRequest):
     return request.config.getoption("generate_autofix")
 
 
-@pytest.fixture()
+@pytest.fixture
 def enable_codes(request: pytest.FixtureRequest):
     return request.config.getoption("--enable-codes")
