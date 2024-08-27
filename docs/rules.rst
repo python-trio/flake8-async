@@ -83,6 +83,9 @@ _`ASYNC120` : await-in-except
     This will not trigger when :ref:`ASYNC102 <ASYNC102>` does, and if you don't care about losing non-cancelled exceptions you could disable this rule.
     This is currently not able to detect asyncio shields.
 
+_`ASYNC121`: control-flow-in-taskgroup
+    `return`, `continue`, and `break` inside a :ref:`taskgroup_nursery` can lead to counterintuitive behaviour. Refactor the code to instead cancel the :ref:`cancel_scope` and place the statement outside of the TaskGroup/Nursery block. See `trio#1493 <https://github.com/python-trio/trio/issues/1493>`.
+
 
 Blocking sync calls in async functions
 ======================================

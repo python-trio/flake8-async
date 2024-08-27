@@ -350,6 +350,58 @@ class Visitor119(Flake8AsyncVisitor):
     visit_Lambda = visit_AsyncFunctionDef
 
 
+@error_class
+class Visitor121(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC121": (
+            "{0} in a {1} block behaves counterintuitively in several"
+            " situations. Refactor to have the {0} outside."
+        )
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.unsafe_stack: list[str] = []
+
+    def visit_AsyncWith(self, node: ast.AsyncWith):
+        self.save_state(node, "unsafe_stack", copy=True)
+
+        for item in node.items:
+            if get_matching_call(item.context_expr, "open_nursery", base="trio"):
+                self.unsafe_stack.append("nursery")
+            elif get_matching_call(
+                item.context_expr, "create_task_group", base="anyio"
+            ):
+                self.unsafe_stack.append("task group")
+
+    def visit_While(self, node: ast.While | ast.For):
+        self.save_state(node, "unsafe_stack", copy=True)
+        self.unsafe_stack.append("loop")
+
+    visit_For = visit_While
+
+    def check_loop_flow(self, node: ast.Continue | ast.Break, statement: str) -> None:
+        # self.unsafe_stack should never be empty, but no reason not to avoid a crash
+        # for invalid code.
+        if self.unsafe_stack and self.unsafe_stack[-1] != "loop":
+            self.error(node, statement, self.unsafe_stack[-1])
+
+    def visit_Continue(self, node: ast.Continue) -> None:
+        self.check_loop_flow(node, "continue")
+
+    def visit_Break(self, node: ast.Break) -> None:
+        self.check_loop_flow(node, "break")
+
+    def visit_Return(self, node: ast.Return) -> None:
+        for unsafe_cm in "nursery", "task group":
+            if unsafe_cm in self.unsafe_stack:
+                self.error(node, "return", unsafe_cm)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.save_state(node, "unsafe_stack", copy=True)
+        self.unsafe_stack = []
+
+
 @error_class_cst
 class Visitor300(Flake8AsyncVisitor_cst):
     error_codes: Mapping[str, str] = {
