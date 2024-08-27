@@ -4,7 +4,7 @@ Changelog
 
 *[CalVer, YY.month.patch](https://calver.org/)*
 
-24.8.1
+24.8.2
 ======
 - Add :ref:`ASYNC121 <async121>` control-flow-in-taskgroup
 
