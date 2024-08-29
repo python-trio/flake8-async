@@ -371,7 +371,7 @@ class Visitor121(Flake8AsyncVisitor):
                 self.unsafe_stack.append("nursery")
             elif get_matching_call(
                 item.context_expr, "create_task_group", base="anyio"
-            ):
+            ) or get_matching_call(item.context_expr, "TaskGroup", base="asyncio"):
                 self.unsafe_stack.append("task group")
 
     def visit_While(self, node: ast.While | ast.For):

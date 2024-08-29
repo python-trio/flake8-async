@@ -84,7 +84,7 @@ _`ASYNC120` : await-in-except
     This is currently not able to detect asyncio shields.
 
 _`ASYNC121`: control-flow-in-taskgroup
-    `return`, `continue`, and `break` inside a :ref:`taskgroup_nursery` can lead to counterintuitive behaviour. Refactor the code to instead cancel the :ref:`cancel_scope` inside the TaskGroup/Nursery and place the statement outside of the TaskGroup/Nursery block. See `Trio issue #1493 <https://github.com/python-trio/trio/issues/1493>`.
+    `return`, `continue`, and `break` inside a :ref:`taskgroup_nursery` can lead to counterintuitive behaviour. Refactor the code to instead cancel the :ref:`cancel_scope` inside the TaskGroup/Nursery and place the statement outside of the TaskGroup/Nursery block. In asyncio a user might expect the statement to have an immediate effect, but it will wait for all tasks to finish before having an effect. See `Trio issue #1493 <https://github.com/python-trio/trio/issues/1493>` for further issues specific to trio/anyio.
 
 
 Blocking sync calls in async functions
