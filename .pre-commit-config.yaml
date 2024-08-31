@@ -7,6 +7,12 @@ ci:
     skip: [pyright]
 
 repos:
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.6.2
+      hooks:
+          - id: ruff
+            args: [--fix]
+
     - repo: https://github.com/psf/black
       rev: 24.8.0
       hooks:
@@ -31,12 +37,12 @@ repos:
           - id: isort
 
     - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.11.1
+      rev: v1.11.2
       hooks:
           - id: mypy
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.375
+      rev: v1.1.377
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -76,11 +82,6 @@ repos:
             args: [--remove]
           - id: trailing-whitespace
             args: ['--markdown-linebreak-ext=md,markdown']
-
-    - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.5.7
-      hooks:
-          - id: ruff
 
     - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
       rev: 0.2.3
