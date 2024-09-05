@@ -374,11 +374,12 @@ class Visitor121(Flake8AsyncVisitor):
             ) or get_matching_call(item.context_expr, "TaskGroup", base="asyncio"):
                 self.unsafe_stack.append("task group")
 
-    def visit_While(self, node: ast.While | ast.For):
+    def visit_While(self, node: ast.While | ast.For | ast.AsyncFor):
         self.save_state(node, "unsafe_stack", copy=True)
         self.unsafe_stack.append("loop")
 
     visit_For = visit_While
+    visit_AsyncFor = visit_While
 
     def check_loop_flow(self, node: ast.Continue | ast.Break, statement: str) -> None:
         # self.unsafe_stack should never be empty, but no reason not to avoid a crash

@@ -5,63 +5,18 @@
 import anyio
 
 
+# To avoid mypy unreachable-statement we wrap control flow calls in if statements
+# they should have zero effect on the visitor logic.
+def condition() -> bool:
+    return False
+
+
+# only tests that asyncio.TaskGroup is detected, main tests in async121.py
 async def foo_return():
-    async with anyio.create_task_group():
-        return  # ASYNC121: 8, "return", "task group"
-
-
-async def foo_return_nested():
-    async with anyio.create_task_group():
-
-        def bar():
-            return  # safe
-
-
-# continue
-async def foo_while_continue_safe():
-    async with anyio.create_task_group():
-        while True:
-            continue  # safe
-
-
-async def foo_while_continue_unsafe():
     while True:
         async with anyio.create_task_group():
-            continue  # ASYNC121: 12, "continue", "task group"
-
-
-async def foo_for_continue_safe():
-    async with anyio.create_task_group():
-        for _ in range(5):
-            continue  # safe
-
-
-async def foo_for_continue_unsafe():
-    for _ in range(5):
-        async with anyio.create_task_group():
-            continue  # ASYNC121: 12, "continue", "task group"
-
-
-# break
-async def foo_while_break_safe():
-    async with anyio.create_task_group():
-        while True:
-            break  # safe
-
-
-async def foo_while_break_unsafe():
-    while True:
-        async with anyio.create_task_group():
-            break  # ASYNC121: 12, "break", "task group"
-
-
-async def foo_for_break_safe():
-    async with anyio.create_task_group():
-        for _ in range(5):
-            break  # safe
-
-
-async def foo_for_break_unsafe():
-    for _ in range(5):
-        async with anyio.create_task_group():
-            break  # ASYNC121: 12, "break", "task group"
+            if condition():
+                continue  # ASYNC121: 16, "continue", "task group"
+            if condition():
+                break  # ASYNC121: 16, "break", "task group"
+            return  # ASYNC121: 12, "return", "task group"

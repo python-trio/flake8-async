@@ -2,10 +2,16 @@
 # ANYIO_NO_ERROR # checked in async121_anyio.py
 
 import trio
+from typing import Any
 
 
+# To avoid mypy unreachable-statement we wrap control flow calls in if statements
+# they should have zero effect on the visitor logic.
 def condition() -> bool:
     return False
+
+
+def bar() -> Any: ...
 
 
 async def foo_return():
@@ -25,59 +31,61 @@ async def foo_return_nested():
             return  # safe
 
 
-# continue
-async def foo_while_continue_safe():
+async def foo_while_safe():
     async with trio.open_nursery():
         while True:
+            if condition():
+                break  # safe
+            if condition():
+                continue  # safe
             continue  # safe
 
 
-async def foo_while_continue_unsafe():
+async def foo_while_unsafe():
     while True:
         async with trio.open_nursery():
             if condition():
                 continue  # ASYNC121: 16, "continue", "nursery"
-        continue  # safe
+            if condition():
+                break  # ASYNC121: 16, "break", "nursery"
+        if condition():
+            continue  # safe
+        break  # safe
 
 
-async def foo_for_continue_safe():
+async def foo_for_safe():
     async with trio.open_nursery():
         for _ in range(5):
-            continue  # safe
+            if condition():
+                continue  # safe
+            if condition():
+                break  # safe
 
 
-async def foo_for_continue_unsafe():
+async def foo_for_unsafe():
     for _ in range(5):
         async with trio.open_nursery():
             if condition():
                 continue  # ASYNC121: 16, "continue", "nursery"
-        continue  # safe
-
-
-# break
-async def foo_while_break_safe():
-    async with trio.open_nursery():
-        while True:
-            break  # safe
-
-
-async def foo_while_break_unsafe():
-    while True:
-        async with trio.open_nursery():
             if condition():
                 break  # ASYNC121: 16, "break", "nursery"
         continue  # safe
 
 
-async def foo_for_break_safe():
+async def foo_async_for_safe():
     async with trio.open_nursery():
-        for _ in range(5):
-            break  # safe
+        async for _ in bar():
+            if condition():
+                continue  # safe
+            if condition():
+                break  # safe
 
 
-async def foo_for_break_unsafe():
-    for _ in range(5):
+async def foo_async_for_unsafe():
+    async for _ in bar():
         async with trio.open_nursery():
+            if condition():
+                continue  # ASYNC121: 16, "continue", "nursery"
             if condition():
                 break  # ASYNC121: 16, "break", "nursery"
         continue  # safe
