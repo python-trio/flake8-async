@@ -182,7 +182,7 @@ Changelog
 
 22.11.2
 =======
-- TRIO105 now also checks that you ``await``ed ``nursery.start()``.
+- TRIO105 now also checks that you ``await``\ed ``nursery.start()``.
 
 22.11.1
 =======
