@@ -2,7 +2,7 @@
 Changelog
 #########
 
-*[CalVer, YY.month.patch](https://calver.org/)*
+`CalVer, YY.month.patch <https://calver.org/>`_
 
 24.9.1
 ======

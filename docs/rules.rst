@@ -194,6 +194,7 @@ _`ASYNC913` : indefinite-loop-no-guaranteed-checkpoint
 Autofix support
 ===============
 The following rules support :ref:`autofixing <autofix>`.
+
 - :ref:`ASYNC100 <ASYNC100>`
 - :ref:`ASYNC910 <ASYNC910>`
 - :ref:`ASYNC911 <ASYNC911>`
