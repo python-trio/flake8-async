@@ -98,9 +98,9 @@ Configuration
 `You can configure flake8 with command-line options <https://flake8.pycqa.org/en/latest/user/invocation.html>`_,
 but we prefer using a config file. See general documentation for `configuring flake8  <https://flake8.pycqa.org/en/latest/user/configuration.html>`_ which also handles options registered by plugins such as ``flake8-async``.
 
-If you want to use a ``pyproject.toml`` file for configuring flake8 we recommend `pyproject-flake8 <https://github.com/csachs/pyproject-flake8>` or similar.
+If you want to use a ``pyproject.toml`` file for configuring flake8 we recommend `pyproject-flake8 <https://github.com/csachs/pyproject-flake8>`_ or similar.
 
-Note that when running ``flake8-async`` as a standalone it's not currently possible to use a configuration file. Consider using some wrapper that lets you specify command-line flags in a file. For example, :ref:`install-run-pre-commit`, `tox <https://tox.wiki>`, `hatch scripts <https://hatch.pypa.io/1.9/environment/#scripts>`, MakeFiles, etc.
+Note that when running ``flake8-async`` as a standalone it's not currently possible to use a configuration file. Consider using some wrapper that lets you specify command-line flags in a file. For example, :ref:`install-run-pre-commit`, `tox <https://tox.wiki>`_, `hatch scripts <https://hatch.pypa.io/1.9/environment/#scripts>`_, MakeFiles, etc.
 
 Selecting rules
 ===============
