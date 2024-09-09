@@ -4,6 +4,11 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.9.2
+======
+- Fix false alarm in :ref:`ASYNC113 <async113>` and :ref:`ASYNC121 <async121>` with sync functions nested inside an async function.
+
+
 24.9.1
 ======
 - Add :ref:`ASYNC121 <async121>` control-flow-in-taskgroup
