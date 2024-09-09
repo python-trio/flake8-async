@@ -188,6 +188,11 @@ class Visitor113(Flake8AsyncVisitor):
             node, "asynccontextmanager"
         )
 
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.save_state(node, "aenter")
+        # sync function should never be named __aenter__ or have @asynccontextmanager
+        self.aenter = False
+
     def visit_Yield(self, node: ast.Yield):
         self.aenter = False
 
