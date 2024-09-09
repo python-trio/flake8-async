@@ -188,6 +188,11 @@ class Visitor113(Flake8AsyncVisitor):
             node, "asynccontextmanager"
         )
 
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.save_state(node, "aenter")
+        # sync function should never be named __aenter__ or have @asynccontextmanager
+        self.aenter = False
+
     def visit_Yield(self, node: ast.Yield):
         self.aenter = False
 
@@ -398,9 +403,11 @@ class Visitor121(Flake8AsyncVisitor):
             if unsafe_cm in self.unsafe_stack:
                 self.error(node, "return", unsafe_cm)
 
-    def visit_FunctionDef(self, node: ast.FunctionDef):
+    def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
         self.save_state(node, "unsafe_stack", copy=True)
         self.unsafe_stack = []
+
+    visit_AsyncFunctionDef = visit_FunctionDef
 
 
 @error_class_cst

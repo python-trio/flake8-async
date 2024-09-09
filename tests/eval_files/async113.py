@@ -105,3 +105,13 @@ class MyCm_typehint_explicit:
     async def __aexit__(self, *args):
         assert self.moo is not None
         await self.nursery_manager.__aexit__(*args)
+
+
+@asynccontextmanager
+async def foo_nested_sync_def():
+    with trio.open_nursery() as bar:
+
+        def non_async_func():
+            bar.start_soon(trio.run_process)
+
+        yield

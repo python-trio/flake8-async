@@ -30,6 +30,9 @@ async def foo_return_nested():
         def bar():
             return  # safe
 
+        async def bar():
+            return  # safe
+
 
 async def foo_while_safe():
     async with trio.open_nursery():
