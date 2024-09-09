@@ -398,9 +398,11 @@ class Visitor121(Flake8AsyncVisitor):
             if unsafe_cm in self.unsafe_stack:
                 self.error(node, "return", unsafe_cm)
 
-    def visit_FunctionDef(self, node: ast.FunctionDef):
+    def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
         self.save_state(node, "unsafe_stack", copy=True)
         self.unsafe_stack = []
+
+    visit_AsyncFunctionDef = visit_FunctionDef
 
 
 @error_class_cst
