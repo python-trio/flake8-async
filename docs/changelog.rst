@@ -4,6 +4,14 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.9.3
+======
+- :ref:`ASYNC102 <async102>`:
+  - handles nested cancel scopes
+  - detects internal cancel scopes of nurseries as a way to shield&deadline
+  - no longer treats :func:`trio.open_nursery` or :func:`anyio.create_task_group` as cancellation sources
+  - handles the `shield` parameter to :func:`trio.fail_after` and friends (added in trio 0.27)
+
 24.9.2
 ======
 - Fix false alarm in :ref:`ASYNC113 <async113>` and :ref:`ASYNC121 <async121>` with sync functions nested inside an async function.

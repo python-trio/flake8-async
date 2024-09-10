@@ -43,12 +43,16 @@ class Visitor102(Flake8AsyncVisitor):
             if self.funcname == "CancelScope":
                 self.has_timeout = False
                 for kw in node.keywords:
+                    # note: sets to True even if timeout is explicitly set to inf
+                    if kw.arg == "deadline":
+                        self.has_timeout = True
+
+            # trio 0.27 adds shield parameter to all scope helpers
+            if self.funcname in cancel_scope_names:
+                for kw in node.keywords:
                     # Only accepts constant values
                     if kw.arg == "shield" and isinstance(kw.value, ast.Constant):
                         self.shielded = kw.value.value
-                    # sets to True even if timeout is explicitly set to inf
-                    if kw.arg == "deadline":
-                        self.has_timeout = True
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -109,7 +113,12 @@ class Visitor102(Flake8AsyncVisitor):
 
         # Check for a `with trio.<scope_creator>`
         for item in node.items:
-            call = get_matching_call(item.context_expr, *cancel_scope_names)
+            call = get_matching_call(
+                item.context_expr,
+                "open_nursery",
+                "create_task_group",
+                *cancel_scope_names,
+            )
             if call is None:
                 continue
 
@@ -122,7 +131,18 @@ class Visitor102(Flake8AsyncVisitor):
             break
 
     def visit_AsyncWith(self, node: ast.AsyncWith):
-        self.async_call_checker(node)
+        # trio.open_nursery and anyio.create_task_group are not cancellation points
+        # so only treat this as an async call if it contains a call that does not match.
+        # asyncio.TaskGroup() appears to be a source of cancellation when exiting.
+        for item in node.items:
+            if not (
+                get_matching_call(item.context_expr, "open_nursery", base="trio")
+                or get_matching_call(
+                    item.context_expr, "create_task_group", base="anyio"
+                )
+            ):
+                self.async_call_checker(node)
+                break
         self.visit_With(node)
 
     def visit_Try(self, node: ast.Try):
@@ -160,18 +180,31 @@ class Visitor102(Flake8AsyncVisitor):
 
     def visit_Assign(self, node: ast.Assign):
         # checks for <scopename>.shield = [True/False]
+        # and <scopename>.cancel_scope.shield
+        # We don't care to differentiate between them depending on if the scope is
+        # a nursery or not, so e.g. `cs.cancel_scope.shield`/`nursery.shield` will "work"
         if self._trio_context_managers and len(node.targets) == 1:
-            last_scope = self._trio_context_managers[-1]
             target = node.targets[0]
-            if (
-                last_scope.variable_name is not None
-                and isinstance(target, ast.Attribute)
-                and isinstance(target.value, ast.Name)
-                and target.value.id == last_scope.variable_name
-                and target.attr == "shield"
-                and isinstance(node.value, ast.Constant)
-            ):
-                last_scope.shielded = node.value.value
+            for scope in reversed(self._trio_context_managers):
+                if (
+                    scope.variable_name is not None
+                    and isinstance(node.value, ast.Constant)
+                    and isinstance(target, ast.Attribute)
+                    and target.attr == "shield"
+                    and (
+                        (
+                            isinstance(target.value, ast.Name)
+                            and target.value.id == scope.variable_name
+                        )
+                        or (
+                            isinstance(target.value, ast.Attribute)
+                            and target.value.attr == "cancel_scope"
+                            and isinstance(target.value.value, ast.Name)
+                            and target.value.value.id == scope.variable_name
+                        )
+                    )
+                ):
+                    scope.shielded = node.value.value
 
     def visit_FunctionDef(
         self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda

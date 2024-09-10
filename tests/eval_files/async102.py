@@ -24,6 +24,12 @@ async def foo():
     try:
         pass
     finally:
+        with trio.move_on_after(30, shield=True) as s:
+            await foo()
+
+    try:
+        pass
+    finally:
         await foo()  # error: 8, Statement("try/finally", lineno-3)
 
     try:
@@ -114,15 +120,6 @@ async def foo():
             cs.shield = myvar
             # safe in theory, but we don't track variable values
             await foo()  # error: 12, Statement("try/finally", lineno-7)
-    try:
-        pass
-    finally:
-        # false alarm, open_nursery does not block/checkpoint on entry.
-        async with trio.open_nursery() as nursery:  # error: 8, Statement("try/finally", lineno-4)
-            nursery.cancel_scope.deadline = trio.current_time() + 10
-            nursery.cancel_scope.shield = True
-            # false alarm, we currently don't handle nursery.cancel_scope.[deadline/shield]
-            await foo()  # error: 12, Statement("try/finally", lineno-8)
     try:
         pass
     finally:
@@ -285,4 +282,25 @@ async def foo_nested_funcdef():
     except:
 
         async def foobar():
+            await foo()
+
+
+# nested cs
+async def foo_nested_cs():
+    try:
+        ...
+    except:
+        with trio.CancelScope(deadline=10) as cs1:
+            with trio.CancelScope(deadline=10) as cs2:
+                await foo()  # error: 16, Statement("bare except", lineno-3)
+                cs1.shield = True
+                await foo()
+                cs1.shield = False
+                await foo()  # error: 16, Statement("bare except", lineno-7)
+                cs2.shield = True
+                await foo()
+            await foo()  # error: 12, Statement("bare except", lineno-10)
+            cs2.shield = True
+            await foo()  # error: 12, Statement("bare except", lineno-12)
+            cs1.shield = True
             await foo()
