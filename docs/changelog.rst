@@ -6,7 +6,7 @@ Changelog
 
 24.9.3
 ======
-- :ref:`ASYNC102 <async102>`:
+- :ref:`ASYNC102 <async102>` and :ref:`ASYNC120 <async120>`:
   - handles nested cancel scopes
   - detects internal cancel scopes of nurseries as a way to shield&deadline
   - no longer treats :func:`trio.open_nursery` or :func:`anyio.create_task_group` as cancellation sources
