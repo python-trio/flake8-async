@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.11.1
+======
+- :ref:`ASYNC100 <async100>` now ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group` as cancellation sources.
+
 24.10.2
 =======
 - :ref:`ASYNC102 <async102>` now also warns about ``await()`` inside ``__aexit__``.

@@ -130,3 +130,13 @@
 
      with contextlib.suppress(Exception):
          with open("blah") as file:
+@@ x,6 x,6 @@
+
+
+ async def nursery_no_cancel_point():
+-    with trio.CancelScope():  # error: 9, "trio", "CancelScope"
+-        async with anyio.create_task_group():
+-            ...
++    # error: 9, "trio", "CancelScope"
++    async with anyio.create_task_group():
++        ...

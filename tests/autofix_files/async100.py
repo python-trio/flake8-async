@@ -130,3 +130,9 @@ async def fn(timeout):
             if condition():
                 return
             await trio.sleep(1)
+
+
+async def nursery_no_cancel_point():
+    # error: 9, "trio", "CancelScope"
+    async with anyio.create_task_group():
+        ...

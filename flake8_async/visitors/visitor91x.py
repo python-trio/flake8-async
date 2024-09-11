@@ -25,6 +25,7 @@ from .helpers import (
     flatten_preserving_comments,
     fnmatch_qualified_name_cst,
     func_has_decorator,
+    identifier_to_string,
     iter_guaranteed_once_cst,
     with_has_call,
 )
@@ -491,12 +492,32 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             is not None
         )
 
+    def _checkpoint_with(self, node: cst.With):
+        """Conditionally checkpoints entry/exit of With.
+
+        If the with only contains calls to open_nursery/create_task_group, it's a schedule
+        point but not a cancellation point, so we treat it as a checkpoint for async91x
+        but not for async100.
+        """
+        if getattr(node, "asynchronous", None):
+            for item in node.items:
+                if not isinstance(item.item, cst.Call):
+                    self.checkpoint()
+                    break
+                assert isinstance(item.item.func, (cst.Attribute, cst.Name))
+                func = identifier_to_string(item.item.func)
+                assert func is not None
+                if func not in ("trio.open_nursery", "anyio.create_task_group"):
+                    self.checkpoint()
+                    break
+            else:
+                self.uncheckpointed_statements = set()
+
     # Async context managers can reasonably checkpoint on either or both of entry and
     # exit.  Given that we can't tell which, we assume "both" to avoid raising a
     # missing-checkpoint warning when there might in fact be one (i.e. a false alarm).
     def visit_With_body(self, node: cst.With):
-        if getattr(node, "asynchronous", None):
-            self.checkpoint()
+        self._checkpoint_with(node)
 
         # if this might suppress exceptions, we cannot treat anything inside it as
         # checkpointing.
@@ -555,8 +576,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             self.restore_state(original_node)
             self.uncheckpointed_statements.update(prev_checkpoints)
 
-        if getattr(original_node, "asynchronous", None):
-            self.checkpoint()
+        self._checkpoint_with(original_node)
         return updated_node
 
     # error if no checkpoint since earlier yield or function entry
