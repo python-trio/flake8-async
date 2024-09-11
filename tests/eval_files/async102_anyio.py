@@ -72,3 +72,16 @@ async def foo_anyio_shielded():
             await foo()  # safe
     except BaseException:
         await foo()  # safe
+
+
+# anyio.create_task_group is not a source of cancellations
+async def foo_open_nursery_no_cancel():
+    try:
+        pass
+    finally:
+        # create_task_group does not block/checkpoint on entry, and is not
+        # a cancellation point on exit.
+        async with anyio.create_task_group() as tg:
+            tg.cancel_scope.deadline = anyio.current_time() + 10
+            tg.cancel_scope.shield = True
+            await foo()

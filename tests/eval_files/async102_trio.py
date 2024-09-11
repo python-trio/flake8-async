@@ -31,3 +31,16 @@ async def foo5():
             await foo()  # safe
     except BaseException:
         await foo()  # safe, since after trio.Cancelled
+
+
+# trio.open_nursery is not a source of cancellations
+async def foo_open_nursery_no_cancel():
+    try:
+        pass
+    finally:
+        # open_nursery does not block/checkpoint on entry, and is not
+        # a cancellation point on exit.
+        async with trio.open_nursery() as nursery:
+            nursery.cancel_scope.deadline = trio.current_time() + 10
+            nursery.cancel_scope.shield = True
+            await foo()

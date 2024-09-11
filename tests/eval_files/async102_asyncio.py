@@ -37,3 +37,12 @@ async def foo():
         await asyncio.shield(  # error: 8, Statement("try/finally", lineno-3)
             asyncio.wait_for(foo())
         )
+
+
+# asyncio.TaskGroup *is* a source of cancellations (on exit)
+async def foo_open_nursery_no_cancel():
+    try:
+        pass
+    finally:
+        async with asyncio.TaskGroup() as tg:  # error: 8, Statement("try/finally", lineno-3)
+            ...
