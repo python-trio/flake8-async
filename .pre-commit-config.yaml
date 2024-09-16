@@ -8,7 +8,7 @@ ci:
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.6.4
+      rev: v0.6.5
       hooks:
           - id: ruff
             args: [--fix]
@@ -42,7 +42,7 @@ repos:
           - id: mypy
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.379
+      rev: v1.1.380
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -95,6 +95,6 @@ repos:
             args: [--autofix]
 
     - repo: https://github.com/sphinx-contrib/sphinx-lint
-      rev: v0.9.1
+      rev: v1.0.0
       hooks:
           - id: sphinx-lint
