@@ -71,7 +71,7 @@ ASYNC116 : long-sleep-not-forever
     :func:`trio.sleep`/:func:`anyio.sleep` with >24 hour interval should usually be :func:`trio.sleep_forever`/:func:`anyio.sleep_forever`.
 
 ASYNC118 : cancelled-class-saved
-    Don't assign the value of :func:`anyio.get_cancelled_exc_class()` to a variable, since that breaks linter checks and multi-backend programs.
+    Don't assign the value of :func:`anyio.get_cancelled_exc_class` to a variable, since that breaks linter checks and multi-backend programs.
 
 _`ASYNC119` : yield-in-cm-in-async-gen
    ``yield`` in context manager in async generator is unsafe, the cleanup may be delayed until ``await`` is no longer allowed.
