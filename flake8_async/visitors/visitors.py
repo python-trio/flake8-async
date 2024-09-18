@@ -410,6 +410,33 @@ class Visitor121(Flake8AsyncVisitor):
     visit_AsyncFunctionDef = visit_FunctionDef
 
 
+@error_class
+class Visitor122(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC122": (
+            "Separating initialization from entry of {} changed behavior in Trio"
+            " 0.27, and was unintuitive before then. If you only support"
+            " trio>=0.27 you should disable this check."
+        )
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.in_withitem = False
+
+    def visit_withitem(self, node: ast.withitem):
+        self.save_state(node, "in_withitem")
+        self.in_withitem = True
+
+    def visit_Call(self, node: ast.Call):
+        if not self.in_withitem and (
+            match := get_matching_call(
+                node, "fail_after", "move_on_after", base=("trio", "anyio")
+            )
+        ):
+            self.error(node, f"{match[2]}.{match[1]}")
+
+
 @error_class_cst
 class Visitor300(Flake8AsyncVisitor_cst):
     error_codes: Mapping[str, str] = {

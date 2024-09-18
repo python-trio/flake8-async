@@ -481,6 +481,7 @@ error_codes_ignored_when_checking_transformed_sync_code = {
     # opening nurseries & taskgroups can only be done in async context, so ASYNC121
     # doesn't check for it
     "ASYNC121",
+    "ASYNC122",
     "ASYNC300",
     "ASYNC912",
 }
