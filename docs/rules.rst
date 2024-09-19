@@ -86,6 +86,8 @@ _`ASYNC120` : await-in-except
 _`ASYNC121`: control-flow-in-taskgroup
     `return`, `continue`, and `break` inside a :ref:`taskgroup_nursery` can lead to counterintuitive behaviour. Refactor the code to instead cancel the :ref:`cancel_scope` inside the TaskGroup/Nursery and place the statement outside of the TaskGroup/Nursery block. In asyncio a user might expect the statement to have an immediate effect, but it will wait for all tasks to finish before having an effect. See `Trio issue #1493 <https://github.com/python-trio/trio/issues/1493>`_ for further issues specific to trio/anyio.
 
+_`ASYNC122`: delayed-entry-of-relative-cancelscope
+    :func:`trio.move_on_after`, :func:`trio.fail_after`, :func:`anyio.move_on_after` and :func:`anyio.fail_after` behaves unintuitively if initialization and entry are separated, with the timeout starting on initialization. Trio>=0.27 changes this behaviour, so if you don't support older versions you should disable this check. See `Trio issue #2512 <https://github.com/python-trio/trio/issues/2512>`_.
 
 Blocking sync calls in async functions
 ======================================

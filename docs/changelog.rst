@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.9.4
+======
+- Add :ref:`ASYNC122 <async122>` delayed-entry-of-relative-cancelscope.
+
 24.9.3
 ======
 - :ref:`ASYNC102 <async102>` and :ref:`ASYNC120 <async120>`:
@@ -19,7 +23,7 @@ Changelog
 
 24.9.1
 ======
-- Add :ref:`ASYNC121 <async121>` control-flow-in-taskgroup
+- Add :ref:`ASYNC121 <async121>` control-flow-in-taskgroup.
 
 24.8.1
 ======
@@ -37,7 +41,7 @@ Changelog
 
 24.5.5
 ======
-- Add :ref:`ASYNC300 <async300>` create-task-no-reference
+- Add :ref:`ASYNC300 <async300>` create-task-no-reference.
 
 24.5.4
 ======
