@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.9.5
+======
+- Fix crash when analyzing code with infinite loop inside context manager.
+
 24.9.4
 ======
 - Add :ref:`ASYNC122 <async122>` delayed-entry-of-relative-cancelscope.

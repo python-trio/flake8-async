@@ -121,3 +121,12 @@ async def more_nested_tests():
 async def foo():
     with trio.fail_after(1):
         yield
+
+
+# This previously caused an AssertionError, see issue #295
+async def fn(timeout):
+    with trio.fail_after(timeout):
+        while True:
+            if condition():
+                return
+            await trio.sleep(1)
