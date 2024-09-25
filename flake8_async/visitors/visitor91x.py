@@ -452,7 +452,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         node: cst.Return | cst.FunctionDef | cst.Yield,
         statement: Statement,
     ) -> bool:
-        assert not isinstance(statement, ArtificialStatement)
+        assert not isinstance(statement, ArtificialStatement), statement
 
         if isinstance(node, cst.FunctionDef):
             msg = "exit"
@@ -768,7 +768,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 | self.uncheckpointed_statements
                 | self.loop_state.uncheckpointed_before_continue
             ):
-                if stmt == ARTIFICIAL_STATEMENT:
+                if isinstance(stmt, ArtificialStatement):
                     continue
                 any_error |= self.error_91x(err_node, stmt)
 
