@@ -8,7 +8,7 @@ ci:
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.6.7
+      rev: v0.6.8
       hooks:
           - id: ruff
             args: [--fix]
@@ -42,7 +42,7 @@ repos:
           - id: mypy
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.381
+      rev: v1.1.382.post1
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
