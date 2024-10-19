@@ -114,3 +114,41 @@ except ExceptionGroup as e:
     x: Any = object()
     x.y = e
     raise x.y.exceptions[0]
+
+# coverage
+try:
+    ...
+except ExceptionGroup:
+    ...
+
+# not implemented
+try:
+    ...
+except ExceptionGroup as e:
+    (a, *b), (c, *d) = e.split(bool)
+    if condition():
+        raise a
+    if condition():
+        raise b[0]
+    if condition():
+        raise c
+    if condition():
+        raise d[0]
+
+# coverage (skip irrelevant assignments)
+x = 0
+
+# coverage (ignore multiple targets when assign target is child exception)
+try:
+    ...
+except ExceptionGroup as e:
+    exc = e.exceptions[0]
+    b, c = exc
+    if condition():
+        raise b  # not handled, and probably shouldn't raise
+    else:
+        raise c  # same
+
+# coverage (skip irrelevant loop)
+for x in range(5):
+    ...

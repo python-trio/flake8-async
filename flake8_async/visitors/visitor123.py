@@ -87,9 +87,9 @@ class Visitor123(Flake8AsyncVisitor):
             return
         targets = (node.target,) if isinstance(node, ast.AnnAssign) else node.targets
         if self._is_child_exception(node.value):
-            for target in targets:
-                if isinstance(target, ast.Name):
-                    self.child_exception_names.add(target.id)
+            # not normally possible to assign single exception to multiple targets
+            if len(targets) == 1 and isinstance(targets[0], ast.Name):
+                self.child_exception_names.add(targets[0].id)
         elif self._is_exception_list(node.value):
             if len(targets) == 1 and isinstance(targets[0], ast.Name):
                 self.child_exception_list_names.add(targets[0].id)
