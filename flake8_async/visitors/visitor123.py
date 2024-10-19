@@ -78,7 +78,8 @@ class Visitor123(Flake8AsyncVisitor):
         self.exception_group_names = {node.name}
 
     # ast.TryStar added in py311
-    def visit_TryStar(self, node: ast.TryStar):  # type: ignore[name-defined]
+    # we run strict codecov on all python versions, this one doesn't run on <py311
+    def visit_TryStar(self, node: ast.TryStar):  # type: ignore[name-defined]  # pragma: no cover
         self.save_state(node, "try_star", copy=False)
         self.try_star = True
 

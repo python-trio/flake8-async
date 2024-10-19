@@ -75,11 +75,6 @@ except ExceptionGroup as e:
 
 try:
     ...
-except* Exception as e:
-    raise e.exceptions[0]  # error: 4
-
-try:
-    ...
 except ExceptionGroup as e:
     raise e.exceptions[0].exceptions[0]  # error: 4
 try:
