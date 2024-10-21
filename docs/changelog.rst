@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.10.1
+=======
+- Add :ref:`ASYNC123 <async123>` bad-exception-group-flattening
+
 24.9.5
 ======
 - Fix crash when analyzing code with infinite loop inside context manager.

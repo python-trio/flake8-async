@@ -89,6 +89,11 @@ _`ASYNC121`: control-flow-in-taskgroup
 _`ASYNC122`: delayed-entry-of-relative-cancelscope
     :func:`trio.move_on_after`, :func:`trio.fail_after`, :func:`anyio.move_on_after` and :func:`anyio.fail_after` behaves unintuitively if initialization and entry are separated, with the timeout starting on initialization. Trio>=0.27 changes this behaviour, so if you don't support older versions you should disable this check. See `Trio issue #2512 <https://github.com/python-trio/trio/issues/2512>`_.
 
+_`ASYNC123`: bad-exception-group-flattening
+    Raising one of the exceptions contained in an exception group will mutate it, replacing the original ``.__context__`` with the group, and erasing the ``.__traceback__``.
+    Dropping this information makes diagnosing errors much more difficult.
+    We recommend ``raise SomeNewError(...) from group`` if possible; or consider using `copy.copy` to shallow-copy the exception before re-raising (for copyable types), or re-raising the error from outside the `except` block.
+
 Blocking sync calls in async functions
 ======================================
 
