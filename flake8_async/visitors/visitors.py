@@ -437,6 +437,48 @@ class Visitor122(Flake8AsyncVisitor):
             self.error(node, f"{match[2]}.{match[1]}")
 
 
+@error_class
+class Visitor124(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC124": (
+            "yield in @asynccontextmanager should usually be in a `try:`"
+            " with cleanup in `finally` to ensure cleanup is run."
+        )
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.in_asynccontextmanager: bool = False
+        self.in_try: bool = False
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        self.save_state(node, "in_asynccontextmanager")
+
+        # TODO: should it also error on @contextmanager? If so it feels like
+        # flake8-bugbear might be more appropriate.
+        if has_decorator(node, "asynccontextmanager"):
+            self.in_asynccontextmanager = True
+
+    # ast.TryStar added in py311, we run mypy on py39
+    def visit_Try(self, node: ast.Try | ast.TryStar):  # type: ignore[name-defined]
+        old_in_try = self.in_try
+        self.in_try = True
+
+        self.visit_nodes(node.body)
+        self.in_try = old_in_try
+
+        self.visit_nodes(node.handlers, node.orelse, node.finalbody)
+
+        # don't revisit children
+        self.novisit = True
+
+    visit_TryStar = visit_Try
+
+    def visit_Yield(self, node: ast.Yield):
+        if self.in_asynccontextmanager and not self.in_try:
+            self.error(node)
+
+
 @error_class_cst
 class Visitor300(Flake8AsyncVisitor_cst):
     error_codes: Mapping[str, str] = {

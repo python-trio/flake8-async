@@ -161,6 +161,9 @@ class Visitor102(Flake8AsyncVisitor):
         self._critical_scope = Statement("try/finally", node.lineno, node.col_offset)
         self.visit_nodes(node.finalbody)
 
+        # don't revisit children
+        self.novisit = True
+
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
         # if we're inside a critical scope, a nested except should never override that
         if self._critical_scope is not None and self._critical_scope.name != "except":

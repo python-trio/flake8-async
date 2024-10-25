@@ -94,6 +94,9 @@ _`ASYNC123`: bad-exception-group-flattening
     Dropping this information makes diagnosing errors much more difficult.
     We recommend ``raise SomeNewError(...) from group`` if possible; or consider using `copy.copy` to shallow-copy the exception before re-raising (for copyable types), or re-raising the error from outside the `except` block.
 
+_`ASYNC124`: yield-in-asynccm-not-in-try
+    `yield` in ``@asynccontextmanager`` should usually be in a ``try:`` with cleanup code in ``finally:`` so cleanup runs if the yielded code raises an exception.
+
 Blocking sync calls in async functions
 ======================================
 
