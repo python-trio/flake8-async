@@ -1,4 +1,8 @@
-"""Visitor102, which warns on unprotected `await` inside `finally`.
+"""Contains Visitor102 with ASYNC102 and ASYNC120.
+
+ASYNC102: await-in-finally-or-cancelled
+ASYNC120: await-in-except
+
 
 To properly protect they must be inside a shielded cancel scope with a timeout.
 """
@@ -221,6 +225,10 @@ class Visitor102(Flake8AsyncVisitor):
         self.cancelled_caught = False
 
         self._potential_120 = []
+
+        # lambda doesn't have `name` attribute
+        if getattr(node, "name", None) == "__aexit__":
+            self._critical_scope = Statement("__aexit__", node.lineno, node.col_offset)
 
     visit_AsyncFunctionDef = visit_FunctionDef
     # lambda can't contain await, try, except, raise, with, or assignments.

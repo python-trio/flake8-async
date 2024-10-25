@@ -21,8 +21,8 @@ ASYNC101 : yield-in-cancel-scope
     This has substantial overlap with :ref:`ASYNC119 <ASYNC119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by `PEP 533 <https://peps.python.org/pep-0533/>`_.
 
 _`ASYNC102` : await-in-finally-or-cancelled
-    ``await`` inside ``finally`` or :ref:`cancelled-catching <cancelled>` ``except:`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
-    If not, the async call will immediately raise a new cancellation, suppressing the cancellation that was caught.
+    ``await`` inside ``finally``, :ref:`cancelled-catching <cancelled>` ``except:``, or ``__aexit__`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
+    If not, the async call will immediately raise a new cancellation, suppressing any cancellation that was caught.
     See :ref:`ASYNC120 <async120>` for the general case where other exceptions might get suppressed.
     This is currently not able to detect asyncio shields.
 
