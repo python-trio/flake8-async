@@ -6,7 +6,7 @@ Changelog
 
 24.10.2
 =======
-- :ref:`ASYNC102` <async102>` now also warns about ``await()`` inside ``__aexit__``.
+- :ref:`ASYNC102 <async102>` now also warns about ``await()`` inside ``__aexit__``.
 
 24.10.1
 =======
