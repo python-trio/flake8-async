@@ -65,6 +65,7 @@ ignore = [
   "D105",
   "D106",
   "D107",
+  "D400",  # ends-in-period, stricter version of ends-in-punctuation
   "S101",
   "D203",  # one-blank-line-before-class
   "D213",  # multi-line-summary-second-line

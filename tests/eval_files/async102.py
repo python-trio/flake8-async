@@ -304,3 +304,8 @@ async def foo_nested_cs():
             await foo()  # error: 12, Statement("bare except", lineno-12)
             cs1.shield = True
             await foo()
+
+
+# treat __aexit__ as a critical scope
+async def __aexit__():
+    await foo()  # error: 4, Statement("__aexit__", lineno-1)
