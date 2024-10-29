@@ -1,8 +1,14 @@
-"""Contains Visitor91X.
+"""Contains Visitor91X and Visitor124.
 
-910 looks for async functions without guaranteed checkpoints (or exceptions), and 911 does
-the same except for async iterables - while also requiring that they checkpoint between
-each yield.
+Visitor91X contains checks for
+* ASYNC100 cancel-scope-no-checkpoint
+* ASYNC910 async-function-no-checkpoint
+* ASYNC911 async-generator-no-checkpoint
+* ASYNC912 cancel-scope-no-guaranteed-checkpoint
+* ASYNC913 indefinite-loop-no-guaranteed-checkpoint
+
+Visitor124 contains
+* ASYNC124 async-function-could-be-sync
 """
 
 from __future__ import annotations
@@ -61,6 +67,47 @@ def func_empty_body(node: cst.FunctionDef) -> bool:
             m.SimpleStatementSuite(body=[m.ZeroOrMore(empty_statement)]),
         ),
     )
+
+
+@error_class_cst
+class Visitor124(Flake8AsyncVisitor_cst):
+    error_codes: Mapping[str, str] = {
+        "ASYNC124": (
+            "Async function with no `await` could be sync."
+            " Async functions are more expensive to call."
+        )
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.has_await = False
+
+    def visit_FunctionDef(self, node: cst.FunctionDef):
+        # await in sync defs are not valid, but handling this will make ASYNC124
+        # pop up in parent func as if the child function was async
+        self.save_state(node, "has_await", copy=False)
+        self.has_await = False
+
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> cst.FunctionDef:
+        if (
+            original_node.asynchronous is not None
+            and not self.has_await
+            and not func_empty_body(original_node)
+        ):
+            self.error(original_node)
+        self.restore_state(original_node)
+        return updated_node
+
+    def visit_Await(self, node: cst.Await):
+        self.has_await = True
+
+    def visit_With(self, node: cst.With | cst.For):
+        if node.asynchronous is not None:
+            self.has_await = True
+
+    visit_For = visit_With
 
 
 @dataclass

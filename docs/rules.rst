@@ -94,6 +94,12 @@ _`ASYNC123`: bad-exception-group-flattening
     Dropping this information makes diagnosing errors much more difficult.
     We recommend ``raise SomeNewError(...) from group`` if possible; or consider using `copy.copy` to shallow-copy the exception before re-raising (for copyable types), or re-raising the error from outside the `except` block.
 
+_`ASYNC124`: async-function-could-be-sync
+    Triggers when an async function contain none of ``await``, ``async for`` or ``async with``.
+    Calling an async function is slower than calling regular functions, so if possible you
+    might want to convert your function to be synchronous.
+    This currently overlaps with :ref:`ASYNC910 <ASYNC910>` and :ref:`ASYNC911 <ASYNC911>` which, if enabled, will autofix the function to have :ref:`checkpoint`.
+
 Blocking sync calls in async functions
 ======================================
 

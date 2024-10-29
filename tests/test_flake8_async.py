@@ -619,13 +619,14 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
         expected_dict[e.line][e.code] += 1
 
     error_count = 0
+    printed_header = False
     for line in all_lines:
         if error_dict[line] == expected_dict[line]:
             continue
 
         # go through all the codes on the line
         for code in sorted({*error_dict[line], *expected_dict[line]}):
-            if error_count == 0:
+            if not printed_header:
                 print(
                     "Lines with different # of errors:",
                     "-" * 38,
@@ -633,6 +634,7 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
                     sep="\n",
                     file=sys.stderr,
                 )
+                printed_header = True
 
             print(
                 f"| {line:4}",

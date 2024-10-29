@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.10.3
+=======
+- Add :ref:`ASYNC124 <async124>` async-function-could-be-sync
+
 24.10.2
 =======
 - :ref:`ASYNC102 <async102>` now also warns about ``await()`` inside ``__aexit__``.
