@@ -6,9 +6,9 @@ It currently does not care if 910/911 would also be triggered."""
 # 910/911 will also autofix async124, in the sense of adding a checkpoint. This is perhaps
 # not what the user wants though, so this would be a case in favor of making 910/911 not
 # trigger when async124 does.
-# AUTOFIX
-# ASYNCIO_NO_AUTOFIX
-from typing import Any
+# NOAUTOFIX # all errors get "fixed" except for foo_fix_no_subfix
+from typing import Any, overload
+from pytest import fixture
 
 
 def condition() -> bool:
@@ -66,16 +66,36 @@ async def foo_empty_pass():
     pass
 
 
-# we could consider filtering out functions named `test_.*` to not give false alarms on
-# tests that use async fixtures.
-# For ruff and for running through flake8 we could expect users to use per-file-ignores,
-# but running as standalone we don't currently support that. (though probs wouldn't be
-# too bad to add support).
 # See e.g. https://github.com/agronholm/anyio/issues/803 for why one might want an async
 # test without awaits.
-
-
 async def test_async_fixture(
-    my_anyio_fixture,
-):  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
-    assert my_anyio_fixture.setup_worked_correctly
+    my_async_fixture,
+):  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+    assert my_async_fixture.setup_worked_correctly
+
+
+# no params -> no async fixtures
+async def test_no_fixture():  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+    print("blah")
+
+
+# skip @overload. They should always be empty, but /shrug
+@overload
+async def foo_overload():
+    print("blah")
+
+
+async def foo_overload(): ...
+
+
+# skip @[pytest.]fixture if they have any params, since they might depend on other
+# async fixtures
+@fixture
+async def foo_fix(my_async_fixture):
+    print("blah")
+
+
+# but @fixture with no params can be converted to sync
+@fixture
+async def foo_fix_no_subfix():  # ASYNC124: 0
+    print("blah")

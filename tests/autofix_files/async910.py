@@ -134,9 +134,12 @@ def foo_normal_func_1():
 def foo_normal_func_2(): ...
 
 
-# overload decorator
+# overload decorator is skipped
+# overload functions should always be empty, so the check is somewhat redundant,
+# but making one non-empty to check the logic.
 @overload
-async def foo_overload_1(_: bytes): ...
+async def foo_overload_1(_: bytes):
+    raise NotImplementedError
 
 
 @typing.overload

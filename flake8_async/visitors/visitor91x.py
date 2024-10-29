@@ -95,6 +95,18 @@ class Visitor124(Flake8AsyncVisitor_cst):
             original_node.asynchronous is not None
             and not self.has_await
             and not func_empty_body(original_node)
+            and not func_has_decorator(original_node, "overload")
+            # skip functions named 'text_xxx' with params, since they may be relying
+            # on async fixtures. This is esp bad as sync funcs relying on async fixtures
+            # is not well handled: https://github.com/pytest-dev/pytest/issues/10839
+            # also skip funcs with @fixtures and params
+            and not (
+                original_node.params.params
+                and (
+                    original_node.name.value.startswith("test_")
+                    or func_has_decorator(original_node, "fixture")
+                )
+            )
         ):
             self.error(original_node)
         self.restore_state(original_node)
