@@ -8,7 +8,7 @@ ci:
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.7.0
+      rev: v0.7.1
       hooks:
           - id: ruff
             args: [--fix]
@@ -25,7 +25,7 @@ repos:
           - id: autoflake
 
     - repo: https://github.com/asottile/pyupgrade
-      rev: v3.18.0
+      rev: v3.19.0
       hooks:
           - id: pyupgrade
             args: [--py39-plus]
@@ -37,14 +37,14 @@ repos:
           - id: isort
 
     - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.12.1
+      rev: v1.13.0
       hooks:
           - id: mypy
             # uses py311 syntax, mypy configured for py39
             exclude: tests/eval_files/.*_py311.py
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.385
+      rev: v1.1.386
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
