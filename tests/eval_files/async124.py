@@ -99,3 +99,37 @@ async def foo_fix(my_async_fixture):
 @fixture
 async def foo_fix_no_subfix():  # ASYNC124: 0
     print("blah")
+
+
+async def default_value():
+    def foo(arg=await foo()): ...
+
+
+# 124 doesn't care if you evaluate the comprehension or not
+# 910 is stingy
+async def foo_async_gen():
+    return (
+        a async for a in foo_gen()
+    )  # ASYNC910: 4, "return", Statement("function definition", lineno-1)
+
+
+async def foo_async_for_comprehension():
+    return [a async for a in foo_gen()]
+
+
+class Foo:
+    # async124 ignores class methods
+    async def bar(
+        self,
+    ):  # ASYNC910: 4, "exit", Statement("function definition", lineno)
+        async def bee():  # ASYNC124: 8  # ASYNC910: 8, "exit", Statement("function definition", lineno)
+            print("blah")
+
+    async def later_in_class(
+        self,
+    ):  # ASYNC910: 4, "exit", Statement("function definition", lineno)
+        print()
+
+
+async def after_class():  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+    print()

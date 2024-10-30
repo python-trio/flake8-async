@@ -69,6 +69,7 @@ def func_empty_body(node: cst.FunctionDef) -> bool:
     )
 
 
+# this could've been implemented as part of visitor91x, but /shrug
 @error_class_cst
 class Visitor124(Flake8AsyncVisitor_cst):
     error_codes: Mapping[str, str] = {
@@ -81,12 +82,37 @@ class Visitor124(Flake8AsyncVisitor_cst):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.has_await = False
+        self.in_class = False
 
+    def visit_ClassDef(self, node: cst.ClassDef):
+        self.save_state(node, "in_class", copy=False)
+        self.in_class = True
+
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> cst.ClassDef:
+        self.restore_state(original_node)
+        return updated_node
+
+    # await in sync defs are not valid, but handling this will make ASYNC124
+    # correctly pop up in parent func as if the child function was async
     def visit_FunctionDef(self, node: cst.FunctionDef):
-        # await in sync defs are not valid, but handling this will make ASYNC124
-        # pop up in parent func as if the child function was async
-        self.save_state(node, "has_await", copy=False)
-        self.has_await = False
+        # default values are evaluated in parent scope
+        # this visitor has no autofixes, so we can throw away return value
+        _ = node.params.visit(self)
+
+        self.save_state(node, "has_await", "in_class", copy=False)
+
+        # ignore class methods
+        self.has_await = self.in_class
+
+        # but not nested functions
+        self.in_class = False
+
+        _ = node.body.visit(self)
+
+        # we've manually visited subnodes (that we care about).
+        return False
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -99,7 +125,7 @@ class Visitor124(Flake8AsyncVisitor_cst):
             # skip functions named 'text_xxx' with params, since they may be relying
             # on async fixtures. This is esp bad as sync funcs relying on async fixtures
             # is not well handled: https://github.com/pytest-dev/pytest/issues/10839
-            # also skip funcs with @fixtures and params
+            # also skip funcs with @fixture and params
             and not (
                 original_node.params.params
                 and (
@@ -115,11 +141,12 @@ class Visitor124(Flake8AsyncVisitor_cst):
     def visit_Await(self, node: cst.Await):
         self.has_await = True
 
-    def visit_With(self, node: cst.With | cst.For):
+    def visit_With(self, node: cst.With | cst.For | cst.CompFor):
         if node.asynchronous is not None:
             self.has_await = True
 
     visit_For = visit_With
+    visit_CompFor = visit_With
 
 
 @dataclass
@@ -348,6 +375,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # --exception-suppress-context-manager
         self.suppress_imported_as: list[str] = []
 
+        # used to transfer new body between visit_FunctionDef and leave_FunctionDef
+        self.new_body: cst.BaseSuite | None = None
+
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
         if code is None:  # pragma: no branch
             code = "ASYNC911" if self.has_yield else "ASYNC910"
@@ -388,6 +418,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                     return
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        # `await` in default values happen in parent scope
+        # we also know we don't ever modify parameters so we can ignore the return value
+        _ = node.params.visit(self)
+
         # don't lint functions whose bodies solely consist of pass or ellipsis
         # @overload functions are also guaranteed to be empty
         # we also ignore pytest fixtures
@@ -417,36 +451,49 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 node.decorators, *self.options.no_checkpoint_warning_decorators
             )
         )
-        if not self.async_function:
-            # only visit subnodes if there is an async function defined inside
-            # this should improve performance on codebases with many sync functions
-            return any(m.findall(node, m.FunctionDef(asynchronous=m.Asynchronous())))
+        # only visit subnodes if there is an async function defined inside
+        # this should improve performance on codebases with many sync functions
+        if not self.async_function and not any(
+            m.findall(node, m.FunctionDef(asynchronous=m.Asynchronous()))
+        ):
+            return False
 
         pos = self.get_metadata(PositionProvider, node).start  # type: ignore
         self.uncheckpointed_statements = {
             Statement("function definition", pos.line, pos.column)  # type: ignore
         }
-        return True
+
+        # visit body
+        # we're not gonna get FlattenSentinel or RemovalSentinel
+        self.new_body = cast(cst.BaseSuite, node.body.visit(self))
+
+        # we know that leave_FunctionDef for this FunctionDef will run immediately after
+        # this function exits so we don't need to worry about save_state for new_body
+        return False
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
         if (
-            self.async_function
+            self.new_body is not None
+            and self.async_function
             # updated_node does not have a position, so we must send original_node
             and self.check_function_exit(original_node)
             and self.should_autofix(original_node)
-            and isinstance(updated_node.body, cst.IndentedBlock)
+            and isinstance(self.new_body, cst.IndentedBlock)
         ):
             # insert checkpoint at the end of body
-            new_body = list(updated_node.body.body)
-            new_body.append(self.checkpoint_statement())
-            indentedblock = updated_node.body.with_changes(body=new_body)
-            updated_node = updated_node.with_changes(body=indentedblock)
+            new_body_block = list(self.new_body.body)
+            new_body_block.append(self.checkpoint_statement())
+            self.new_body = self.new_body.with_changes(body=new_body_block)
 
             self.ensure_imported_library()
 
+        if self.new_body is not None:
+            updated_node = updated_node.with_changes(body=self.new_body)
         self.restore_state(original_node)
+        # reset self.new_body
+        self.new_body = None
         return updated_node
 
     # error if function exit/return/yields with uncheckpointed statements
