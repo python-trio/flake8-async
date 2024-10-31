@@ -2,6 +2,7 @@
 It currently does not care if 910/911 would also be triggered."""
 
 # ARG --enable=ASYNC124,ASYNC910,ASYNC911
+# ARG --no-checkpoint-warning-decorator=custom_disabled_decorator
 
 # 910/911 will also autofix async124, in the sense of adding a checkpoint. This is perhaps
 # not what the user wants though, so this would be a case in favor of making 910/911 not
@@ -9,6 +10,8 @@ It currently does not care if 910/911 would also be triggered."""
 # NOAUTOFIX # all errors get "fixed" except for foo_fix_no_subfix
 from typing import Any, overload
 from pytest import fixture
+
+custom_disabled_decorator: Any = ...
 
 
 def condition() -> bool:
@@ -108,9 +111,9 @@ async def default_value():
 # 124 doesn't care if you evaluate the comprehension or not
 # 910 is stingy
 async def foo_async_gen():
-    return (
+    return (  # ASYNC910: 4, "return", Statement("function definition", lineno-1)
         a async for a in foo_gen()
-    )  # ASYNC910: 4, "return", Statement("function definition", lineno-1)
+    )
 
 
 async def foo_async_for_comprehension():
@@ -119,17 +122,22 @@ async def foo_async_for_comprehension():
 
 class Foo:
     # async124 ignores class methods
-    async def bar(
+    async def bar(  # ASYNC910: 4, "exit", Statement("function definition", lineno)
         self,
-    ):  # ASYNC910: 4, "exit", Statement("function definition", lineno)
+    ):
         async def bee():  # ASYNC124: 8  # ASYNC910: 8, "exit", Statement("function definition", lineno)
             print("blah")
 
-    async def later_in_class(
+    async def later_in_class(  # ASYNC910: 4, "exit", Statement("function definition", lineno)
         self,
-    ):  # ASYNC910: 4, "exit", Statement("function definition", lineno)
+    ):
         print()
 
 
 async def after_class():  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+    print()
+
+
+@custom_disabled_decorator
+async def foo_has_custom_disabled_decorator():
     print()

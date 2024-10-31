@@ -133,6 +133,10 @@ class Visitor124(Flake8AsyncVisitor_cst):
                     or func_has_decorator(original_node, "fixture")
                 )
             )
+            # ignore functions with no_checkpoint_warning_decorators
+            and not fnmatch_qualified_name_cst(
+                original_node.decorators, *self.options.no_checkpoint_warning_decorators
+            )
         ):
             self.error(original_node)
         self.restore_state(original_node)
@@ -360,7 +364,6 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.has_yield = False
-        self.safe_decorator = False
         self.async_function = False
         self.uncheckpointed_statements: set[Statement] = set()
         self.comp_unknown = False
@@ -431,7 +434,6 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.save_state(
             node,
             "has_yield",
-            "safe_decorator",
             "async_function",
             "uncheckpointed_statements",
             "loop_state",
@@ -442,7 +444,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         )
         self.uncheckpointed_statements = set()
         self.has_checkpoint_stack = []
-        self.has_yield = self.safe_decorator = False
+        self.has_yield = False
         self.loop_state = LoopState()
 
         self.async_function = (
