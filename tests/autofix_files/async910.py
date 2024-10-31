@@ -620,15 +620,18 @@ async def fn_226():  # error: 0, "exit", Statement("function definition", lineno
         pass
     await trio.lowlevel.checkpoint()
 
+
 # the await() is evaluated in the parent scope
 async def foo_default_value_await():
-    async def bar(arg=await foo()):  # error: 4, "exit", Statement("function definition", lineno)
+    async def bar(  # error: 4, "exit", Statement("function definition", lineno)
+        arg=await foo(),
+    ):
         print()
         await trio.lowlevel.checkpoint()
 
 
 async def foo_nested_empty_async():
     # this previously errored because leave_FunctionDef assumed a non-empty body
-    async def bar():
-        ...
+    async def bar(): ...
+
     await foo()

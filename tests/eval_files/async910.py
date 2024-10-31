@@ -593,9 +593,9 @@ async def fn_226():  # error: 0, "exit", Statement("function definition", lineno
 
 # the await() is evaluated in the parent scope
 async def foo_default_value_await():
-    async def bar(
+    async def bar(  # error: 4, "exit", Statement("function definition", lineno)
         arg=await foo(),
-    ):  # error: 4, "exit", Statement("function definition", lineno)
+    ):
         print()
 
 
