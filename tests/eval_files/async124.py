@@ -108,12 +108,15 @@ async def default_value():
     def foo(arg=await foo()): ...
 
 
-# 124 doesn't care if you evaluate the comprehension or not
-# 910 is stingy
-async def foo_async_gen():
+# only the expression in genexp's get checked
+async def foo_async_gen():  # ASYNC124: 0
     return (  # ASYNC910: 4, "return", Statement("function definition", lineno-1)
-        a async for a in foo_gen()
+        await a async for a in foo_gen()
     )
+
+
+async def foo_async_gen_await():
+    return (a for a in await foo_gen())
 
 
 async def foo_async_for_comprehension():

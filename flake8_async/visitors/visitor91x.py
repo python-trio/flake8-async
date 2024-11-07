@@ -152,6 +152,13 @@ class Visitor124(Flake8AsyncVisitor_cst):
     visit_For = visit_With
     visit_CompFor = visit_With
 
+    # The generator target will be immediately evaluated, but the other
+    # elements will not be evaluated at the point of defining the GenExp.
+    # To consume those needs an explicit syntactic checkpoint
+    def visit_GeneratorExp(self, node: cst.GeneratorExp):
+        node.for_in.iter.visit(self)
+        return False
+
 
 @dataclass
 class LoopState:
@@ -1086,8 +1093,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         return False
 
     # The generator target will be immediately evaluated, but the other
-    # elements will be lazily evaluated as the generator is consumed so we don't
-    # visit them as any checkpoints in them are not guaranteed to execute.
+    # elements will not be evaluated at the point of defining the GenExp.
+    # To consume those needs an explicit syntactic checkpoint
     def visit_GeneratorExp(self, node: cst.GeneratorExp):
         node.for_in.iter.visit(self)
         return False
