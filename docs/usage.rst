@@ -318,3 +318,21 @@ Specified patterns must not have parentheses, and will only match when the patte
        def my_blocking_call():  # it's also safe to use the name in other contexts
            ...
        arbitrary_other_function(my_blocking_call=None)
+
+.. _transform-async-generator-decorators:
+
+``transform-async-generator-decorators``
+----------------------------------------
+Comma-separated list of decorators that make async generators safe, disabling
+:ref:`ASYNC900`, :ref:`ASYNC101`, and :ref:`ASYNC119` warnings for.
+``[pytest.]fixture`` and ``[contextlib.]asynccontextmanager`` are always considered safe.
+Decorators can be dotted or not, as well as support * as a wildcard.
+
+Example
+^^^^^^^
+
+.. code-block:: none
+
+   transform-async-generator-decorators =
+     fastapi.Depends
+     trio_util.trio_async_generator
