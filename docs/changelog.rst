@@ -4,9 +4,9 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
-24.11.1
-=======
-- :ref:`ASYNC101` and :ref:`ASYNC119` are now silenced for decorators in :ref:`transform-async-generator-decorators`
+FUTURE
+======
+- :ref:`ASYNC101 <async101>` and :ref:`ASYNC119 <async119>` are now silenced for decorators in :ref:`transform-async-generator-decorators`
 
 24.10.2
 =======
