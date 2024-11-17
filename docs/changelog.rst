@@ -4,9 +4,12 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
-24.10.3
-=======
+Future
+======
 - :ref:`ASYNC101 <async101>` and :ref:`ASYNC119 <async119>` are now silenced for decorators in :ref:`transform-async-generator-decorators`
+
+24.10.2
+=======
 - :ref:`ASYNC102 <async102>` now also warns about ``await()`` inside ``__aexit__``.
 
 24.10.1

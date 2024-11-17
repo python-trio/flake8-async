@@ -107,7 +107,7 @@ repos:
           - id: check-release-changelog
             name: check-release-changelog
             language: system
-            entry: python3 tests/check_changelog_and_version.py
+            entry: python3 tests/check_changelog_and_version.py --allow-future
             files: flake8_async/__init__.py|docs/changelog.rst
 
     - repo: meta
