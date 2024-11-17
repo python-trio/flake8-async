@@ -334,7 +334,10 @@ class Visitor119(Flake8AsyncVisitor):
         self.save_state(node, "unsafe_function", "contextmanager")
         self.contextmanager = False
         if isinstance(node, ast.AsyncFunctionDef) and not has_decorator(
-            node, "asynccontextmanager"
+            node,
+            "asynccontextmanager",
+            "fixture",
+            *self.options.transform_async_generator_decorators,
         ):
             self.unsafe_function = True
         else:

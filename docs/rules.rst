@@ -15,7 +15,7 @@ _`ASYNC100` : cancel-scope-no-checkpoint
     This check also treats ``yield`` as a checkpoint, since checkpoints can happen in the caller we yield to.
     See :ref:`ASYNC912 <async912>` which will in addition guarantee checkpoints on every code path.
 
-ASYNC101 : yield-in-cancel-scope
+_`ASYNC101` : yield-in-cancel-scope
     ``yield`` inside a :ref:`taskgroup_nursery` or :ref:`timeout_context` is only safe when implementing a context manager - otherwise, it breaks exception handling.
     See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP.
     This has substantial overlap with :ref:`ASYNC119 <ASYNC119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by `PEP 533 <https://peps.python.org/pep-0533/>`_.
