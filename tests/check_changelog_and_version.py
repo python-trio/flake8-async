@@ -112,6 +112,9 @@ def update_version() -> None:
 
 
 if __name__ == "__main__":
+    test_last_release_against_changelog()
+    test_version_increments_are_correct()
+
     update_version()
     if "--ensure-tag" in sys.argv:
         ensure_tagged()

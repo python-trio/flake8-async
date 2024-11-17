@@ -3,8 +3,9 @@ default_language_version:
     python: python3.12
 # pyright requires internet connection to run, which the pre-commit ci app doesn't have.
 # it instead runs in a github action
+# check-relase-changelog is run in CI to be able to access PR labels
 ci:
-    skip: [pyright]
+    skip: [pyright, check-release-changelog]
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -100,3 +101,16 @@ repos:
       rev: v1.0.0
       hooks:
           - id: sphinx-lint
+
+    - repo: local
+      hooks:
+          - id: check-release-changelog
+            name: check-release-changelog
+            language: system
+            entry: python3 tests/check_changelog_and_version.py
+            files: flake8_async/__init__.py|docs/changelog.rst
+
+    - repo: meta
+      hooks:
+          - id: check-hooks-apply
+          - id: check-useless-excludes
