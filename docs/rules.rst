@@ -13,6 +13,7 @@ _`ASYNC100` : cancel-scope-no-checkpoint
     A :ref:`timeout_context` does not contain any :ref:`checkpoints <checkpoint>`.
     This makes it pointless, as the timeout can only be triggered by a checkpoint.
     This check also treats ``yield`` as a checkpoint, since checkpoints can happen in the caller we yield to.
+    :func:`trio.open_nursery` and :func:`anyio.create_task_group` are excluded, as they are :ref:`schedule_points` but not :ref:`cancel_points`.
     See :ref:`ASYNC912 <async912>` which will in addition guarantee checkpoints on every code path.
 
 _`ASYNC101` : yield-in-cancel-scope

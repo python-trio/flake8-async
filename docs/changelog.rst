@@ -4,6 +4,12 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.11.1
+=======
+- :ref:`ASYNC100 <async100>` now ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`
+  as cancellation sources, because they are :ref:`schedule points <schedule_points>` but not
+  :ref:`cancellation points <cancel_points>`.
+
 24.10.2
 =======
 - :ref:`ASYNC101 <async101>` and :ref:`ASYNC119 <async119>` are now silenced for decorators in :ref:`transform-async-generator-decorators`
@@ -24,6 +30,7 @@ Changelog
 24.9.3
 ======
 - :ref:`ASYNC102 <async102>` and :ref:`ASYNC120 <async120>`:
+
   - handles nested cancel scopes
   - detects internal cancel scopes of nurseries as a way to shield&deadline
   - no longer treats :func:`trio.open_nursery` or :func:`anyio.create_task_group` as cancellation sources
