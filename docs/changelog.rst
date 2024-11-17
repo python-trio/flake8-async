@@ -4,6 +4,12 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.10.3
+=======
+- Add :ref:`ASYNC124 <async124>` async-function-could-be-sync
+- :ref:`ASYNC91x <ASYNC910>` now correctly handles ``await()`` in parameter lists.
+- Fixed a bug with :ref:`ASYNC91x <ASYNC910>` and nested empty functions.
+
 24.10.2
 =======
 - :ref:`ASYNC102 <async102>` now also warns about ``await()`` inside ``__aexit__``.
