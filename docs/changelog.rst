@@ -6,7 +6,9 @@ Changelog
 
 24.11.1
 =======
-- :ref:`ASYNC100 <async100>` now ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group` as cancellation sources.
+- :ref:`ASYNC100 <async100>` now ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`
+  as cancellation sources, because they are :ref:`schedule points <schedule_points>` but not
+  :ref:`cancellation points <cancel_points>`.
 
 24.10.2
 =======
