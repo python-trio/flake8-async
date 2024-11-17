@@ -324,7 +324,7 @@ Specified patterns must not have parentheses, and will only match when the patte
 ``transform-async-generator-decorators``
 ----------------------------------------
 Comma-separated list of decorators that make async generators safe, disabling
-:ref:`ASYNC900 <ASYNC900>`, :ref:`ASYNC101 <ASYNC101>`, and :ref:`ASYNC119 <ASYNC119>` warnings for.
+:ref:`ASYNC900 <ASYNC900>`, :ref:`ASYNC101 <ASYNC101>`, and :ref:`ASYNC119 <ASYNC119>` warnings for functions decorated with any of them.
 ``[pytest.]fixture`` and ``[contextlib.]asynccontextmanager`` are always considered safe.
 Decorators can be dotted or not, as well as support * as a wildcard.
 
