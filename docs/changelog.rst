@@ -4,20 +4,24 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.11.2
+=======
+- Fix crash in ``Visitor91x`` on ``async with a().b():``.
+
 24.11.1
 =======
 - :ref:`ASYNC100 <async100>` now ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`
   as cancellation sources, because they are :ref:`schedule points <schedule_points>` but not
   :ref:`cancellation points <cancel_points>`.
+- :ref:`ASYNC101 <async101>` and :ref:`ASYNC119 <async119>` are now silenced for decorators in :ref:`transform-async-generator-decorators`.
 
 24.10.2
 =======
-- :ref:`ASYNC101 <async101>` and :ref:`ASYNC119 <async119>` are now silenced for decorators in :ref:`transform-async-generator-decorators`
 - :ref:`ASYNC102 <async102>` now also warns about ``await()`` inside ``__aexit__``.
 
 24.10.1
 =======
-- Add :ref:`ASYNC123 <async123>` bad-exception-group-flattening
+- Add :ref:`ASYNC123 <async123>` bad-exception-group-flattening.
 
 24.9.5
 ======

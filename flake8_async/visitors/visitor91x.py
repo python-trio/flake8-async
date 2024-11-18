@@ -501,15 +501,14 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         """
         if getattr(node, "asynchronous", None):
             for item in node.items:
-                if not isinstance(item.item, cst.Call) or not isinstance(
-                    item.item.func, (cst.Attribute, cst.Name)
+                if not (
+                    isinstance(item.item, cst.Call)
+                    and identifier_to_string(item.item.func)
+                    in (
+                        "trio.open_nursery",
+                        "anyio.create_task_group",
+                    )
                 ):
-                    self.checkpoint()
-                    break
-
-                func = identifier_to_string(item.item.func)
-                assert func is not None
-                if func not in ("trio.open_nursery", "anyio.create_task_group"):
                     self.checkpoint()
                     break
             else:

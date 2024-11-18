@@ -141,3 +141,8 @@ async def nursery_no_cancel_point():
 async def dont_crash_on_non_name_or_attr_call():
     async with contextlib.asynccontextmanager(agen_fn)():
         ...
+
+
+async def another_weird_with_call():
+    async with a().b():
+        ...
