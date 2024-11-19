@@ -6,7 +6,7 @@ Changelog
 
 24.11.3
 =======
-- Revert :ref:`ASYNC100 <async100>` ignoring :func:`trio.open_nursery` and :func:`anyio.create_task_group` due to it not viewing `start_soon()` as introducing a :ref:`cancel point`.
+- Revert :ref:`ASYNC100 <async100>` ignoring :func:`trio.open_nursery` and :func:`anyio.create_task_group` due to it not viewing `start_soon()` as introducing a :ref:`cancel point <cancel_point>`.
 
 24.11.2
 =======
@@ -15,8 +15,8 @@ Changelog
 24.11.1
 =======
 - :ref:`ASYNC100 <async100>` now ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`
-  as cancellation sources, because they are :ref:`schedule points <schedule_points>` but not
-  :ref:`cancellation points <cancel_points>`.
+  as cancellation sources, because they are :ref:`schedule points <schedule_point>` but not
+  :ref:`cancellation points <cancel_point>`.
 - :ref:`ASYNC101 <async101>` and :ref:`ASYNC119 <async119>` are now silenced for decorators in :ref:`transform-async-generator-decorators`.
 
 24.10.2
