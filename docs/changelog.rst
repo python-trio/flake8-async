@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.11.3
+=======
+- Revert :ref:`ASYNC100 <async100>` ignoring :func:`trio.open_nursery` and :func:`anyio.create_task_group` due to it not viewing `start_soon()` as introducing a :ref:`cancel point`.
+
 24.11.2
 =======
 - Fix crash in ``Visitor91x`` on ``async with a().b():``.
@@ -34,7 +38,6 @@ Changelog
 24.9.3
 ======
 - :ref:`ASYNC102 <async102>` and :ref:`ASYNC120 <async120>`:
-
   - handles nested cancel scopes
   - detects internal cancel scopes of nurseries as a way to shield&deadline
   - no longer treats :func:`trio.open_nursery` or :func:`anyio.create_task_group` as cancellation sources
