@@ -133,7 +133,7 @@ async def fn(timeout):
 
 
 async def nursery_no_cancel_point():
-    with trio.CancelScope():  # error: 9, "trio", "CancelScope"
+    with trio.CancelScope():  # should error, but reverted PR
         async with anyio.create_task_group():
             ...
 
