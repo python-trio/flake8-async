@@ -134,9 +134,7 @@ class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
     def save_state(self, node: ast.AST, *attrs: str, copy: bool = False):
         state = self.get_state(*attrs, copy=copy)
         if node in self.outer:
-            # not currently used, and not gonna bother adding dedicated test
-            # visitors atm
-            self.outer[node].update(state)  # pragma: no cover
+            self.outer[node].update(state)
         else:
             self.outer[node] = state
 

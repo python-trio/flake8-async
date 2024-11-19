@@ -1,0 +1,33 @@
+---
++++
+@@ x,9 x,9 @@
+
+
+ async def nursery_no_cancel_point():
+-    with trio.CancelScope():  # error: 9, "trio", "CancelScope"
+-        async with trio.open_nursery():
+-            ...
++    # error: 9, "trio", "CancelScope"
++    async with trio.open_nursery():
++        ...
+
+
+ # but it is a cancel point if the nursery contains a call to start_soon()
+@@ x,11 x,11 @@
+
+ async def nested_function_call():
+
+-    with trio.CancelScope():  # error: 9, "trio", "CancelScope"
+-        async with trio.open_nursery() as n:
++    # error: 9, "trio", "CancelScope"
++    async with trio.open_nursery() as n:
+
+-            def foo():
+-                n.start_soon(trio.sleep, 0)
++        def foo():
++            n.start_soon(trio.sleep, 0)
+
+-            # a false alarm in case we call foo()... but we can't check if they do
+-            foo()
++        # a false alarm in case we call foo()... but we can't check if they do
++        foo()
