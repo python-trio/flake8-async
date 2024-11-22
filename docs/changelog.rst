@@ -6,7 +6,7 @@ Changelog
 
 24.11.4
 =======
-- :ref:`ASYNC100 <async100>` once again ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`, but now treats calls to ``.start_soon()`` as introducing a :ref:`cancel point <cancel_point>`.
+- :ref:`ASYNC100 <async100>` once again ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`, unless we find a call to ``.start_soon()``.
 
 24.11.3
 =======

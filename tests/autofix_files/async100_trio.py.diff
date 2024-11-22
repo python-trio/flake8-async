@@ -13,7 +13,18 @@
 
 
  # but it is a cancel point if the nursery contains a call to start_soon()
-@@ x,11 x,11 @@
+@@ x,8 x,8 @@
+
+ async def nursery_start_soon_misnested():
+     async with trio.open_nursery() as n:
+-        with trio.CancelScope():  # error: 13, "trio", "CancelScope"
+-            n.start_soon(trio.sleep, 0)
++        # error: 13, "trio", "CancelScope"
++        n.start_soon(trio.sleep, 0)
+
+
+ async def nested_scope():
+@@ x,22 x,22 @@
 
  async def nested_function_call():
 
@@ -31,3 +42,16 @@
 -            foo()
 +        # a false alarm in case we call foo()... but we can't check if they do
 +        foo()
+
+
+ # insert cancel point on nursery exit, not at the start_soon call
+ async def cancel_point_on_nursery_exit():
+     with trio.CancelScope():
+         async with trio.open_nursery() as n:
+-            with trio.CancelScope():  # error: 17, "trio", "CancelScope"
+-                n.start_soon(trio.sleep, 0)
++            # error: 17, "trio", "CancelScope"
++            n.start_soon(trio.sleep, 0)
+
+
+ # async100 does not consider *redundant* cancel scopes

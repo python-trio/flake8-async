@@ -99,7 +99,7 @@ functions defined by Trio will either checkpoint or raise an exception when
 iteration, and when exhausting the iterator, and ``async with`` will checkpoint
 on at least one of enter/exit.
 
-The one exception is :func:`trio.open_nursery` and :func:`anyio.create_task_group` which are :ref:`schedule points <schedule_point>` but not :ref:`cancel points <cancel_point>`.
+The one exception is :func:`trio.open_nursery` and :func:`anyio.create_task_group`. They do not checkpoint on entry, and on exit they insert a :ref:`schedule point <schedule_point>`. However, if sub-tasks are cancelled they will be propagated on exit, so if you're starting tasks you can usually treat the exit as a :ref:`cancel point <cancel_point>`.
 
 asyncio does not place any guarantees on if or when asyncio functions will
 checkpoint. This means that enabling and adhering to :ref:`ASYNC91x <ASYNC910>`

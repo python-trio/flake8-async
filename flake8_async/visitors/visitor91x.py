@@ -286,7 +286,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # ASYNC100
         self.has_checkpoint_stack: list[bool] = []
         self.node_dict: dict[cst.With, list[AttributeCall]] = {}
-        self.taskgroups: list[str] = []
+        self.taskgroup_has_start_soon: dict[str, bool] = {}
 
         # --exception-suppress-context-manager
         self.suppress_imported_as: list[str] = []
@@ -304,10 +304,13 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     def checkpoint_cancel_point(self) -> None:
         self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
         # don't need to look for any .start_soon() calls
-        self.taskgroups.clear()
+        self.taskgroup_has_start_soon.clear()
+
+    def checkpoint_schedule_point(self) -> None:
+        self.uncheckpointed_statements = set()
 
     def checkpoint(self) -> None:
-        self.uncheckpointed_statements = set()
+        self.checkpoint_schedule_point()
         self.checkpoint_cancel_point()
 
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
@@ -319,9 +322,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             isinstance(node.func, cst.Attribute)
             and isinstance(node.func.value, cst.Name)
             and node.func.attr.value == "start_soon"
-            and node.func.value.value in self.taskgroups
+            and node.func.value.value in self.taskgroup_has_start_soon
         ):
-            self.checkpoint_cancel_point()
+            self.taskgroup_has_start_soon[node.func.value.value] = True
 
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         # Semi-crude approach to handle `from contextlib import suppress`.
@@ -363,14 +366,16 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "try_state",
             "has_checkpoint_stack",
             # node_dict is cleaned up and don't need to be saved
-            "taskgroups",
-            "suppress_imported_as",
+            "taskgroup_has_start_soon",
+            "suppress_imported_as",  # a copy is saved, but state is not reset
             copy=True,
         )
-        self.uncheckpointed_statements = set()
-        self.has_checkpoint_stack = []
         self.has_yield = self.safe_decorator = False
+        self.uncheckpointed_statements = set()
         self.loop_state = LoopState()
+        # try_state is reset upon entering try
+        self.has_checkpoint_stack = []
+        self.taskgroup_has_start_soon = {}
 
         self.async_function = (
             node.asynchronous is not None
@@ -460,8 +465,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         ):
             self.add_statement = self.checkpoint_statement()
         # avoid duplicate error messages
-        self.uncheckpointed_statements = set()
-        # we don't treat it as a checkpoint for ASYNC100
+        # but don't see it as a cancel point for ASYNC100
+        self.checkpoint_schedule_point()
 
         # return original node to avoid problems with identity equality
         assert original_node.deep_equals(updated_node)
@@ -520,32 +525,37 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         Saves the name of the taskgroup/nursery if entry is set
         """
-        if getattr(node, "asynchronous", None):
-            for item in node.items:
-                if isinstance(item.item, cst.Call) and identifier_to_string(
-                    item.item.func
-                ) in (
-                    "trio.open_nursery",
-                    "anyio.create_task_group",
-                ):
+        if not getattr(node, "asynchronous", None):
+            return
+
+        for item in node.items:
+            if isinstance(item.item, cst.Call) and identifier_to_string(
+                item.item.func
+            ) in (
+                "trio.open_nursery",
+                "anyio.create_task_group",
+            ):
+                if item.asname is not None and isinstance(item.asname.name, cst.Name):
                     # save the nursery/taskgroup to see if it has a `.start_soon`
-                    if (
-                        entry
-                        and item.asname is not None
-                        and isinstance(item.asname.name, cst.Name)
+                    if entry:
+                        self.taskgroup_has_start_soon[item.asname.name.value] = False
+                    elif self.taskgroup_has_start_soon.pop(
+                        item.asname.name.value, False
                     ):
-                        self.taskgroups.append(item.asname.name.value)
-                else:
-                    self.checkpoint()
-                    break
+                        self.checkpoint()
+                        return
             else:
-                self.uncheckpointed_statements = set()
+                self.checkpoint()
+                break
+        else:
+            # only taskgroup/nursery calls
+            self.checkpoint_schedule_point()
 
     # Async context managers can reasonably checkpoint on either or both of entry and
     # exit.  Given that we can't tell which, we assume "both" to avoid raising a
     # missing-checkpoint warning when there might in fact be one (i.e. a false alarm).
     def visit_With_body(self, node: cst.With):
-        self.save_state(node, "taskgroups", copy=True)
+        self.save_state(node, "taskgroup_has_start_soon", copy=True)
         self._checkpoint_with(node, entry=True)
 
         # if this might suppress exceptions, we cannot treat anything inside it as
