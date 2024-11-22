@@ -3,7 +3,7 @@ default_language_version:
     python: python3.12
 # pyright requires internet connection to run, which the pre-commit ci app doesn't have.
 # it instead runs in a github action
-# check-relase-changelog is run in CI to be able to access PR labels
+# check-release-changelog is run as a dedicated job
 ci:
     skip: [pyright, check-release-changelog]
 
@@ -107,7 +107,7 @@ repos:
           - id: check-release-changelog
             name: check-release-changelog
             language: system
-            entry: python3 tests/check_changelog_and_version.py --allow-future
+            entry: python3 tests/check_changelog_and_version.py --allow-future-in-changelog
             files: flake8_async/__init__.py|docs/changelog.rst
 
     - repo: meta

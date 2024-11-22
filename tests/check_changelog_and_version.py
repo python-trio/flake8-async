@@ -16,7 +16,7 @@ CHANGELOG = ROOT_PATH / "docs" / "changelog.rst"
 README = ROOT_PATH / "README.md"
 INIT_FILE = ROOT_PATH / "flake8_async" / "__init__.py"
 
-ALLOW_FUTURE = "--allow-future" in sys.argv
+ALLOW_FUTURE = "--allow-future-in-changelog" in sys.argv
 
 T = TypeVar("T", bound="Version")
 
@@ -59,10 +59,7 @@ def get_releases() -> Iterable[Version]:
             last_line_was_date = True
         # only allow `Future\n=====` when run in pre-commit
         elif header_pattern.match(line):
-            assert ALLOW_FUTURE, (
-                "FUTURE header with no --allow-future. "
-                "If CI you maybe want the skip-release label."
-            )
+            assert ALLOW_FUTURE, "FUTURE header with no --allow-future-in-changelog. "
             assert last_line is not None
             assert last_line.lower().strip() == "future"
         last_line = line
