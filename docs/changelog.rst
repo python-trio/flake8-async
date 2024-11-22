@@ -4,9 +4,13 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+24.11.4
+=======
+- :ref:`ASYNC100 <async100>` once again ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`, unless we find a call to ``.start_soon()``.
+
 24.11.3
 =======
-- Revert :ref:`ASYNC100 <async100>` ignoring :func:`trio.open_nursery` and :func:`anyio.create_task_group` due to it not viewing `start_soon()` as introducing a :ref:`cancel point <cancel_point>`.
+- Revert :ref:`ASYNC100 <async100>` ignoring :func:`trio.open_nursery` and :func:`anyio.create_task_group` due to it not viewing ``.start_soon()`` as introducing a :ref:`cancel point <cancel_point>`.
 
 24.11.2
 =======

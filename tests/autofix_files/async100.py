@@ -132,12 +132,6 @@ async def fn(timeout):
             await trio.sleep(1)
 
 
-async def nursery_no_cancel_point():
-    with trio.CancelScope():  # should error, but reverted PR
-        async with anyio.create_task_group():
-            ...
-
-
 async def dont_crash_on_non_name_or_attr_call():
     async with contextlib.asynccontextmanager(agen_fn)():
         ...

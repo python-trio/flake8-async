@@ -25,6 +25,7 @@ from .helpers import (
     flatten_preserving_comments,
     fnmatch_qualified_name_cst,
     func_has_decorator,
+    identifier_to_string,
     iter_guaranteed_once_cst,
     with_has_call,
 )
@@ -285,6 +286,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # ASYNC100
         self.has_checkpoint_stack: list[bool] = []
         self.node_dict: dict[cst.With, list[AttributeCall]] = {}
+        self.taskgroup_has_start_soon: dict[str, bool] = {}
 
         # --exception-suppress-context-manager
         self.suppress_imported_as: list[str] = []
@@ -299,12 +301,30 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             and self.library != ("asyncio",)
         )
 
-    def checkpoint(self) -> None:
-        self.uncheckpointed_statements = set()
+    def checkpoint_cancel_point(self) -> None:
         self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
+        # don't need to look for any .start_soon() calls
+        self.taskgroup_has_start_soon.clear()
+
+    def checkpoint_schedule_point(self) -> None:
+        self.uncheckpointed_statements = set()
+
+    def checkpoint(self) -> None:
+        self.checkpoint_schedule_point()
+        self.checkpoint_cancel_point()
 
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
         return checkpoint_statement(self.library[0])
+
+    def visit_Call(self, node: cst.Call) -> None:
+        # [Nursery/TaskGroup].start_soon introduces a cancel point
+        if (
+            isinstance(node.func, cst.Attribute)
+            and isinstance(node.func.value, cst.Name)
+            and node.func.attr.value == "start_soon"
+            and node.func.value.value in self.taskgroup_has_start_soon
+        ):
+            self.taskgroup_has_start_soon[node.func.value.value] = True
 
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         # Semi-crude approach to handle `from contextlib import suppress`.
@@ -341,16 +361,21 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "safe_decorator",
             "async_function",
             "uncheckpointed_statements",
+            # comp_unknown does not need to be saved
             "loop_state",
             "try_state",
             "has_checkpoint_stack",
-            "suppress_imported_as",
+            # node_dict is cleaned up and don't need to be saved
+            "taskgroup_has_start_soon",
+            "suppress_imported_as",  # a copy is saved, but state is not reset
             copy=True,
         )
-        self.uncheckpointed_statements = set()
-        self.has_checkpoint_stack = []
         self.has_yield = self.safe_decorator = False
+        self.uncheckpointed_statements = set()
         self.loop_state = LoopState()
+        # try_state is reset upon entering try
+        self.has_checkpoint_stack = []
+        self.taskgroup_has_start_soon = {}
 
         self.async_function = (
             node.asynchronous is not None
@@ -440,8 +465,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         ):
             self.add_statement = self.checkpoint_statement()
         # avoid duplicate error messages
-        self.uncheckpointed_statements = set()
-        # we don't treat it as a checkpoint for ASYNC100
+        # but don't see it as a cancel point for ASYNC100
+        self.checkpoint_schedule_point()
 
         # return original node to avoid problems with identity equality
         assert original_node.deep_equals(updated_node)
@@ -491,12 +516,47 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             is not None
         )
 
+    def _checkpoint_with(self, node: cst.With, entry: bool):
+        """Conditionally checkpoints entry/exit of With.
+
+        If the `with` only contains calls to open_nursery/create_task_group, it's a
+        schedule point but not a cancellation point, so we treat it as a checkpoint
+        for async91x but not for async100.
+
+        Saves the name of the taskgroup/nursery if entry is set
+        """
+        if not getattr(node, "asynchronous", None):
+            return
+
+        for item in node.items:
+            if isinstance(item.item, cst.Call) and identifier_to_string(
+                item.item.func
+            ) in (
+                "trio.open_nursery",
+                "anyio.create_task_group",
+            ):
+                if item.asname is not None and isinstance(item.asname.name, cst.Name):
+                    # save the nursery/taskgroup to see if it has a `.start_soon`
+                    if entry:
+                        self.taskgroup_has_start_soon[item.asname.name.value] = False
+                    elif self.taskgroup_has_start_soon.pop(
+                        item.asname.name.value, False
+                    ):
+                        self.checkpoint()
+                        return
+            else:
+                self.checkpoint()
+                break
+        else:
+            # only taskgroup/nursery calls
+            self.checkpoint_schedule_point()
+
     # Async context managers can reasonably checkpoint on either or both of entry and
     # exit.  Given that we can't tell which, we assume "both" to avoid raising a
     # missing-checkpoint warning when there might in fact be one (i.e. a false alarm).
     def visit_With_body(self, node: cst.With):
-        if getattr(node, "asynchronous", None):
-            self.checkpoint()
+        self.save_state(node, "taskgroup_has_start_soon", copy=True)
+        self._checkpoint_with(node, entry=True)
 
         # if this might suppress exceptions, we cannot treat anything inside it as
         # checkpointing.
@@ -548,6 +608,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 for res in self.node_dict[original_node]:
                     self.error(res.node, error_code="ASYNC912")
 
+        self.node_dict.pop(original_node, None)
+
         # if exception-suppressing, restore all uncheckpointed statements from
         # before the `with`.
         if self._is_exception_suppressing_context_manager(original_node):
@@ -555,8 +617,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             self.restore_state(original_node)
             self.uncheckpointed_statements.update(prev_checkpoints)
 
-        if getattr(original_node, "asynchronous", None):
-            self.checkpoint()
+        self._checkpoint_with(original_node, entry=False)
         return updated_node
 
     # error if no checkpoint since earlier yield or function entry
@@ -569,7 +630,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         # Treat as a checkpoint for ASYNC100, since the context we yield to
         # may checkpoint.
-        self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
+        self.checkpoint_cancel_point()
 
         if self.check_function_exit(original_node) and self.should_autofix(
             original_node
