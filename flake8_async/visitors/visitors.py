@@ -5,8 +5,6 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any, cast
 
-import libcst as cst
-
 from .flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
 from .helpers import (
     disabled_by_default,
@@ -19,6 +17,8 @@ from .helpers import (
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    import libcst as cst
 
 LIBRARIES = ("trio", "anyio", "asyncio")
 
@@ -460,8 +460,7 @@ class Visitor300(Flake8AsyncVisitor_cst):
 
     def visit_Call(self, node: cst.Call):
         if (
-            isinstance(node.func, (cst.Name, cst.Attribute))
-            and identifier_to_string(node.func) == "asyncio.create_task"
+            identifier_to_string(node.func) == "asyncio.create_task"
             and not self.safe_to_create_task
         ):
             self.error(node)
