@@ -70,8 +70,8 @@ jobs:
             - uses: actions/checkout@v4
             - name: Set up Python 3
               uses: actions/setup-python@v5
-            - name: Test changelog & version python tests/test_changelog_and_version.py --ensure-tag
-              run: python3 tests/check_changelog_and_version.py
+            - name: Test changelog & version
+              run: python tests/check_changelog_and_version.py
 
     release:
         runs-on: ubuntu-latest
