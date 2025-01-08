@@ -1,2 +1,5 @@
 libcst
-sphinx-codeautolink
+# temporarily depend on master to fix
+# https://github.com/felix-hilden/sphinx-codeautolink/issues/153
+# once a version > 0.15.2 is released we can revert
+git+https://github.com/felix-hilden/sphinx-codeautolink
