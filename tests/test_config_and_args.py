@@ -13,6 +13,11 @@ from flake8_async import Plugin, main
 
 from .test_flake8_async import initialize_options
 
+try:
+    import flake8
+except ImportError:
+    flake8 = None
+
 EXAMPLE_PY_TEXT = """import trio
 with trio.move_on_after(10):
     ...
@@ -159,6 +164,7 @@ def test_200_options(capsys: pytest.CaptureFixture[str]):
         assert all(word in err for word in (str(i), arg, "->"))
 
 
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_anyio_from_config(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     assert tmp_path.joinpath(".flake8").write_text(
         """
@@ -187,9 +193,8 @@ select = ASYNC220
 
     # construct the full error message
     expected = f"{err_file}:{lineno}:5: ASYNC220 {err_msg}\n"
-    from flake8.main.cli import main
 
-    returnvalue = main(
+    returnvalue = flake8.main.cli.main(
         argv=[
             str(err_file),
             "--config",
@@ -228,6 +233,7 @@ async def foo():
     )
 
 
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_200_from_config_flake8_internals(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ):
@@ -239,9 +245,7 @@ def test_200_from_config_flake8_internals(
     # replace ./ with tmp_path/
     err_msg = str(tmp_path) + EXAMPLE_PY_TEXT[1:]
 
-    from flake8.main.cli import main
-
-    returnvalue = main(
+    returnvalue = flake8.main.cli.main(
         argv=[
             str(tmp_path / "example.py"),
             "--append-config",
@@ -254,6 +258,7 @@ def test_200_from_config_flake8_internals(
     assert err_msg == out
 
 
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_200_from_config_subprocess(tmp_path: Path):
     err_msg = _test_async200_from_config_common(tmp_path)
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True, check=False)
@@ -262,6 +267,7 @@ def test_200_from_config_subprocess(tmp_path: Path):
     assert res.stdout == err_msg.encode("ascii")
 
 
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_trio200_from_config_subprocess(tmp_path: Path):
     err_msg = _test_async200_from_config_common(tmp_path, code="trio200")
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True, check=False)
@@ -273,10 +279,9 @@ def test_trio200_from_config_subprocess(tmp_path: Path):
     assert res.stdout == err_msg.encode("ascii")
 
 
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_900_default_off(capsys: pytest.CaptureFixture[str]):
-    from flake8.main.cli import main
-
-    returnvalue = main(
+    returnvalue = flake8.main.cli.main(
         argv=[
             "tests/trio900.py",
         ]
@@ -349,6 +354,7 @@ def test_enable(
     )
 
 
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_flake8_plugin_with_autofix_fails(tmp_path: Path):
     write_examplepy(tmp_path)
     res = subprocess.run(
@@ -418,6 +424,7 @@ def test_disable_noqa_ast(
     )
 
 
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 @pytest.mark.xfail(reason="flake8>=6 enforces three-letter error codes in config")
 def test_config_ignore_error_code(tmp_path: Path) -> None:
     assert tmp_path.joinpath(".flake8").write_text(
@@ -433,6 +440,7 @@ ignore = ASYNC100
     assert res.returncode == 0
 
 
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 # but make sure we can disable selected codes
 def test_config_disable_error_code(tmp_path: Path) -> None:
     # select ASYNC200 and create file that induces ASYNC200

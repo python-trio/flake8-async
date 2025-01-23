@@ -36,7 +36,7 @@ adding the following to your ``.pre-commit-config.yaml``:
      rev: 23.2.5
      hooks:
        - id: flake8-async
-         # args: [--enable=ASYNC, --disable=ASYNC9, --autofix=ASYNC]
+         # args: ["--enable=ASYNC100,ASYNC112", "--disable=", "--autofix=ASYNC"]
 
 This is often considerably faster for large projects, because ``pre-commit``
 can avoid running ``flake8-async`` on unchanged files.
