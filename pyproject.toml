@@ -17,7 +17,7 @@ ignore-words-list = 'spawnve'
 [tool.isort]
 only_modified = true
 profile = "black"
-py_version = "311"
+py_version = "313"
 quiet = true
 skip_gitignore = true
 skip_glob = "tests/*_files/*"
@@ -32,7 +32,7 @@ warn_unused_ignores = false
 
 [tool.pyright]
 exclude = ["**/node_modules", "**/__pycache__", "**/.*", "tests/eval_files/*", "tests/autofix_files/*"]  # TODO: fix errors in eval/autofix files
-pythonVersion = "3.12"
+pythonVersion = "3.13"
 reportCallInDefaultInitializer = true
 reportImplicitStringConcatenation = false  # black generates implicit string concats
 reportMissingSuperCall = true
