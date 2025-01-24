@@ -69,9 +69,9 @@ async def foo_empty_pass():
     pass
 
 
-# See e.g. https://github.com/agronholm/anyio/issues/803 for why one might want an async
-# test without awaits.
-async def test_async_fixture(  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+# this was previously silenced, but pytest now gives good errors on sync test + async
+# fixture; so in the rare case that it has to be async the user will be able to debug it
+async def test_async_fixture(  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     my_async_fixture,
 ):
     assert my_async_fixture.setup_worked_correctly

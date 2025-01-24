@@ -123,16 +123,11 @@ class Visitor124(Flake8AsyncVisitor_cst):
             and not self.has_await
             and not func_empty_body(original_node)
             and not func_has_decorator(original_node, "overload")
-            # skip functions named 'text_xxx' with params, since they may be relying
-            # on async fixtures. This is esp bad as sync funcs relying on async fixtures
-            # is not well handled: https://github.com/pytest-dev/pytest/issues/10839
-            # also skip funcs with @fixture and params
+            # skip functions with @fixture and params since they may be relying
+            # on async fixtures.
             and not (
                 original_node.params.params
-                and (
-                    original_node.name.value.startswith("test_")
-                    or func_has_decorator(original_node, "fixture")
-                )
+                and func_has_decorator(original_node, "fixture")
             )
             # ignore functions with no_checkpoint_warning_decorators
             and not fnmatch_qualified_name_cst(
