@@ -225,7 +225,7 @@ Changelog
 
 22.9.2
 ======
-- Fix a crash on nontrivial decorator expressions (calls, PEP-614) and document behavior.
+- Fix a crash on nontrivial decorator expressions (calls, :pep:`614`) and document behavior.
 
 22.9.1
 ======

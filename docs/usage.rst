@@ -215,11 +215,11 @@ Example
 ``no-checkpoint-warning-decorators``
 ------------------------------------
 
-Comma-separated list of decorators to disable checkpointing checks for, turning off :ref:`ASYNC910 <async910>` and :ref:`ASYNC911 <async911>` warnings for functions decorated with any decorator matching against an entry in the list.
+Comma-separated list of decorators to disable checkpointing checks for, turning off :ref:`ASYNC910 <async910>`, :ref:`ASYNC911 <async911>`, and :ref:`ASYNC124 <async124>` warnings for functions decorated with any decorator matching against an entry in the list.
 Matching is done with `fnmatch <https://docs.python.org/3/library/fnmatch.html>`_.
 Defaults to disabling for ``asynccontextmanager``.
 
-Decorators-to-match must be identifiers or dotted names only (not PEP-614 expressions), and will match against the name only - e.g. ``foo.bar`` matches ``foo.bar``, ``foo.bar()``, and ``foo.bar(args, here)``, etc.
+Decorators-to-match must be identifiers or dotted names only (not :pep:`614` expressions), and will match against the name only - e.g. ``foo.bar`` matches ``foo.bar``, ``foo.bar()``, and ``foo.bar(args, here)``, etc.
 
 Example
 ^^^^^^^
