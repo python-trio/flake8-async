@@ -51,9 +51,9 @@ _error_codes = {
     "ASYNC103": _async103_common_msg,
     "ASYNC104": "Cancelled (and therefore BaseException) must be re-raised.",
 }
-for poss_library in _suggestion_dict:
+for poss_library, _lib_suggest in _suggestion_dict.items():
     _error_codes[f"ASYNC103_{'_'.join(poss_library)}"] = (
-        _async103_common_msg + _suggestion.format(_suggestion_dict[poss_library])
+        _async103_common_msg + _suggestion.format(_lib_suggest)
     )
 
 

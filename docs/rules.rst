@@ -13,9 +13,10 @@ _`ASYNC100` : cancel-scope-no-checkpoint
     A :ref:`timeout_context` does not contain any :ref:`checkpoints <checkpoint>`.
     This makes it pointless, as the timeout can only be triggered by a checkpoint.
     This check also treats ``yield`` as a checkpoint, since checkpoints can happen in the caller we yield to.
+    :func:`trio.open_nursery` and :func:`anyio.create_task_group` are excluded, as they are :ref:`schedule points <schedule_point>` but not :ref:`cancel points <cancel_point>` (unless they have tasks started in them).
     See :ref:`ASYNC912 <async912>` which will in addition guarantee checkpoints on every code path.
 
-ASYNC101 : yield-in-cancel-scope
+_`ASYNC101` : yield-in-cancel-scope
     ``yield`` inside a :ref:`taskgroup_nursery` or :ref:`timeout_context` is only safe when implementing a context manager - otherwise, it breaks exception handling.
     See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP.
     This has substantial overlap with :ref:`ASYNC119 <ASYNC119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by :pep:`533`.

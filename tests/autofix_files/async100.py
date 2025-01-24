@@ -130,3 +130,13 @@ async def fn(timeout):
             if condition():
                 return
             await trio.sleep(1)
+
+
+async def dont_crash_on_non_name_or_attr_call():
+    async with contextlib.asynccontextmanager(agen_fn)():
+        ...
+
+
+async def another_weird_with_call():
+    async with a().b():
+        ...

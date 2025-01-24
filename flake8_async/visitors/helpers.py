@@ -337,15 +337,20 @@ def build_cst_matcher(attr: str) -> m.BaseExpression:
     return m.Attribute(value=build_cst_matcher(body), attr=m.Name(value=tail))
 
 
-def identifier_to_string(attr: cst.Name | cst.Attribute) -> str | None:
-    if isinstance(attr, cst.Name):
-        return attr.value
-    if not isinstance(attr.value, (cst.Attribute, cst.Name)):
-        return None
-    lhs = identifier_to_string(attr.value)
-    if lhs is None:
-        return None
-    return lhs + "." + attr.attr.value
+def identifier_to_string(node: cst.CSTNode) -> str | None:
+    """Convert a simple identifier to a string.
+
+    If the node is composed of anything but cst.Name + cst.Attribute it returns None.
+    """
+    if isinstance(node, cst.Name):
+        return node.value
+    if (
+        isinstance(node, cst.Attribute)
+        and (lhs := identifier_to_string(node.value)) is not None
+    ):
+        return lhs + "." + node.attr.value
+
+    return None
 
 
 def with_has_call(

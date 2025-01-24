@@ -1,4 +1,6 @@
 # ASYNCIO_NO_ERROR
+# ARG --no-checkpoint-warning-decorator=no_checkpoint_warning_decorator
+# ARG --transform-async-generator-decorators=transform_async_gen_decorator
 
 # This file contains errors shared between trio and anyio, since they have some
 # overlap in naming.
@@ -127,3 +129,23 @@ def foo_pytest_fixture_paren():
 def foo_pytest_fixture_params():
     with trio.CancelScope() as _:
         yield 1
+
+
+def no_checkpoint_warning_decorator(_: object): ...
+
+
+def transform_async_gen_decorator(_: object): ...
+
+
+# --no-checkpoint-warning-decorator does not mark as safe
+@no_checkpoint_warning_decorator
+def no_checkpoint_warning_deco_fun():
+    with trio.CancelScope():
+        yield 1  # error: 8
+
+
+# --transform-async-generator-decorators marks as safe
+@transform_async_gen_decorator
+def transfor_async_gen_deco_fun():
+    with trio.CancelScope():
+        yield 1  # safe

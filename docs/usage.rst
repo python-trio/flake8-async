@@ -33,7 +33,7 @@ adding the following to your ``.pre-commit-config.yaml``:
    minimum_pre_commit_version: '2.9.0'
    repos:
    - repo: https://github.com/python-trio/flake8-async
-     rev: 23.2.5
+     rev: 25.1.1
      hooks:
        - id: flake8-async
          # args: [--enable=ASYNC, --disable=ASYNC9, --autofix=ASYNC]
@@ -318,3 +318,21 @@ Specified patterns must not have parentheses, and will only match when the patte
        def my_blocking_call():  # it's also safe to use the name in other contexts
            ...
        arbitrary_other_function(my_blocking_call=None)
+
+.. _transform-async-generator-decorators:
+
+``transform-async-generator-decorators``
+----------------------------------------
+Comma-separated list of decorators that make async generators safe, disabling
+:ref:`ASYNC900 <ASYNC900>`, :ref:`ASYNC101 <ASYNC101>`, and :ref:`ASYNC119 <ASYNC119>` warnings for functions decorated with any of them.
+``[pytest.]fixture`` and ``[contextlib.]asynccontextmanager`` are always considered safe.
+Decorators can be dotted or not, as well as support * as a wildcard.
+
+Example
+^^^^^^^
+
+.. code-block:: none
+
+   transform-async-generator-decorators =
+     fastapi.Depends
+     trio_util.trio_async_generator

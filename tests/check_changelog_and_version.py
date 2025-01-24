@@ -13,8 +13,10 @@ if TYPE_CHECKING:
 
 ROOT_PATH = Path(__file__).parent.parent
 CHANGELOG = ROOT_PATH / "docs" / "changelog.rst"
-README = ROOT_PATH / "README.md"
+USAGE = ROOT_PATH / "docs" / "usage.rst"
 INIT_FILE = ROOT_PATH / "flake8_async" / "__init__.py"
+
+ALLOW_FUTURE = "--allow-future-in-changelog" in sys.argv
 
 T = TypeVar("T", bound="Version")
 
@@ -44,6 +46,7 @@ def get_releases() -> Iterable[Version]:
     valid_pattern = re.compile(r"^(\d\d\.\d?\d\.\d?\d)$")
     header_pattern = re.compile(r"^=+$")
     last_line_was_date = False
+    last_line: str | None = None
     with open(CHANGELOG, encoding="utf-8") as f:
         lines = f.readlines()
     for line in lines:
@@ -54,15 +57,21 @@ def get_releases() -> Iterable[Version]:
         elif version_match:
             yield Version.from_string(version_match.group(1))
             last_line_was_date = True
-        else:
-            # stop lines such as `Future\n=====` making it through to main/
-            assert not header_pattern.match(line), line
+        # only allow `Future\n=====` when run in pre-commit
+        elif header_pattern.match(line):
+            assert ALLOW_FUTURE, "FUTURE header with no --allow-future-in-changelog. "
+            assert last_line is not None
+            assert last_line.lower().strip() == "future"
+        last_line = line
 
 
 def test_last_release_against_changelog() -> None:
-    """Ensure we have the latest version covered in 'changelog.rst'."""
+    """Ensure we have the latest version covered in 'changelog.rst'.
+
+    If changelog version is greater, the __init__ gets bumped in update_version().
+    """
     latest_release = next(iter(get_releases()))
-    assert latest_release == VERSION
+    assert latest_release >= VERSION, f"{latest_release}, {VERSION}"
 
 
 def test_version_increments_are_correct() -> None:
@@ -98,20 +107,27 @@ def update_version() -> None:
         INIT_FILE = ROOT_PATH / "flake8_async" / "__init__.py"
         subs = (f'__version__ = "{VERSION}"', f'__version__ = "{last_version}"')
         INIT_FILE.write_text(INIT_FILE.read_text().replace(*subs))
+        print("updated VERSION in __init__.py")
 
     # Similarly, update the pre-commit config example in the README
-    current = README.read_text()
+    current = USAGE.read_text()
     wanted = re.sub(
-        pattern=r"^  rev: (\d+\.\d+\.\d+)$",
-        repl=f"  rev: {last_version}",
+        pattern=r"^     rev: (\d+\.\d+\.\d+)$",
+        repl=f"     rev: {last_version}",
         string=current,
         flags=re.MULTILINE,
     )
+    if last_version != VERSION:
+        assert current != wanted, "version changed but regex didn't substitute"
     if current != wanted:
-        README.write_text(wanted)
+        USAGE.write_text(wanted)
+        print("updated rev in pre-commit example")
 
 
 if __name__ == "__main__":
+    test_last_release_against_changelog()
+    test_version_increments_are_correct()
+
     update_version()
     if "--ensure-tag" in sys.argv:
         ensure_tagged()

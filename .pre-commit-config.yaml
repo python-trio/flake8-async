@@ -3,12 +3,13 @@ default_language_version:
     python: python3.12
 # pyright requires internet connection to run, which the pre-commit ci app doesn't have.
 # it instead runs in a github action
+# check-release-changelog is run as a dedicated job
 ci:
-    skip: [pyright]
+    skip: [pyright, check-release-changelog]
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.7.1
+      rev: v0.9.2
       hooks:
           - id: ruff
             args: [--fix]
@@ -25,7 +26,7 @@ repos:
           - id: autoflake
 
     - repo: https://github.com/asottile/pyupgrade
-      rev: v3.19.0
+      rev: v3.19.1
       hooks:
           - id: pyupgrade
             args: [--py39-plus]
@@ -37,14 +38,14 @@ repos:
           - id: isort
 
     - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.13.0
+      rev: v1.14.1
       hooks:
           - id: mypy
             # uses py311 syntax, mypy configured for py39
             exclude: tests/eval_files/.*_py311.py
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.386
+      rev: v1.1.392.post0
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -100,3 +101,16 @@ repos:
       rev: v1.0.0
       hooks:
           - id: sphinx-lint
+
+    - repo: local
+      hooks:
+          - id: check-release-changelog
+            name: check-release-changelog
+            language: system
+            entry: python3 tests/check_changelog_and_version.py --allow-future-in-changelog
+            files: flake8_async/__init__.py|docs/changelog.rst
+
+    - repo: meta
+      hooks:
+          - id: check-hooks-apply
+          - id: check-useless-excludes

@@ -83,6 +83,8 @@ def format_difflib_line(s: str) -> str:
 
 
 def diff_strings(first: str, second: str, /) -> str:
+    if first == second:
+        return ""
     return (
         "".join(
             map(
