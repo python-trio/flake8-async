@@ -17,7 +17,8 @@ ignore-words-list = 'spawnve'
 [tool.isort]
 only_modified = true
 profile = "black"
-py_version = "313"
+# isort is slow to release official support for new python versions
+py_version = "312"
 quiet = true
 skip_gitignore = true
 skip_glob = "tests/*_files/*"
