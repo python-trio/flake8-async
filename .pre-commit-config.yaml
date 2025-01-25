@@ -1,6 +1,6 @@
 ---
 default_language_version:
-    python: python3.12
+    python: python3.13
 # pyright requires internet connection to run, which the pre-commit ci app doesn't have.
 # it instead runs in a github action
 # check-release-changelog is run as a dedicated job
