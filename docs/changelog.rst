@@ -4,6 +4,12 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.1.1
+=======
+- Add :ref:`ASYNC124 <async124>` async-function-could-be-sync
+- :ref:`ASYNC91x <ASYNC910>` now correctly handles ``await()`` in parameter lists.
+- Fixed a bug with :ref:`ASYNC91x <ASYNC910>` and nested empty functions.
+
 24.11.4
 =======
 - :ref:`ASYNC100 <async100>` once again ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`, unless we find a call to ``.start_soon()``.
@@ -238,7 +244,7 @@ Changelog
 
 22.9.2
 ======
-- Fix a crash on nontrivial decorator expressions (calls, PEP-614) and document behavior.
+- Fix a crash on nontrivial decorator expressions (calls, :pep:`614`) and document behavior.
 
 22.9.1
 ======

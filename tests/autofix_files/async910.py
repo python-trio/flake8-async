@@ -134,9 +134,12 @@ def foo_normal_func_1():
 def foo_normal_func_2(): ...
 
 
-# overload decorator
+# overload decorator is skipped
+# overload functions should always be empty, so the check is somewhat redundant,
+# but making one non-empty to check the logic.
 @overload
-async def foo_overload_1(_: bytes): ...
+async def foo_overload_1(_: bytes):
+    raise NotImplementedError
 
 
 @typing.overload
@@ -616,3 +619,19 @@ async def fn_226():  # error: 0, "exit", Statement("function definition", lineno
     except Exception:
         pass
     await trio.lowlevel.checkpoint()
+
+
+# the await() is evaluated in the parent scope
+async def foo_default_value_await():
+    async def bar(  # error: 4, "exit", Statement("function definition", lineno)
+        arg=await foo(),
+    ):
+        print()
+        await trio.lowlevel.checkpoint()
+
+
+async def foo_nested_empty_async():
+    # this previously errored because leave_FunctionDef assumed a non-empty body
+    async def bar(): ...
+
+    await foo()
