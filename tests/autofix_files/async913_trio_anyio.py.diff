@@ -1,0 +1,9 @@
+---
++++
+@@ x,5 x,6 @@
+
+ async def nursery_no_cancel_point():
+     while True:  # ASYNC913: 4
++        await trio.lowlevel.checkpoint()
+         async with trio.open_nursery():
+             pass

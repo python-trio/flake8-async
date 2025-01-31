@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.2.1
+=======
+- :ref:`ASYNC912 <async912>` and :ref:`ASYNC913 <async913>` will now trigger if there's no *cancel* points. This means that :func:`trio.open_nursery`/`anyio.create_task_group` will not silence them on their own, unless they're guaranteed to start tasks.
+
 25.1.1
 =======
 - Add :ref:`ASYNC124 <async124>` async-function-could-be-sync

@@ -33,7 +33,7 @@ adding the following to your ``.pre-commit-config.yaml``:
    minimum_pre_commit_version: '2.9.0'
    repos:
    - repo: https://github.com/python-trio/flake8-async
-     rev: 25.1.1
+     rev: 25.2.1
      hooks:
        - id: flake8-async
          # args: [--enable=ASYNC, --disable=ASYNC9, --autofix=ASYNC]
