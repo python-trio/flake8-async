@@ -197,12 +197,13 @@ _`ASYNC911` : async-generator-no-checkpoint
     Exit, ``yield`` or ``return`` from async iterable with no guaranteed :ref:`checkpoint` since possible function entry (``yield`` or function definition).
 
 _`ASYNC912` : cancel-scope-no-guaranteed-checkpoint
-    A timeout/cancelscope has :ref:`checkpoints <checkpoint>`, but they're not guaranteed to run.
-    Similar to `ASYNC100`_, but it does not warn on trivial cases where there is no checkpoint at all.
+    A timeout/cancelscope has :ref:`cancel points <cancel_point>`, but they're not guaranteed to run.
+    Similar to `ASYNC100`_, but it does not warn on trivial cases where there is no cancel point at all.
     It instead shares logic with `ASYNC910`_ and `ASYNC911`_ for parsing conditionals and branches.
 
 _`ASYNC913` : indefinite-loop-no-guaranteed-checkpoint
     An indefinite loop (e.g. ``while True``) has no guaranteed :ref:`checkpoint <checkpoint>`. This could potentially cause a deadlock.
+    This will also error if there's no guaranteed :ref:`cancel point`, where even though it won't deadlock the loop might become an uncancelable dry-run loop.
 
 .. _autofix-support:
 

@@ -103,7 +103,14 @@ def diff_strings(first: str, second: str, /) -> str:
 # replaces all instances of `original` with `new` in string
 # unless it's preceded by a `-`, which indicates it's part of a command-line flag
 def replace_library(string: str, original: str = "trio", new: str = "anyio") -> str:
-    return re.sub(rf"(?<!-){original}", new, string)
+    def replace_str(string: str, original: str, new: str) -> str:
+        return re.sub(rf"(?<!-){original}", new, string)
+
+    if original == "trio" and new == "anyio":
+        string = replace_str(string, "trio.open_nursery", "anyio.create_task_group")
+    elif original == "anyio" and new == "trio":
+        string = replace_str(string, "anyio.create_task_group", "trio.open_nursery")
+    return replace_str(string, original, new)
 
 
 def check_autofix(

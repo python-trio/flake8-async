@@ -125,7 +125,7 @@ async def foo():
     with (res := trio.fail_at(10)):
         ...
     # but saving with `as` does
-    with trio.fail_at(10) as res:  # ASYNC912: 9
+    with trio.fail_at(10) as res2:  # ASYNC912: 9
         if bar():
             await trio.lowlevel.checkpoint()
 
@@ -189,3 +189,10 @@ async def check_yield_logic():
         if bar():
             await trio.lowlevel.checkpoint()
         yield
+
+
+async def nursery_no_cancel_point():
+    with trio.move_on_after(10):  # ASYNC912: 9
+        async with trio.open_nursery():
+            if bar():
+                await trio.lowlevel.checkpoint()

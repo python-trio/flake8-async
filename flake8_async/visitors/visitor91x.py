@@ -354,10 +354,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "on line {1.lineno}."
         ),
         "ASYNC912": (
-            "CancelScope with no guaranteed checkpoint. This makes it potentially "
+            "CancelScope with no guaranteed cancel point. This makes it potentially "
             "impossible to cancel."
         ),
-        "ASYNC913": ("Indefinite loop with no guaranteed checkpoint."),
+        "ASYNC913": ("Indefinite loop with no guaranteed cancel points."),
         "ASYNC100": (
             "{0}.{1} context contains no checkpoints, remove the context or add"
             " `await {0}.lowlevel.checkpoint()`."
@@ -401,10 +401,16 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.taskgroup_has_start_soon.clear()
 
     def checkpoint_schedule_point(self) -> None:
-        self.uncheckpointed_statements = set()
+        # ASYNC912&ASYNC913 only cares about cancel points, so don't remove
+        # them if we only do a schedule point
+        self.uncheckpointed_statements = {
+            s
+            for s in self.uncheckpointed_statements
+            if isinstance(s, ArtificialStatement)
+        }
 
     def checkpoint(self) -> None:
-        self.checkpoint_schedule_point()
+        self.uncheckpointed_statements = set()
         self.checkpoint_cancel_point()
 
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
