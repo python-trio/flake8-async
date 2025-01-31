@@ -203,7 +203,7 @@ _`ASYNC912` : cancel-scope-no-guaranteed-checkpoint
 
 _`ASYNC913` : indefinite-loop-no-guaranteed-checkpoint
     An indefinite loop (e.g. ``while True``) has no guaranteed :ref:`checkpoint <checkpoint>`. This could potentially cause a deadlock.
-    This will also error if there's no guaranteed :ref:`cancel point`, where even though it won't deadlock the loop might become an uncancelable dry-run loop.
+    This will also error if there's no guaranteed :ref:`cancel point <cancel_point>`, where even though it won't deadlock the loop might become an uncancelable dry-run loop.
 
 .. _autofix-support:
 
