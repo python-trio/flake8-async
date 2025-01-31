@@ -108,8 +108,11 @@ def replace_library(string: str, original: str = "trio", new: str = "anyio") -> 
 
     if original == "trio" and new == "anyio":
         string = replace_str(string, "trio.open_nursery", "anyio.create_task_group")
+        string = replace_str(string, '"nursery"', '"task group"')
+        string = replace_str(string, "nursery", "task_group")
     elif original == "anyio" and new == "trio":
         string = replace_str(string, "anyio.create_task_group", "trio.open_nursery")
+        string = replace_str(string, "task group", "nursery")
     return replace_str(string, original, new)
 
 

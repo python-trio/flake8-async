@@ -3,7 +3,6 @@
 # It's possible there's an equivalent asyncio construction/gotcha, but methods are differently named, so this file will not raise any errors
 # nurseries are named taskgroups in asyncio/anyio
 # ASYNCIO_NO_ERROR
-# ANYIO_NO_ERROR
 from typing import Any
 
 import trio

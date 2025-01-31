@@ -1,5 +1,4 @@
 # BASE_LIBRARY anyio
-# TRIO_NO_ERROR
 # ASYNCIO_NO_ERROR
 
 import anyio

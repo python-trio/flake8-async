@@ -1,5 +1,4 @@
 # ASYNCIO_NO_ERROR
-# ANYIO_NO_ERROR
 
 from contextlib import asynccontextmanager
 

@@ -1,6 +1,5 @@
 # AUTOFIX
 # ASYNCIO_NO_ERROR # asyncio.open_nursery doesn't exist
-# NOANYIO # anyio.open_nursery doesn't exist
 import trio
 
 

@@ -2,7 +2,6 @@
 # this only tests anyio.create_task_group in particular
 # BASE_LIBRARY anyio
 # ASYNCIO_NO_ERROR
-# TRIO_NO_ERROR
 
 
 import anyio

@@ -121,10 +121,10 @@ class Visitor112(Flake8AsyncVisitor):
             elif get_matching_call(
                 item.context_expr, "create_task_group", base="anyio"
             ):
-                nursery_type = "taskgroup"
+                nursery_type = "task group"
             # check for asyncio.TaskGroup
             elif get_matching_call(item.context_expr, "TaskGroup", base="asyncio"):
-                nursery_type = "taskgroup"
+                nursery_type = "task group"
                 start_methods = ("create_task",)
             else:
                 # incorrectly marked as not covered on py39
@@ -213,12 +213,16 @@ class Visitor113(Flake8AsyncVisitor):
             ):
                 return False
             var = ast.unparse(node.value)
-            return ("trio" in self.library and var.endswith("nursery")) or (
-                self.variables.get(var, "")
-                in (
-                    "trio.Nursery",
-                    "anyio.TaskGroup",
-                    "asyncio.TaskGroup",
+            return (
+                ("trio" in self.library and var.endswith("nursery"))
+                or ("anyio" in self.library and var.endswith("task_group"))
+                or (
+                    self.variables.get(var, "")
+                    in (
+                        "trio.Nursery",
+                        "anyio.TaskGroup",
+                        "asyncio.TaskGroup",
+                    )
                 )
             )
 

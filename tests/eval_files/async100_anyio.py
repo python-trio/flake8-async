@@ -1,6 +1,5 @@
 # AUTOFIX
 # BASE_LIBRARY anyio
-# NOTRIO  # trio.create_task_group doesn't exist
 # ASYNCIO_NO_ERROR
 import anyio
 

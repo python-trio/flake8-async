@@ -1,5 +1,4 @@
 # ASYNCIO_NO_ERROR # checked in async121_asyncio.py
-# ANYIO_NO_ERROR # checked in async121_anyio.py
 
 import trio
 from typing import Any

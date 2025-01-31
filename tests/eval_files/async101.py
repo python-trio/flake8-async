@@ -2,10 +2,6 @@
 # ARG --no-checkpoint-warning-decorator=no_checkpoint_warning_decorator
 # ARG --transform-async-generator-decorators=transform_async_gen_decorator
 
-# This file contains errors shared between trio and anyio, since they have some
-# overlap in naming.
-# See async101_xxx which has errors specific to trio/asyncio/anyio.
-
 
 import contextlib
 import contextlib as bla
@@ -148,4 +144,15 @@ def no_checkpoint_warning_deco_fun():
 @transform_async_gen_decorator
 def transfor_async_gen_deco_fun():
     with trio.CancelScope():
+        yield 1  # safe
+
+
+async def foo_open_nursery():
+    async with trio.open_nursery() as _:
+        yield 1  # error: 8
+
+
+@asynccontextmanager
+async def foo_open_nursery_contextmanager():
+    async with trio.open_nursery() as _:
         yield 1  # safe
