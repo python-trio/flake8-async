@@ -115,7 +115,7 @@ def replace_library(string: str, original: str = "trio", new: str = "anyio") -> 
         ("Nursery", "TaskGroup"),
     )
 
-    if sorted((original, new)) == ["trio", "anyio"]:
+    if sorted((original, new)) == ["anyio", "trio"]:
         for trio_, anyio_ in replacements:
             if original == "trio":
                 from_ = trio_
