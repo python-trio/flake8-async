@@ -151,12 +151,12 @@ class Visitor112(Flake8AsyncVisitor):
 
 
 # used in 113 and 114
-STARTABLE_CALLS = (
+STARTABLE_CALLS = ("serve",)
+TRIO_STARTABLE_CALLS = (
     "run_process",
     "serve_ssl_over_tcp",
     "serve_tcp",
     "serve_listeners",
-    "serve",
 )
 
 
@@ -201,7 +201,11 @@ class Visitor113(Flake8AsyncVisitor):
             if isinstance(n, ast.Name):
                 return n.id in startable_list
             if isinstance(n, ast.Attribute):
-                return n.attr in startable_list
+                return n.attr in startable_list and not (
+                    n.attr in TRIO_STARTABLE_CALLS
+                    and isinstance(n.value, ast.Name)
+                    and n.value.id != "trio"
+                )
             if isinstance(n, ast.Call):
                 return any(is_startable(nn, *startable_list) for nn in n.args)
             return False
@@ -233,6 +237,7 @@ class Visitor113(Flake8AsyncVisitor):
             and is_startable(
                 node.args[0],
                 *STARTABLE_CALLS,
+                *TRIO_STARTABLE_CALLS,
                 *self.options.startable_in_context_manager,
             )
         ):
@@ -258,7 +263,11 @@ class Visitor114(Flake8AsyncVisitor):
             for n in self.walk(*node.args.args, *node.args.kwonlyargs)
         ) and not any(
             node.name == opt
-            for opt in (*self.options.startable_in_context_manager, *STARTABLE_CALLS)
+            for opt in (
+                *self.options.startable_in_context_manager,
+                *STARTABLE_CALLS,
+                *TRIO_STARTABLE_CALLS,
+            )
         ):
             self.error(node, node.name)
 

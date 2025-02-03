@@ -7,33 +7,50 @@ import anyio
 import trio
 
 # set base library to anyio, so we can replace anyio->asyncio and get correct errors
-# BASE_LIBRARY anyio
+# BASE_LIBRARY trio
+# ASYNCIO_NO_ERROR
 
-# NOTRIO - replacing anyio->trio would give mismatching errors.
-# This file tests basic trio errors, and async113_trio checks trio-specific errors
-
-
-@asynccontextmanager
-async def foo():
-    with trio.open_nursery() as bar:
-        bar.start_soon(trio.run_process)  # ASYNC113: 8
-    async with trio.open_nursery() as bar:
-        bar.start_soon(trio.run_process)  # ASYNC113: 8
-
-    boo: trio.Nursery = ...  # type: ignore
-    boo.start_soon(trio.run_process)  # ASYNC113: 4
-
-    boo_anyio: anyio.TaskGroup = ...  # type: ignore
-    # false alarm - anyio.run_process is not startable
-    # (nor is asyncio.run_process)
-    boo_anyio.start_soon(anyio.run_process)  # ASYNC113: 4
-
-    yield
+# This file tests basic errors, and async113_trio_anyio checks errors not compatible
+# with asyncio
 
 
 async def my_startable(task_status: trio.TaskStatus[object] = trio.TASK_STATUS_IGNORED):
     task_status.started()
     await trio.lowlevel.checkpoint()
+
+
+@asynccontextmanager
+async def foo():
+    # we don't check for `async with`
+    with trio.open_nursery() as bar:  # type: ignore[attr-defined]
+        bar.start_soon(my_startable)  # ASYNC113: 8
+    async with trio.open_nursery() as bar:
+        bar.start_soon(my_startable)  # ASYNC113: 8
+
+    boo: trio.Nursery = ...  # type: ignore
+    boo.start_soon(my_startable)  # ASYNC113: 4
+
+    # silence type errors
+    serve = run_process = serve_listeners = serve_tcp = serve_ssl_over_tcp = (
+        my_startable
+    )
+
+    # we also trigger if they're a standalone name, assuming that this is
+    # a wrapper. (or they've ignored the error from doing `from trio import run_process`)
+    boo.start_soon(serve)  # error: 4
+    boo.start_soon(run_process)  # error: 4
+    boo.start_soon(serve_listeners)  # error: 4
+    boo.start_soon(serve_tcp)  # error: 4
+    boo.start_soon(serve_ssl_over_tcp)  # error: 4
+
+    yield
+
+
+# we don't type-track [trio/anyio].DTLSEndpoint, so we trigger
+# on *.serve
+@asynccontextmanager
+async def foo_serve(nursey: trio.Nursery, thing: object):
+    nursey.start_soon(thing.serve)  # ASYNC113: 4
 
 
 # name of variable being [xxx.]nursery triggers it
@@ -112,6 +129,6 @@ async def foo_nested_sync_def():
     with trio.open_nursery() as bar:
 
         def non_async_func():
-            bar.start_soon(trio.run_process)
+            bar.start_soon(my_startable)
 
         yield

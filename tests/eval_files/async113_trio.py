@@ -13,12 +13,8 @@ import trio
 # ARG --startable-in-context-manager=custom_startable_function
 
 # ASYNCIO_NO_ERROR - asyncio uses TaskGroups. Checked in async113.py
-
-
-@asynccontextmanager
-async def custom_startable_externally_tested():
-    nursery.start_soon(custom_startable_function)  # error: 4
-    yield
+# We previously errored on anyio.run_process etc
+# ANYIO_NO_ERROR
 
 
 @asynccontextmanager
@@ -90,8 +86,9 @@ class foo2:
 
         serve = run_process = myfun = anything
         # error if name shared with trio
-        nursery.start_soon(serve)  # error: 8
-        nursery.start_soon(run_process)  # error: 8
+        # these error on both trio & anyio, so moved to async113.py
+        # nursery.start_soon(serve)  # error: 8
+        # nursery.start_soon(run_process)  # error: 8
         # don't error if a startable name is a parameter or module
         nursery.start_soon(myfun(serve=None))
         nursery.start_soon(serve.myfun)
