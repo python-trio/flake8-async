@@ -106,15 +106,24 @@ def replace_library(string: str, original: str = "trio", new: str = "anyio") -> 
     def replace_str(string: str, original: str, new: str) -> str:
         return re.sub(rf"(?<!-){original}", new, string)
 
-    if original == "trio" and new == "anyio":
-        string = replace_str(string, "trio.open_nursery", "anyio.create_task_group")
-        string = replace_str(string, '"nursery"', '"task group"')
-        string = replace_str(string, "nursery", "task_group")
-        string = replace_str(string, "Nursery", "TaskGroup")
-    elif original == "anyio" and new == "trio":
-        string = replace_str(string, "anyio.create_task_group", "trio.open_nursery")
-        string = replace_str(string, "task group", "nursery")
-        string = replace_str(string, "TaskGroup", "Nursery")
+    # this isn't super pretty, and doesn't include asyncio.TaskGroup(),
+    # and could probably cover more methods, but /shrug
+    replacements: tuple[tuple[str, str], ...] = (
+        ("open_nursery", "create_task_group"),
+        ('"nursery"', '"task group"'),  # in error messages
+        ("nursery", "task_group"),
+        ("Nursery", "TaskGroup"),
+    )
+
+    if sorted((original, new)) == ["trio", "anyio"]:
+        for trio_, anyio_ in replacements:
+            if original == "trio":
+                from_ = trio_
+                to_ = anyio_
+            else:
+                from_ = anyio_
+                to_ = trio_
+            string = replace_str(string, from_, to_)
     return replace_str(string, original, new)
 
 
