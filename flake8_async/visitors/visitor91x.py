@@ -357,7 +357,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "CancelScope with no guaranteed cancel point. This makes it potentially "
             "impossible to cancel."
         ),
-        "ASYNC913": ("Indefinite loop with no guaranteed cancel points."),
+        "ASYNC913": "Indefinite loop with no guaranteed cancel points.",
         "ASYNC100": (
             "{0}.{1} context contains no checkpoints, remove the context or add"
             " `await {0}.lowlevel.checkpoint()`."
