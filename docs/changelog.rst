@@ -6,7 +6,7 @@ Changelog
 
 25.2.2
 =======
-- :ref:`ASYNC133 <async113>` now only triggers on ``trio.[serve_tcp, serve_ssl_over_tcp, serve_listeners, run_process]``, instead of accepting anything as the attribute base. (e.g. :func:`anyio.run_process` is not startable).
+- :ref:`ASYNC113 <async113>` now only triggers on ``trio.[serve_tcp, serve_ssl_over_tcp, serve_listeners, run_process]``, instead of accepting anything as the attribute base. (e.g. :func:`anyio.run_process` is not startable).
 
 25.2.1
 =======
