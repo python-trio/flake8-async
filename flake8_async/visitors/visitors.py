@@ -332,8 +332,10 @@ class Visitor116(Flake8AsyncVisitor):
 @error_class
 class Visitor119(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "ASYNC119": "Yield in contextmanager in async generator might not trigger"
-        " cleanup. Use `@asynccontextmanager` or refactor."
+        "ASYNC119": (
+            "Yield in contextmanager in async generator might not trigger"
+            " cleanup. Use `@asynccontextmanager` or refactor."
+        )
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -503,8 +505,10 @@ class Visitor300(Flake8AsyncVisitor_cst):
 @disabled_by_default
 class Visitor900(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "ASYNC900": "Async generator not allowed, unless transformed "
-        "by a known decorator (one of: {})."
+        "ASYNC900": (
+            "Async generator not allowed, unless transformed "
+            "by a known decorator (one of: {})."
+        )
     }
 
     def __init__(self, *args: Any, **kwargs: Any):

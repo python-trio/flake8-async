@@ -186,7 +186,9 @@ class Visitor22X(Visitor200):
             "Sync call {} in async function, use "
             "`asyncio.create_subprocess_[exec/shell]."
         ),
-        "ASYNC222": "Sync call {} in async function, wrap in `{}.to_thread.run_sync()`.",
+        "ASYNC222": (
+            "Sync call {} in async function, wrap in `{}.to_thread.run_sync()`."
+        ),
         "ASYNC222_asyncio": (
             "Sync call {} in async function, use `asyncio.loop.run_in_executor`."
         ),
@@ -397,7 +399,7 @@ wrappers: Mapping[str, str] = {
 @error_class
 class Visitor25X(Visitor200):
     error_codes: Mapping[str, str] = {
-        "ASYNC250": ("Blocking sync call `input()` in async function. Wrap in `{}`."),
+        "ASYNC250": "Blocking sync call `input()` in async function. Wrap in `{}`.",
         "ASYNC251": (
             "Blocking sync call `time.sleep(...)` in async function."
             " Use `await {}.sleep(...)`."
