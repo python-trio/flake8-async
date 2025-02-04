@@ -9,7 +9,6 @@ from typing import Any
 import trio
 import trio as noterror
 
-
 # shed/black breaks up a *ton* of lines since adding more detailed error messages, so
 # disable formatting to avoid having to adjust a ton of line references
 # fmt: off
