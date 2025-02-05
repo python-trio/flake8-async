@@ -213,8 +213,19 @@
 
 
  # Issue #226
-@@ x,3 x,4 @@
+@@ x,6 x,7 @@
                  pass
      except Exception:
          pass
 +    await trio.lowlevel.checkpoint()
+
+
+ # the await() is evaluated in the parent scope
+@@ x,6 x,7 @@
+         arg=await foo(),
+     ):
+         print()
++        await trio.lowlevel.checkpoint()
+
+
+ async def foo_nested_empty_async():

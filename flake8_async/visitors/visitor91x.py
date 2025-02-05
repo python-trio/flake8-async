@@ -1,8 +1,14 @@
-"""Contains Visitor91X.
+"""Contains Visitor91X and Visitor124.
 
-910 looks for async functions without guaranteed checkpoints (or exceptions), and 911 does
-the same except for async iterables - while also requiring that they checkpoint between
-each yield.
+Visitor91X contains checks for
+* ASYNC100 cancel-scope-no-checkpoint
+* ASYNC910 async-function-no-checkpoint
+* ASYNC911 async-generator-no-checkpoint
+* ASYNC912 cancel-scope-no-guaranteed-checkpoint
+* ASYNC913 indefinite-loop-no-guaranteed-checkpoint
+
+Visitor124 contains
+* ASYNC124 async-function-could-be-sync
 """
 
 from __future__ import annotations
@@ -25,6 +31,7 @@ from .helpers import (
     flatten_preserving_comments,
     fnmatch_qualified_name_cst,
     func_has_decorator,
+    identifier_to_string,
     iter_guaranteed_once_cst,
     with_has_call,
 )
@@ -61,6 +68,92 @@ def func_empty_body(node: cst.FunctionDef) -> bool:
             m.SimpleStatementSuite(body=[m.ZeroOrMore(empty_statement)]),
         ),
     )
+
+
+# this could've been implemented as part of visitor91x, but /shrug
+@error_class_cst
+class Visitor124(Flake8AsyncVisitor_cst):
+    error_codes: Mapping[str, str] = {
+        "ASYNC124": (
+            "Async function with no `await` could be sync."
+            " Async functions are more expensive to call."
+        )
+    }
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.has_await = False
+        self.in_class = False
+
+    def visit_ClassDef(self, node: cst.ClassDef):
+        self.save_state(node, "in_class", copy=False)
+        self.in_class = True
+
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> cst.ClassDef:
+        self.restore_state(original_node)
+        return updated_node
+
+    # await in sync defs are not valid, but handling this will make ASYNC124
+    # correctly pop up in parent func as if the child function was async
+    def visit_FunctionDef(self, node: cst.FunctionDef):
+        # default values are evaluated in parent scope
+        # this visitor has no autofixes, so we can throw away return value
+        _ = node.params.visit(self)
+
+        self.save_state(node, "has_await", "in_class", copy=False)
+
+        # ignore class methods
+        self.has_await = self.in_class
+
+        # but not nested functions
+        self.in_class = False
+
+        _ = node.body.visit(self)
+
+        # we've manually visited subnodes (that we care about).
+        return False
+
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> cst.FunctionDef:
+        if (
+            original_node.asynchronous is not None
+            and not self.has_await
+            and not func_empty_body(original_node)
+            and not func_has_decorator(original_node, "overload")
+            # skip functions with @fixture and params since they may be relying
+            # on async fixtures.
+            and not (
+                original_node.params.params
+                and func_has_decorator(original_node, "fixture")
+            )
+            # ignore functions with no_checkpoint_warning_decorators
+            and not fnmatch_qualified_name_cst(
+                original_node.decorators, *self.options.no_checkpoint_warning_decorators
+            )
+        ):
+            self.error(original_node)
+        self.restore_state(original_node)
+        return updated_node
+
+    def visit_Await(self, node: cst.Await):
+        self.has_await = True
+
+    def visit_With(self, node: cst.With | cst.For | cst.CompFor):
+        if node.asynchronous is not None:
+            self.has_await = True
+
+    visit_For = visit_With
+    visit_CompFor = visit_With
+
+    # The generator target will be immediately evaluated, but the other
+    # elements will not be evaluated at the point of defining the GenExp.
+    # To consume those needs an explicit syntactic checkpoint
+    def visit_GeneratorExp(self, node: cst.GeneratorExp):
+        node.for_in.iter.visit(self)
+        return False
 
 
 @dataclass
@@ -261,10 +354,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "on line {1.lineno}."
         ),
         "ASYNC912": (
-            "CancelScope with no guaranteed checkpoint. This makes it potentially "
+            "CancelScope with no guaranteed cancel point. This makes it potentially "
             "impossible to cancel."
         ),
-        "ASYNC913": ("Indefinite loop with no guaranteed checkpoint."),
+        "ASYNC913": "Indefinite loop with no guaranteed cancel points.",
         "ASYNC100": (
             "{0}.{1} context contains no checkpoints, remove the context or add"
             " `await {0}.lowlevel.checkpoint()`."
@@ -274,7 +367,6 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.has_yield = False
-        self.safe_decorator = False
         self.async_function = False
         self.uncheckpointed_statements: set[Statement] = set()
         self.comp_unknown = False
@@ -285,9 +377,13 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # ASYNC100
         self.has_checkpoint_stack: list[bool] = []
         self.node_dict: dict[cst.With, list[AttributeCall]] = {}
+        self.taskgroup_has_start_soon: dict[str, bool] = {}
 
         # --exception-suppress-context-manager
         self.suppress_imported_as: list[str] = []
+
+        # used to transfer new body between visit_FunctionDef and leave_FunctionDef
+        self.new_body: cst.BaseSuite | None = None
 
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
         if code is None:  # pragma: no branch
@@ -299,12 +395,36 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             and self.library != ("asyncio",)
         )
 
+    def checkpoint_cancel_point(self) -> None:
+        self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
+        # don't need to look for any .start_soon() calls
+        self.taskgroup_has_start_soon.clear()
+
+    def checkpoint_schedule_point(self) -> None:
+        # ASYNC912&ASYNC913 only cares about cancel points, so don't remove
+        # them if we only do a schedule point
+        self.uncheckpointed_statements = {
+            s
+            for s in self.uncheckpointed_statements
+            if isinstance(s, ArtificialStatement)
+        }
+
     def checkpoint(self) -> None:
         self.uncheckpointed_statements = set()
-        self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
+        self.checkpoint_cancel_point()
 
     def checkpoint_statement(self) -> cst.SimpleStatementLine:
         return checkpoint_statement(self.library[0])
+
+    def visit_Call(self, node: cst.Call) -> None:
+        # [Nursery/TaskGroup].start_soon introduces a cancel point
+        if (
+            isinstance(node.func, cst.Attribute)
+            and isinstance(node.func.value, cst.Name)
+            and node.func.attr.value == "start_soon"
+            and node.func.value.value in self.taskgroup_has_start_soon
+        ):
+            self.taskgroup_has_start_soon[node.func.value.value] = True
 
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         # Semi-crude approach to handle `from contextlib import suppress`.
@@ -329,6 +449,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                     return
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        # `await` in default values happen in parent scope
+        # we also know we don't ever modify parameters so we can ignore the return value
+        _ = node.params.visit(self)
+
         # don't lint functions whose bodies solely consist of pass or ellipsis
         # @overload functions are also guaranteed to be empty
         # we also ignore pytest fixtures
@@ -338,19 +462,23 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.save_state(
             node,
             "has_yield",
-            "safe_decorator",
             "async_function",
             "uncheckpointed_statements",
+            # comp_unknown does not need to be saved
             "loop_state",
             "try_state",
             "has_checkpoint_stack",
-            "suppress_imported_as",
+            # node_dict is cleaned up and don't need to be saved
+            "taskgroup_has_start_soon",
+            "suppress_imported_as",  # a copy is saved, but state is not reset
             copy=True,
         )
         self.uncheckpointed_statements = set()
         self.has_checkpoint_stack = []
-        self.has_yield = self.safe_decorator = False
+        self.has_yield = False
         self.loop_state = LoopState()
+        # try_state is reset upon entering try
+        self.taskgroup_has_start_soon = {}
 
         self.async_function = (
             node.asynchronous is not None
@@ -358,36 +486,49 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 node.decorators, *self.options.no_checkpoint_warning_decorators
             )
         )
-        if not self.async_function:
-            # only visit subnodes if there is an async function defined inside
-            # this should improve performance on codebases with many sync functions
-            return any(m.findall(node, m.FunctionDef(asynchronous=m.Asynchronous())))
+        # only visit subnodes if there is an async function defined inside
+        # this should improve performance on codebases with many sync functions
+        if not self.async_function and not any(
+            m.findall(node, m.FunctionDef(asynchronous=m.Asynchronous()))
+        ):
+            return False
 
         pos = self.get_metadata(PositionProvider, node).start  # type: ignore
         self.uncheckpointed_statements = {
             Statement("function definition", pos.line, pos.column)  # type: ignore
         }
-        return True
+
+        # visit body
+        # we're not gonna get FlattenSentinel or RemovalSentinel
+        self.new_body = cast(cst.BaseSuite, node.body.visit(self))
+
+        # we know that leave_FunctionDef for this FunctionDef will run immediately after
+        # this function exits so we don't need to worry about save_state for new_body
+        return False
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
         if (
-            self.async_function
+            self.new_body is not None
+            and self.async_function
             # updated_node does not have a position, so we must send original_node
             and self.check_function_exit(original_node)
             and self.should_autofix(original_node)
-            and isinstance(updated_node.body, cst.IndentedBlock)
+            and isinstance(self.new_body, cst.IndentedBlock)
         ):
             # insert checkpoint at the end of body
-            new_body = list(updated_node.body.body)
-            new_body.append(self.checkpoint_statement())
-            indentedblock = updated_node.body.with_changes(body=new_body)
-            updated_node = updated_node.with_changes(body=indentedblock)
+            new_body_block = list(self.new_body.body)
+            new_body_block.append(self.checkpoint_statement())
+            self.new_body = self.new_body.with_changes(body=new_body_block)
 
             self.ensure_imported_library()
 
+        if self.new_body is not None:
+            updated_node = updated_node.with_changes(body=self.new_body)
         self.restore_state(original_node)
+        # reset self.new_body
+        self.new_body = None
         return updated_node
 
     # error if function exit/return/yields with uncheckpointed statements
@@ -440,8 +581,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         ):
             self.add_statement = self.checkpoint_statement()
         # avoid duplicate error messages
-        self.uncheckpointed_statements = set()
-        # we don't treat it as a checkpoint for ASYNC100
+        # but don't see it as a cancel point for ASYNC100
+        self.checkpoint_schedule_point()
 
         # return original node to avoid problems with identity equality
         assert original_node.deep_equals(updated_node)
@@ -491,12 +632,47 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             is not None
         )
 
+    def _checkpoint_with(self, node: cst.With, entry: bool):
+        """Conditionally checkpoints entry/exit of With.
+
+        If the `with` only contains calls to open_nursery/create_task_group, it's a
+        schedule point but not a cancellation point, so we treat it as a checkpoint
+        for async91x but not for async100.
+
+        Saves the name of the taskgroup/nursery if entry is set
+        """
+        if not getattr(node, "asynchronous", None):
+            return
+
+        for item in node.items:
+            if isinstance(item.item, cst.Call) and identifier_to_string(
+                item.item.func
+            ) in (
+                "trio.open_nursery",
+                "anyio.create_task_group",
+            ):
+                if item.asname is not None and isinstance(item.asname.name, cst.Name):
+                    # save the nursery/taskgroup to see if it has a `.start_soon`
+                    if entry:
+                        self.taskgroup_has_start_soon[item.asname.name.value] = False
+                    elif self.taskgroup_has_start_soon.pop(
+                        item.asname.name.value, False
+                    ):
+                        self.checkpoint()
+                        return
+            else:
+                self.checkpoint()
+                break
+        else:
+            # only taskgroup/nursery calls
+            self.checkpoint_schedule_point()
+
     # Async context managers can reasonably checkpoint on either or both of entry and
     # exit.  Given that we can't tell which, we assume "both" to avoid raising a
     # missing-checkpoint warning when there might in fact be one (i.e. a false alarm).
     def visit_With_body(self, node: cst.With):
-        if getattr(node, "asynchronous", None):
-            self.checkpoint()
+        self.save_state(node, "taskgroup_has_start_soon", copy=True)
+        self._checkpoint_with(node, entry=True)
 
         # if this might suppress exceptions, we cannot treat anything inside it as
         # checkpointing.
@@ -548,6 +724,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 for res in self.node_dict[original_node]:
                     self.error(res.node, error_code="ASYNC912")
 
+        self.node_dict.pop(original_node, None)
+
         # if exception-suppressing, restore all uncheckpointed statements from
         # before the `with`.
         if self._is_exception_suppressing_context_manager(original_node):
@@ -555,8 +733,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             self.restore_state(original_node)
             self.uncheckpointed_statements.update(prev_checkpoints)
 
-        if getattr(original_node, "asynchronous", None):
-            self.checkpoint()
+        self._checkpoint_with(original_node, entry=False)
         return updated_node
 
     # error if no checkpoint since earlier yield or function entry
@@ -569,7 +746,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         # Treat as a checkpoint for ASYNC100, since the context we yield to
         # may checkpoint.
-        self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
+        self.checkpoint_cancel_point()
 
         if self.check_function_exit(original_node) and self.should_autofix(
             original_node
@@ -978,8 +1155,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         return False
 
     # The generator target will be immediately evaluated, but the other
-    # elements will be lazily evaluated as the generator is consumed so we don't
-    # visit them as any checkpoints in them are not guaranteed to execute.
+    # elements will not be evaluated at the point of defining the GenExp.
+    # To consume those needs an explicit syntactic checkpoint
     def visit_GeneratorExp(self, node: cst.GeneratorExp):
         node.for_in.iter.visit(self)
         return False

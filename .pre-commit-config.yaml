@@ -1,20 +1,21 @@
 ---
 default_language_version:
-    python: python3.12
+    python: python3.13
 # pyright requires internet connection to run, which the pre-commit ci app doesn't have.
 # it instead runs in a github action
+# check-release-changelog is run as a dedicated job
 ci:
-    skip: [pyright]
+    skip: [pyright, check-release-changelog]
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.7.1
+      rev: v0.9.4
       hooks:
           - id: ruff
             args: [--fix]
 
     - repo: https://github.com/psf/black
-      rev: 24.10.0
+      rev: 25.1.0
       hooks:
           - id: black
             args: [--preview]
@@ -25,26 +26,26 @@ repos:
           - id: autoflake
 
     - repo: https://github.com/asottile/pyupgrade
-      rev: v3.19.0
+      rev: v3.19.1
       hooks:
           - id: pyupgrade
             args: [--py39-plus]
             exclude: tests/eval_files/async103.py
 
     - repo: https://github.com/pycqa/isort
-      rev: 5.13.2
+      rev: 6.0.0
       hooks:
           - id: isort
 
     - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.13.0
+      rev: v1.14.1
       hooks:
           - id: mypy
             # uses py311 syntax, mypy configured for py39
             exclude: tests/eval_files/.*_py311.py
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.386
+      rev: v1.1.393
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -65,7 +66,7 @@ repos:
                 - trio
 
     - repo: https://github.com/codespell-project/codespell
-      rev: v2.3.0
+      rev: v2.4.1
       hooks:
           - id: codespell
             additional_dependencies:
@@ -100,3 +101,16 @@ repos:
       rev: v1.0.0
       hooks:
           - id: sphinx-lint
+
+    - repo: local
+      hooks:
+          - id: check-release-changelog
+            name: check-release-changelog
+            language: system
+            entry: python3 tests/check_changelog_and_version.py --allow-future-in-changelog
+            files: flake8_async/__init__.py|docs/changelog.rst
+
+    - repo: meta
+      hooks:
+          - id: check-hooks-apply
+          - id: check-useless-excludes

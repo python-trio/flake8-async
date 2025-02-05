@@ -3,12 +3,10 @@
 # It's possible there's an equivalent asyncio construction/gotcha, but methods are differently named, so this file will not raise any errors
 # nurseries are named taskgroups in asyncio/anyio
 # ASYNCIO_NO_ERROR
-# ANYIO_NO_ERROR
 from typing import Any
 
 import trio
 import trio as noterror
-
 
 # shed/black breaks up a *ton* of lines since adding more detailed error messages, so
 # disable formatting to avoid having to adjust a ton of line references

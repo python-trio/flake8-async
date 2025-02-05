@@ -193,8 +193,9 @@ select = ASYNC220
 
     # construct the full error message
     expected = f"{err_file}:{lineno}:5: ASYNC220 {err_msg}\n"
+    from flake8.main.cli import main
 
-    returnvalue = flake8.main.cli.main(
+    returnvalue = main(
         argv=[
             str(err_file),
             "--config",
@@ -245,7 +246,9 @@ def test_200_from_config_flake8_internals(
     # replace ./ with tmp_path/
     err_msg = str(tmp_path) + EXAMPLE_PY_TEXT[1:]
 
-    returnvalue = flake8.main.cli.main(
+    from flake8.main.cli import main
+
+    returnvalue = main(
         argv=[
             str(tmp_path / "example.py"),
             "--append-config",
@@ -268,7 +271,7 @@ def test_200_from_config_subprocess(tmp_path: Path):
 
 
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
-def test_trio200_from_config_subprocess(tmp_path: Path):
+def test_async200_from_config_subprocess(tmp_path: Path):
     err_msg = _test_async200_from_config_common(tmp_path, code="trio200")
     res = subprocess.run(["flake8"], cwd=tmp_path, capture_output=True, check=False)
     assert res.returncode == 1
@@ -280,16 +283,55 @@ def test_trio200_from_config_subprocess(tmp_path: Path):
 
 
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
+def test_async200_from_config_subprocess_cli_ignore(tmp_path: Path):
+    _ = _test_async200_from_config_common(tmp_path)
+    res = subprocess.run(
+        ["flake8", "--ignore=ASYNC200"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        encoding="utf8",
+    )
+    assert not res.stderr
+    assert not res.stdout
+    assert res.returncode == 0
+
+
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_900_default_off(capsys: pytest.CaptureFixture[str]):
-    returnvalue = flake8.main.cli.main(
+    from flake8.main.cli import main
+
+    returnvalue = main(
         argv=[
-            "tests/trio900.py",
+            "tests/eval_files/async900.py",
         ]
     )
     out, err = capsys.readouterr()
     assert returnvalue == 1
     assert not err
+    assert "E501" in out
     assert "ASYNC900" not in out
+
+
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
+def test_910_can_be_selected(tmp_path: Path):
+    myfile = tmp_path.joinpath("foo.py")
+    myfile.write_text("""async def foo():\n    print()""")
+
+    res = subprocess.run(
+        ["flake8", "--select=ASYNC910", "foo.py"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        encoding="utf8",
+    )
+
+    assert not res.stderr
+    assert res.stdout == (
+        "foo.py:1:1: ASYNC910 exit from async function with no guaranteed"
+        " checkpoint or exception since function definition on line 1.\n"
+    )
+    assert res.returncode == 1
 
 
 def test_enable(
@@ -426,6 +468,23 @@ def test_disable_noqa_ast(
 
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 @pytest.mark.xfail(reason="flake8>=6 enforces three-letter error codes in config")
+def test_config_select_error_code(tmp_path: Path) -> None:
+    assert tmp_path.joinpath(".flake8").write_text(
+        """
+[flake8]
+select = ASYNC100
+extend-select = ASYNC100
+"""
+    )
+    res = subprocess.run(
+        ["flake8", "--help"], cwd=tmp_path, capture_output=True, check=False
+    )
+    assert not res.stderr
+    assert res.returncode == 0
+
+
+# flake8>=6 enforces three-letter error codes in config
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_config_ignore_error_code(tmp_path: Path) -> None:
     assert tmp_path.joinpath(".flake8").write_text(
         """
@@ -434,10 +493,39 @@ ignore = ASYNC100
 """
     )
     res = subprocess.run(
-        ["flake8", "--help"], cwd=tmp_path, capture_output=True, check=False
+        ["flake8", "--help"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        encoding="utf8",
     )
-    assert not res.stderr
-    assert res.returncode == 0
+    assert (
+        "Error code 'ASYNC100' supplied to 'ignore' option does not match" in res.stderr
+    )
+    assert res.returncode == 1
+
+
+# flake8>=6 enforces three-letter error codes in config
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
+def test_config_extend_ignore_error_code(tmp_path: Path) -> None:
+    assert tmp_path.joinpath(".flake8").write_text(
+        """
+[flake8]
+extend-ignore = ASYNC100
+"""
+    )
+    res = subprocess.run(
+        ["flake8", "--help"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        encoding="utf8",
+    )
+    assert (
+        "Error code 'ASYNC100' supplied to 'extend-ignore' option does not match"
+        in res.stderr
+    )
+    assert res.returncode == 1
 
 
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")

@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "24.10.2"
+__version__ = "25.2.2"
 
 
 # taken from https://github.com/Zac-HD/shed
@@ -127,9 +127,10 @@ class Plugin:
         assert self._options is not None
         return self._options
 
-    def __init__(self, tree: ast.AST, lines: Sequence[str], filename: str):
+    def __init__(
+        self, tree: ast.AST, lines: Sequence[str], filename: str | None = None
+    ):
         super().__init__()
-        assert isinstance(filename, str)
         self.filename: str | None = filename
         self._tree = tree
         source = "".join(lines)
@@ -456,13 +457,13 @@ def parse_async200_dict(raw_value: str) -> dict[str, str]:
 
 
 def parse_per_file_disable(raw_value: str) -> dict[str, tuple[str, ...]]:
-    res = {}
+    res: dict[str, tuple[str, ...]] = {}
     splitter = "->"
     values = [s.strip() for s in raw_value.split(" \t\n") if s.strip()]
     for value in values:
         split_values = list(map(str.strip, value.split(splitter)))
         if len(split_values) != 2:
-            # argparse will eat this error message and spit out it's own
+            # argparse will eat this error message and spit out its own
             # if we raise it as ValueError
             raise ArgumentTypeError(
                 f"Invalid number ({len(split_values)-1}) of splitter "

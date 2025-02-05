@@ -70,7 +70,11 @@ class Visitor101(Flake8AsyncVisitor_cst):
         self.save_state(node, "_yield_is_error", "_safe_decorator")
         self._yield_is_error = False
         self._safe_decorator = func_has_decorator(
-            node, "contextmanager", "asynccontextmanager", "fixture"
+            node,
+            "contextmanager",
+            "asynccontextmanager",
+            "fixture",
+            *self.options.transform_async_generator_decorators,
         )
 
     # trigger on leaving yield so any comments are parsed for noqas

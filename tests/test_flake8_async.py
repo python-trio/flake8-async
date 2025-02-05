@@ -83,6 +83,8 @@ def format_difflib_line(s: str) -> str:
 
 
 def diff_strings(first: str, second: str, /) -> str:
+    if first == second:
+        return ""
     return (
         "".join(
             map(
@@ -101,7 +103,28 @@ def diff_strings(first: str, second: str, /) -> str:
 # replaces all instances of `original` with `new` in string
 # unless it's preceded by a `-`, which indicates it's part of a command-line flag
 def replace_library(string: str, original: str = "trio", new: str = "anyio") -> str:
-    return re.sub(rf"(?<!-){original}", new, string)
+    def replace_str(string: str, original: str, new: str) -> str:
+        return re.sub(rf"(?<!-){original}", new, string)
+
+    # this isn't super pretty, and doesn't include asyncio.TaskGroup(),
+    # and could probably cover more methods, but /shrug
+    replacements: tuple[tuple[str, str], ...] = (
+        ("open_nursery", "create_task_group"),
+        ('"nursery"', '"task group"'),  # in error messages
+        ("nursery", "task_group"),
+        ("Nursery", "TaskGroup"),
+    )
+
+    if sorted((original, new)) == ["anyio", "trio"]:
+        for trio_, anyio_ in replacements:
+            if original == "trio":
+                from_ = trio_
+                to_ = anyio_
+            else:
+                from_ = anyio_
+                to_ = trio_
+            string = replace_str(string, from_, to_)
+    return replace_str(string, original, new)
 
 
 def check_autofix(
@@ -619,13 +642,14 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
         expected_dict[e.line][e.code] += 1
 
     error_count = 0
+    printed_header = False
     for line in all_lines:
         if error_dict[line] == expected_dict[line]:
             continue
 
         # go through all the codes on the line
         for code in sorted({*error_dict[line], *expected_dict[line]}):
-            if error_count == 0:
+            if not printed_header:
                 print(
                     "Lines with different # of errors:",
                     "-" * 38,
@@ -633,6 +657,7 @@ def assert_correct_lines_and_codes(errors: Iterable[Error], expected: Iterable[E
                     sep="\n",
                     file=sys.stderr,
                 )
+                printed_header = True
 
             print(
                 f"| {line:4}",

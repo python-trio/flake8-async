@@ -13,12 +13,13 @@ _`ASYNC100` : cancel-scope-no-checkpoint
     A :ref:`timeout_context` does not contain any :ref:`checkpoints <checkpoint>`.
     This makes it pointless, as the timeout can only be triggered by a checkpoint.
     This check also treats ``yield`` as a checkpoint, since checkpoints can happen in the caller we yield to.
+    :func:`trio.open_nursery` and :func:`anyio.create_task_group` are excluded, as they are :ref:`schedule points <schedule_point>` but not :ref:`cancel points <cancel_point>` (unless they have tasks started in them).
     See :ref:`ASYNC912 <async912>` which will in addition guarantee checkpoints on every code path.
 
-ASYNC101 : yield-in-cancel-scope
+_`ASYNC101` : yield-in-cancel-scope
     ``yield`` inside a :ref:`taskgroup_nursery` or :ref:`timeout_context` is only safe when implementing a context manager - otherwise, it breaks exception handling.
     See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP.
-    This has substantial overlap with :ref:`ASYNC119 <ASYNC119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by `PEP 533 <https://peps.python.org/pep-0533/>`_.
+    This has substantial overlap with :ref:`ASYNC119 <ASYNC119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by :pep:`533`.
 
 _`ASYNC102` : await-in-finally-or-cancelled
     ``await`` inside ``finally``, :ref:`cancelled-catching <cancelled>` ``except:``, or ``__aexit__`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
@@ -75,7 +76,7 @@ ASYNC118 : cancelled-class-saved
 
 _`ASYNC119` : yield-in-cm-in-async-gen
    ``yield`` in context manager in async generator is unsafe, the cleanup may be delayed until ``await`` is no longer allowed.
-   We strongly encourage you to read `PEP 533 <https://peps.python.org/pep-0533/>`_ and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see `ASYNC900`_ ) in favor of context managers which return an iterable :ref:`channel/stream/queue <channel_stream_queue>`.
+   We strongly encourage you to read :pep:`533` and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see `ASYNC900`_ ) in favor of context managers which return an iterable :ref:`channel/stream/queue <channel_stream_queue>`.
 
 _`ASYNC120` : await-in-except
     Dangerous :ref:`checkpoint` inside an ``except`` block.
@@ -93,6 +94,13 @@ _`ASYNC123`: bad-exception-group-flattening
     Raising one of the exceptions contained in an exception group will mutate it, replacing the original ``.__context__`` with the group, and erasing the ``.__traceback__``.
     Dropping this information makes diagnosing errors much more difficult.
     We recommend ``raise SomeNewError(...) from group`` if possible; or consider using `copy.copy` to shallow-copy the exception before re-raising (for copyable types), or re-raising the error from outside the `except` block.
+
+_`ASYNC124`: async-function-could-be-sync
+    Triggers when an async function contain none of ``await``, ``async for`` or ``async with``.
+    Calling an async function is slower than calling regular functions, so if possible you
+    might want to convert your function to be synchronous.
+    This currently overlaps with :ref:`ASYNC910 <ASYNC910>` and :ref:`ASYNC911 <ASYNC911>` which, if enabled, will autofix the function to have :ref:`checkpoint`.
+    This excludes class methods as they often have to be async for other reasons, if you really do want to check those you could manually run :ref:`ASYNC910 <ASYNC910>` and/or :ref:`ASYNC911 <ASYNC911>` and check the methods they trigger on.
 
 Blocking sync calls in async functions
 ======================================
@@ -189,12 +197,13 @@ _`ASYNC911` : async-generator-no-checkpoint
     Exit, ``yield`` or ``return`` from async iterable with no guaranteed :ref:`checkpoint` since possible function entry (``yield`` or function definition).
 
 _`ASYNC912` : cancel-scope-no-guaranteed-checkpoint
-    A timeout/cancelscope has :ref:`checkpoints <checkpoint>`, but they're not guaranteed to run.
-    Similar to `ASYNC100`_, but it does not warn on trivial cases where there is no checkpoint at all.
+    A timeout/cancelscope has :ref:`cancel points <cancel_point>`, but they're not guaranteed to run.
+    Similar to `ASYNC100`_, but it does not warn on trivial cases where there is no cancel point at all.
     It instead shares logic with `ASYNC910`_ and `ASYNC911`_ for parsing conditionals and branches.
 
 _`ASYNC913` : indefinite-loop-no-guaranteed-checkpoint
     An indefinite loop (e.g. ``while True``) has no guaranteed :ref:`checkpoint <checkpoint>`. This could potentially cause a deadlock.
+    This will also error if there's no guaranteed :ref:`cancel point <cancel_point>`, where even though it won't deadlock the loop might become an uncancelable dry-run loop.
 
 .. _autofix-support:
 

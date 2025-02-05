@@ -4,13 +4,46 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.2.2
+=======
+- :ref:`ASYNC113 <async113>` now only triggers on ``trio.[serve_tcp, serve_ssl_over_tcp, serve_listeners, run_process]``, instead of accepting anything as the attribute base. (e.g. :func:`anyio.run_process` is not startable).
+
+25.2.1
+=======
+- :ref:`ASYNC912 <async912>` and :ref:`ASYNC913 <async913>` will now trigger if there's no *cancel* points. This means that :func:`trio.open_nursery`/`anyio.create_task_group` will not silence them on their own, unless they're guaranteed to start tasks.
+
+25.1.1
+=======
+- Add :ref:`ASYNC124 <async124>` async-function-could-be-sync
+- :ref:`ASYNC91x <ASYNC910>` now correctly handles ``await()`` in parameter lists.
+- Fixed a bug with :ref:`ASYNC91x <ASYNC910>` and nested empty functions.
+
+24.11.4
+=======
+- :ref:`ASYNC100 <async100>` once again ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`, unless we find a call to ``.start_soon()``.
+
+24.11.3
+=======
+- Revert :ref:`ASYNC100 <async100>` ignoring :func:`trio.open_nursery` and :func:`anyio.create_task_group` due to it not viewing ``.start_soon()`` as introducing a :ref:`cancel point <cancel_point>`.
+
+24.11.2
+=======
+- Fix crash in ``Visitor91x`` on ``async with a().b():``.
+
+24.11.1
+=======
+- :ref:`ASYNC100 <async100>` now ignores :func:`trio.open_nursery` and :func:`anyio.create_task_group`
+  as cancellation sources, because they are :ref:`schedule points <schedule_point>` but not
+  :ref:`cancellation points <cancel_point>`.
+- :ref:`ASYNC101 <async101>` and :ref:`ASYNC119 <async119>` are now silenced for decorators in :ref:`transform-async-generator-decorators`.
+
 24.10.2
 =======
 - :ref:`ASYNC102 <async102>` now also warns about ``await()`` inside ``__aexit__``.
 
 24.10.1
 =======
-- Add :ref:`ASYNC123 <async123>` bad-exception-group-flattening
+- Add :ref:`ASYNC123 <async123>` bad-exception-group-flattening.
 
 24.9.5
 ======
@@ -39,7 +72,7 @@ Changelog
 
 24.8.1
 ======
-- Add config option ``transform-async-generator-decorators``, to list decorators which
+- Add config option :ref:`transform-async-generator-decorators`, to list decorators which
   suppress :ref:`ASYNC900 <async900>`.
 
 24.6.1
@@ -219,7 +252,7 @@ Changelog
 
 22.9.2
 ======
-- Fix a crash on nontrivial decorator expressions (calls, PEP-614) and document behavior.
+- Fix a crash on nontrivial decorator expressions (calls, :pep:`614`) and document behavior.
 
 22.9.1
 ======

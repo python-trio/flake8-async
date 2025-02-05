@@ -88,8 +88,8 @@ Exception classes:
 
 Checkpoint
 ----------
-Checkpoints are points where the async backend checks for cancellation and
-can switch which task is running, in an ``await``, ``async for``, or ``async with``
+Checkpoints are points where the async backend checks for :ref:`cancellation <cancel_point>` and
+:ref:`can switch which task is running <schedule_point>`, in an ``await``, ``async for``, or ``async with``
 expression.  Regular checkpoints can be important for both performance and correctness.
 
 Trio has extensive and detailed documentation on the concept of
@@ -99,11 +99,11 @@ functions defined by Trio will either checkpoint or raise an exception when
 iteration, and when exhausting the iterator, and ``async with`` will checkpoint
 on at least one of enter/exit.
 
+The one exception is :func:`trio.open_nursery` and :func:`anyio.create_task_group`. They do not checkpoint on entry, and on exit they insert a :ref:`schedule point <schedule_point>`. However, if sub-tasks are cancelled they will be propagated on exit, so if you're starting tasks you can usually treat the exit as a :ref:`cancel point <cancel_point>`.
+
 asyncio does not place any guarantees on if or when asyncio functions will
 checkpoint. This means that enabling and adhering to :ref:`ASYNC91x <ASYNC910>`
-will still not guarantee checkpoints.
-
-For anyio it will depend on the current backend.
+will still not guarantee checkpoints on asyncio (even if used via anyio).
 
 When using Trio (or an AnyIO library that people might use on Trio), it can be
 very helpful to ensure that your own code adheres to the same guarantees as
@@ -115,6 +115,33 @@ also adhere to those rules. This means you must be careful if you're using
 To insert a checkpoint with no other side effects, you can use
 :func:`trio.lowlevel.checkpoint`/:func:`anyio.lowlevel.checkpoint`/:func:`asyncio.sleep(0)
 <asyncio.sleep>`
+
+.. _schedule_point:
+
+Schedule Point
+--------------
+A schedule point is half of a full :ref:`checkpoint`, which allows the async backend to switch the running task, but doesn't check for cancellation (the other half is a :ref:`cancel_point`).
+While you are unlikely to need one, they are available as :func:`trio.lowlevel.cancel_shielded_checkpoint`/:func:`anyio.lowlevel.cancel_shielded_checkpoint`, and equivalent to
+
+.. code-block:: python
+
+   from trio import CancelScope, lowlevel
+   # or
+   # from anyio import CancelScope, lowlevel
+
+   with CancelScope(shield=True):
+       await lowlevel.checkpoint()
+
+asyncio does not have any direct equivalents due to their cancellation model being different.
+
+
+.. _cancel_point:
+
+Cancel Point
+------------
+A schedule point is half of a full :ref:`checkpoint`, which will raise :ref:`cancelled` if the enclosing cancel scope has been cancelled, but does not allow the scheduler to switch to a different task (the other half is a :ref:`schedule_point`).
+While you are unlikely to need one, they are available as :func:`trio.lowlevel.checkpoint_if_cancelled`/:func:`anyio.lowlevel.checkpoint_if_cancelled`.
+Users of asyncio might want to use :meth:`asyncio.Task.cancelled`.
 
 .. _channel_stream_queue:
 

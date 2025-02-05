@@ -5,8 +5,6 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any, cast
 
-import libcst as cst
-
 from .flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
 from .helpers import (
     disabled_by_default,
@@ -19,6 +17,8 @@ from .helpers import (
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    import libcst as cst
 
 LIBRARIES = ("trio", "anyio", "asyncio")
 
@@ -121,10 +121,10 @@ class Visitor112(Flake8AsyncVisitor):
             elif get_matching_call(
                 item.context_expr, "create_task_group", base="anyio"
             ):
-                nursery_type = "taskgroup"
+                nursery_type = "task group"
             # check for asyncio.TaskGroup
             elif get_matching_call(item.context_expr, "TaskGroup", base="asyncio"):
-                nursery_type = "taskgroup"
+                nursery_type = "task group"
                 start_methods = ("create_task",)
             else:
                 # incorrectly marked as not covered on py39
@@ -151,12 +151,12 @@ class Visitor112(Flake8AsyncVisitor):
 
 
 # used in 113 and 114
-STARTABLE_CALLS = (
+STARTABLE_CALLS = ("serve",)
+TRIO_STARTABLE_CALLS = (
     "run_process",
     "serve_ssl_over_tcp",
     "serve_tcp",
     "serve_listeners",
-    "serve",
 )
 
 
@@ -201,7 +201,11 @@ class Visitor113(Flake8AsyncVisitor):
             if isinstance(n, ast.Name):
                 return n.id in startable_list
             if isinstance(n, ast.Attribute):
-                return n.attr in startable_list
+                return n.attr in startable_list and not (
+                    n.attr in TRIO_STARTABLE_CALLS
+                    and isinstance(n.value, ast.Name)
+                    and n.value.id != "trio"
+                )
             if isinstance(n, ast.Call):
                 return any(is_startable(nn, *startable_list) for nn in n.args)
             return False
@@ -213,12 +217,16 @@ class Visitor113(Flake8AsyncVisitor):
             ):
                 return False
             var = ast.unparse(node.value)
-            return ("trio" in self.library and var.endswith("nursery")) or (
-                self.variables.get(var, "")
-                in (
-                    "trio.Nursery",
-                    "anyio.TaskGroup",
-                    "asyncio.TaskGroup",
+            return (
+                ("trio" in self.library and var.endswith("nursery"))
+                or ("anyio" in self.library and var.endswith("task_group"))
+                or (
+                    self.variables.get(var, "")
+                    in (
+                        "trio.Nursery",
+                        "anyio.TaskGroup",
+                        "asyncio.TaskGroup",
+                    )
                 )
             )
 
@@ -229,6 +237,7 @@ class Visitor113(Flake8AsyncVisitor):
             and is_startable(
                 node.args[0],
                 *STARTABLE_CALLS,
+                *TRIO_STARTABLE_CALLS,
                 *self.options.startable_in_context_manager,
             )
         ):
@@ -254,7 +263,11 @@ class Visitor114(Flake8AsyncVisitor):
             for n in self.walk(*node.args.args, *node.args.kwonlyargs)
         ) and not any(
             node.name == opt
-            for opt in (*self.options.startable_in_context_manager, *STARTABLE_CALLS)
+            for opt in (
+                *self.options.startable_in_context_manager,
+                *STARTABLE_CALLS,
+                *TRIO_STARTABLE_CALLS,
+            )
         ):
             self.error(node, node.name)
 
@@ -319,8 +332,10 @@ class Visitor116(Flake8AsyncVisitor):
 @error_class
 class Visitor119(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "ASYNC119": "Yield in contextmanager in async generator might not trigger"
-        " cleanup. Use `@asynccontextmanager` or refactor."
+        "ASYNC119": (
+            "Yield in contextmanager in async generator might not trigger"
+            " cleanup. Use `@asynccontextmanager` or refactor."
+        )
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -334,7 +349,10 @@ class Visitor119(Flake8AsyncVisitor):
         self.save_state(node, "unsafe_function", "contextmanager")
         self.contextmanager = False
         if isinstance(node, ast.AsyncFunctionDef) and not has_decorator(
-            node, "asynccontextmanager"
+            node,
+            "asynccontextmanager",
+            "fixture",
+            *self.options.transform_async_generator_decorators,
         ):
             self.unsafe_function = True
         else:
@@ -457,8 +475,7 @@ class Visitor300(Flake8AsyncVisitor_cst):
 
     def visit_Call(self, node: cst.Call):
         if (
-            isinstance(node.func, (cst.Name, cst.Attribute))
-            and identifier_to_string(node.func) == "asyncio.create_task"
+            identifier_to_string(node.func) == "asyncio.create_task"
             and not self.safe_to_create_task
         ):
             self.error(node)
@@ -488,8 +505,10 @@ class Visitor300(Flake8AsyncVisitor_cst):
 @disabled_by_default
 class Visitor900(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "ASYNC900": "Async generator not allowed, unless transformed "
-        "by a known decorator (one of: {})."
+        "ASYNC900": (
+            "Async generator not allowed, unless transformed "
+            "by a known decorator (one of: {})."
+        )
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
