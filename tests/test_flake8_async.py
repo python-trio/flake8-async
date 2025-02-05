@@ -102,20 +102,28 @@ def diff_strings(first: str, second: str, /) -> str:
 
 # replaces all instances of `original` with `new` in string
 # unless it's preceded by a `-`, which indicates it's part of a command-line flag
-def replace_library(
-    string: str,
-    original: str = "trio",
-    new: str = "anyio",
-    replace_nursery: bool = False,
-) -> str:
+def replace_library(string: str, original: str = "trio", new: str = "anyio") -> str:
     def replace_str(string: str, original: str, new: str) -> str:
         return re.sub(rf"(?<!-){original}", new, string)
 
-    if replace_nursery:
-        if original == "trio" and new == "anyio":
-            string = replace_str(string, "trio.open_nursery", "anyio.create_task_group")
-        elif original == "anyio" and new == "trio":
-            string = replace_str(string, "anyio.create_task_group", "trio.open_nursery")
+    # this isn't super pretty, and doesn't include asyncio.TaskGroup(),
+    # and could probably cover more methods, but /shrug
+    replacements: tuple[tuple[str, str], ...] = (
+        ("open_nursery", "create_task_group"),
+        ('"nursery"', '"task group"'),  # in error messages
+        ("nursery", "task_group"),
+        ("Nursery", "TaskGroup"),
+    )
+
+    if sorted((original, new)) == ["anyio", "trio"]:
+        for trio_, anyio_ in replacements:
+            if original == "trio":
+                from_ = trio_
+                to_ = anyio_
+            else:
+                from_ = anyio_
+                to_ = trio_
+            string = replace_str(string, from_, to_)
     return replace_str(string, original, new)
 
 
@@ -173,18 +181,11 @@ def check_autofix(
     # meaning it's replaced in visited_code, we also replace it in previous generated code
     # and in the previous diff
     if base_library != library:
-        replace_nursery = "913" in test or "912" in test
         previous_autofixed = replace_library(
-            previous_autofixed,
-            original=base_library,
-            new=library,
-            replace_nursery=replace_nursery,
+            previous_autofixed, original=base_library, new=library
         )
         autofix_diff_content = replace_library(
-            autofix_diff_content,
-            original=base_library,
-            new=library,
-            replace_nursery=replace_nursery,
+            autofix_diff_content, original=base_library, new=library
         )
 
     # save any difference in the autofixed code
@@ -294,10 +295,7 @@ def test_eval(
 
     if library != magic_markers.BASE_LIBRARY:
         content = replace_library(
-            content,
-            original=magic_markers.BASE_LIBRARY,
-            new=library,
-            replace_nursery="912" in test or "913" in test,
+            content, original=magic_markers.BASE_LIBRARY, new=library
         )
 
         # if substituting we're messing up columns

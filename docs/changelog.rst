@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.2.2
+=======
+- :ref:`ASYNC113 <async113>` now only triggers on ``trio.[serve_tcp, serve_ssl_over_tcp, serve_listeners, run_process]``, instead of accepting anything as the attribute base. (e.g. :func:`anyio.run_process` is not startable).
+
 25.2.1
 =======
 - :ref:`ASYNC912 <async912>` and :ref:`ASYNC913 <async913>` will now trigger if there's no *cancel* points. This means that :func:`trio.open_nursery`/`anyio.create_task_group` will not silence them on their own, unless they're guaranteed to start tasks.

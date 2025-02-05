@@ -1,5 +1,4 @@
 # ASYNCIO_NO_ERROR # checked in async121_asyncio.py
-# TRIO_NO_ERROR # checked in async121.py
 # BASE_LIBRARY anyio
 
 import anyio

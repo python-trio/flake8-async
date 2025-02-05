@@ -1,7 +1,6 @@
 # type: ignore
 # ASYNC112: Nursery body with only a call to nursery.start[_soon] and not passing itself as a parameter can be replaced with a regular function call.
 # ASYNCIO_NO_ERROR
-# ANYIO_NO_ERROR
 import functools
 from functools import partial
 

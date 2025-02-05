@@ -11,6 +11,7 @@ It currently does not care if 910/911 would also be triggered."""
 # ASYNCIO_NO_AUTOFIX
 from typing import Any, overload
 from pytest import fixture
+import trio
 
 custom_disabled_decorator: Any = ...
 
@@ -25,15 +26,19 @@ async def foo() -> Any:
 
 async def foo_print():  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     print("hello")
+    await trio.lowlevel.checkpoint()
 
 
 async def conditional_wait():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     if condition():
         await foo()
+    await trio.lowlevel.checkpoint()
 
 
 async def foo_gen():  # ASYNC124: 0  # ASYNC911: 0, "exit", Statement("yield", lineno+1)
+    await trio.lowlevel.checkpoint()
     yield  # ASYNC911: 4, "yield", Statement("function definition", lineno-1)
+    await trio.lowlevel.checkpoint()
 
 
 async def foo_async_with():
@@ -49,11 +54,13 @@ async def foo_async_for():
 async def foo_nested():  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     async def foo_nested_2():
         await foo()
+    await trio.lowlevel.checkpoint()
 
 
 async def foo_nested_sync():  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     def foo_nested_sync_child():
         await foo()  # type: ignore[await-not-async]
+    await trio.lowlevel.checkpoint()
 
 
 # We don't want to trigger on empty/pass functions because of inheritance.
@@ -76,11 +83,13 @@ async def test_async_fixture(  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("
     my_async_fixture,
 ):
     assert my_async_fixture.setup_worked_correctly
+    await trio.lowlevel.checkpoint()
 
 
 # no params -> no async fixtures
 async def test_no_fixture():  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     print("blah")
+    await trio.lowlevel.checkpoint()
 
 
 # skip @overload. They should always be empty, but /shrug
@@ -109,6 +118,7 @@ async def default_value():
 
 # only the expression in genexp's get checked
 async def foo_async_gen():  # ASYNC124: 0
+    await trio.lowlevel.checkpoint()
     return (  # ASYNC910: 4, "return", Statement("function definition", lineno-1)
         await a async for a in foo_gen()
     )
@@ -129,15 +139,19 @@ class Foo:
     ):
         async def bee():  # ASYNC124: 8  # ASYNC910: 8, "exit", Statement("function definition", lineno)
             print("blah")
+            await trio.lowlevel.checkpoint()
+        await trio.lowlevel.checkpoint()
 
     async def later_in_class(  # ASYNC910: 4, "exit", Statement("function definition", lineno)
         self,
     ):
         print()
+        await trio.lowlevel.checkpoint()
 
 
 async def after_class():  # ASYNC124: 0  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     print()
+    await trio.lowlevel.checkpoint()
 
 
 @custom_disabled_decorator
