@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "25.2.2"
+__version__ = "25.2.3"
 
 
 # taken from https://github.com/Zac-HD/shed
@@ -456,7 +456,10 @@ def parse_async200_dict(raw_value: str) -> dict[str, str]:
     return res
 
 
-def parse_per_file_disable(raw_value: str) -> dict[str, tuple[str, ...]]:
+# not run if flake8 is installed
+def parse_per_file_disable(  # pragma: no cover
+    raw_value: str,
+) -> dict[str, tuple[str, ...]]:
     res: dict[str, tuple[str, ...]] = {}
     splitter = "->"
     values = [s.strip() for s in raw_value.split(" \t\n") if s.strip()]

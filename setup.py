@@ -35,7 +35,7 @@ setup(
     description="A highly opinionated flake8 plugin for Trio-related problems.",
     zip_safe=False,
     install_requires=["libcst>=1.0.1"],
-    extras_requires={"flake8": ["flake8>=6"]},
+    extras_require={"flake8": ["flake8>=6"]},
     python_requires=">=3.9",
     classifiers=[
         "Development Status :: 3 - Alpha",

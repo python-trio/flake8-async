@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.2.3
+=======
+- No longer require ``flake8`` for installation... so if you require support for config files you must install ``flake8-async[flake8]``
+
 25.2.2
 =======
 - :ref:`ASYNC113 <async113>` now only triggers on ``trio.[serve_tcp, serve_ssl_over_tcp, serve_listeners, run_process]``, instead of accepting anything as the attribute base. (e.g. :func:`anyio.run_process` is not startable).

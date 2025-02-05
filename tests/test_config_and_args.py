@@ -145,7 +145,7 @@ def test_run_100_autofix(
 
 def test_114_raises_on_invalid_parameter(capsys: pytest.CaptureFixture[str]):
     plugin = Plugin(ast.AST(), [])
-    # flake8 will reraise ArgumentError as SystemExit
+    # argparse will reraise ArgumentTypeError as SystemExit
     for arg in "blah.foo", "foo*", "*":
         with pytest.raises(SystemExit):
             initialize_options(plugin, args=[f"--startable-in-context-manager={arg}"])
@@ -297,8 +297,21 @@ def test_async200_from_config_subprocess_cli_ignore(tmp_path: Path):
     assert res.returncode == 0
 
 
-@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_900_default_off(capsys: pytest.CaptureFixture[str]):
+    res = subprocess.run(
+        ["flake8-async", "tests/eval_files/async900.py"],
+        capture_output=True,
+        check=False,
+        encoding="utf8",
+    )
+    assert res.returncode == 1
+    assert not res.stderr
+    assert "ASYNC124" in res.stdout
+    assert "ASYNC900" not in res.stdout
+
+
+@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
+def test_900_default_off_flake8(capsys: pytest.CaptureFixture[str]):
     from flake8.main.cli import main
 
     returnvalue = main(
@@ -313,13 +326,19 @@ def test_900_default_off(capsys: pytest.CaptureFixture[str]):
     assert "ASYNC900" not in out
 
 
-@pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_910_can_be_selected(tmp_path: Path):
+    """Check if flake8 allows us to --select our 5-letter code.
+
+    But we can run with --enable regardless.
+    """
     myfile = tmp_path.joinpath("foo.py")
     myfile.write_text("""async def foo():\n    print()""")
 
+    binary = "flake8-async" if flake8 is None else "flake8"
+    select_enable = "enable" if flake8 is None else "select"
+
     res = subprocess.run(
-        ["flake8", "--select=ASYNC910", "foo.py"],
+        [binary, f"--{select_enable}=ASYNC910", "foo.py"],
         cwd=tmp_path,
         capture_output=True,
         check=False,
@@ -467,8 +486,8 @@ def test_disable_noqa_ast(
 
 
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
-@pytest.mark.xfail(reason="flake8>=6 enforces three-letter error codes in config")
 def test_config_select_error_code(tmp_path: Path) -> None:
+    # this ... seems to work? I'm confused
     assert tmp_path.joinpath(".flake8").write_text(
         """
 [flake8]
