@@ -16,7 +16,7 @@ from .test_flake8_async import initialize_options
 try:
     import flake8
 except ImportError:
-    flake8 = None
+    flake8 = None  # type: ignore[assignment]
 
 EXAMPLE_PY_TEXT = """import trio
 with trio.move_on_after(10):
