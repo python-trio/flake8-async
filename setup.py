@@ -34,7 +34,8 @@ setup(
     license_files=[],  # https://github.com/pypa/twine/issues/1216
     description="A highly opinionated flake8 plugin for Trio-related problems.",
     zip_safe=False,
-    install_requires=["flake8>=6", "libcst>=1.0.1"],
+    install_requires=["libcst>=1.0.1"],
+    extras_require={"flake8": ["flake8>=6"]},
     python_requires=">=3.9",
     classifiers=[
         "Development Status :: 3 - Alpha",

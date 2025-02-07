@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "25.2.2"
+__version__ = "25.2.3"
 
 
 # taken from https://github.com/Zac-HD/shed
@@ -127,8 +127,11 @@ class Plugin:
         assert self._options is not None
         return self._options
 
-    def __init__(self, tree: ast.AST, lines: Sequence[str]):
+    def __init__(
+        self, tree: ast.AST, lines: Sequence[str], filename: str | None = None
+    ):
         super().__init__()
+        self.filename: str | None = filename
         self._tree = tree
         source = "".join(lines)
 
@@ -139,14 +142,17 @@ class Plugin:
         # only used with --runslow
         with tokenize.open(filename) as f:
             source = f.read()
-        return cls.from_source(source)
+        return cls.from_source(source, filename=filename)
 
     # alternative `__init__` to avoid re-splitting and/or re-joining lines
     @classmethod
-    def from_source(cls, source: str) -> Plugin:
+    def from_source(
+        cls, source: str, filename: str | PathLike[str] | None = None
+    ) -> Plugin:
         plugin = Plugin.__new__(cls)
         super(Plugin, plugin).__init__()
         plugin._tree = ast.parse(source)
+        plugin.filename = str(filename) if filename else None
         plugin.module = cst_parse_module_native(source)
         return plugin
 
@@ -230,6 +236,13 @@ class Plugin:
                 " non-enabled visitors from running instead of just silencing their"
                 " errors."
             ),
+        )
+        add_argument(
+            "--per-file-disable",
+            type=parse_per_file_disable,
+            default={},
+            required=False,
+            help=("..."),
         )
         add_argument(
             "--autofix",
@@ -440,4 +453,24 @@ def parse_async200_dict(raw_value: str) -> dict[str, str]:
                 f"tokens {splitter!r} in {value!r}"
             )
         res[split_values[0]] = split_values[1]
+    return res
+
+
+# not run if flake8 is installed
+def parse_per_file_disable(  # pragma: no cover
+    raw_value: str,
+) -> dict[str, tuple[str, ...]]:
+    res: dict[str, tuple[str, ...]] = {}
+    splitter = "->"
+    values = [s.strip() for s in raw_value.split(" \t\n") if s.strip()]
+    for value in values:
+        split_values = list(map(str.strip, value.split(splitter)))
+        if len(split_values) != 2:
+            # argparse will eat this error message and spit out its own
+            # if we raise it as ValueError
+            raise ArgumentTypeError(
+                f"Invalid number ({len(split_values)-1}) of splitter "
+                f"tokens {splitter!r} in {value!r}"
+            )
+        res[split_values[0]] = tuple(split_values[1].split(","))
     return res

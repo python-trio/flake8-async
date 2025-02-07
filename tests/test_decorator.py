@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flake8.main.application import Application
-
+from flake8_async import main
 from flake8_async.base import Statement
 from flake8_async.visitors.helpers import fnmatch_qualified_name
 from flake8_async.visitors.visitor91x import Visitor91X
@@ -90,11 +90,20 @@ def test_pep614():
 
 
 file_path = str(Path(__file__).parent / "trio_options.py")
-common_flags = ["--select=ASYNC", file_path]
 
 
-def test_command_line_1(capfd: pytest.CaptureFixture[str]):
-    Application().run([*common_flags, "--no-checkpoint-warning-decorators=app.route"])
+def _set_flags(monkeypatch: pytest.MonkeyPatch, *flags: str):
+    monkeypatch.setattr(
+        sys, "argv", ["./flake8-async", "--enable=ASYNC910", file_path, *flags]
+    )
+
+
+def test_command_line_1(
+    capfd: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+):
+    _set_flags(monkeypatch, "--no-checkpoint-warning-decorators=app.route")
+    assert main() == 0
+
     assert capfd.readouterr() == ("", "")
 
 
@@ -114,11 +123,17 @@ expected_out = (
 )
 
 
-def test_command_line_2(capfd: pytest.CaptureFixture[str]):
-    Application().run([*common_flags, "--no-checkpoint-warning-decorators=app"])
+def test_command_line_2(
+    capfd: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+):
+    _set_flags(monkeypatch, "--no-checkpoint-warning-decorators=app")
+    assert main() == 1
     assert capfd.readouterr() == (expected_out, "")
 
 
-def test_command_line_3(capfd: pytest.CaptureFixture[str]):
-    Application().run(common_flags)
+def test_command_line_3(
+    capfd: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+):
+    _set_flags(monkeypatch)
+    assert main() == 1
     assert capfd.readouterr() == (expected_out, "")

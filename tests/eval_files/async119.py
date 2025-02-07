@@ -15,7 +15,7 @@ async def async_with():
         yield  # error: 8
 
 
-async def warn_on_yeach_yield():
+async def warn_on_each_yield():
     with open(""):
         yield  # error: 8
         yield  # error: 8
