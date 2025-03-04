@@ -282,6 +282,24 @@ def test_async200_from_config_subprocess(tmp_path: Path):
     assert res.stdout == err_msg.encode("ascii")
 
 
+def test_trio200_warning(tmp_path: Path):
+    fpath = tmp_path / "foo.py"
+    fpath.touch()
+    res = subprocess.run(
+        ["flake8-async", "--trio200-blocking-calls=foo->bar", "foo.py"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        encoding="utf8",
+    )
+    assert res.returncode == 0
+    assert res.stderr.endswith(
+        "UserWarning: trio200-blocking-calls has been deprecated in favor of "
+        "async200-blocking-calls\n  warnings.warn(\n"
+    )
+    assert not res.stdout
+
+
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_async200_from_config_subprocess_cli_ignore(tmp_path: Path):
     _ = _test_async200_from_config_common(tmp_path)
@@ -297,7 +315,7 @@ def test_async200_from_config_subprocess_cli_ignore(tmp_path: Path):
     assert res.returncode == 0
 
 
-def test_900_default_off(capsys: pytest.CaptureFixture[str]):
+def test_900_default_off():
     res = subprocess.run(
         ["flake8-async", "tests/eval_files/async900.py"],
         capture_output=True,

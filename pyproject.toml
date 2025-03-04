@@ -14,6 +14,34 @@ force-exclude = "tests/autofix_files/.*.py"
 [tool.codespell]
 ignore-words-list = 'spawnve'
 
+[tool.coverage.coverage_conditional_plugin.rules]
+no-cov-has-flake8 = "is_installed('flake8')"
+no-cov-no-flake8 = "not is_installed('flake8')"
+no-cov-py-lt-311 = "sys.version_info < (3, 11)"
+
+[tool.coverage.paths]
+source = [
+  "flake8_async",
+  "*/site-packages/flake8_async"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  # Have to re-enable the standard pragma
+  "pragma: no cover",
+  # Don't complain about abstract methods, they aren't run:
+  "@(abc\\.)?abstractmethod",
+  # Don't check guarded type imports
+  "if (typing.)?TYPE_CHECKING:"
+]
+fail_under = 100
+skip_covered = true
+skip_empty = true
+
+[tool.coverage.run]
+branch = true
+plugins = ["coverage_conditional_plugin"]
+
 [tool.isort]
 only_modified = true
 profile = "black"
@@ -44,6 +72,10 @@ reportUninitializedInstanceVariable = true
 reportUnnecessaryTypeIgnoreComment = false
 reportUnusedCallResult = false
 strict = ["*.py", "tests/*.py", "flake8_async/**/*.py"]
+
+[tool.pytest.ini_options]
+filterwarnings = ["error"]
+testpaths = ["tests"]
 
 [tool.ruff]
 extend-exclude = [
