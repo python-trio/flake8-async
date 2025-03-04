@@ -138,7 +138,7 @@ class Plugin:
         self.module: cst.Module = cst_parse_module_native(source)
 
     @classmethod
-    def from_filename(cls, filename: str | PathLike[str]) -> Plugin:  # pragma: no cover
+    def from_filename(cls, filename: str | PathLike[str]) -> Plugin:
         # only used with --runslow
         with tokenize.open(filename) as f:
             source = f.read()
@@ -204,7 +204,7 @@ class Plugin:
                     'lines with "# noqa" at the end.'
                 ),
             )
-        else:  # if run as a flake8 plugin
+        else:  # pragma: no-cov-no-flake8
             Plugin.standalone = False
             # Disable ASYNC9xx calls by default
             option_manager.extend_default_ignore(default_disabled_error_codes)
@@ -380,7 +380,7 @@ class Plugin:
         }
         assert all_codes
 
-        if options.autofix and not Plugin.standalone:
+        if options.autofix and not Plugin.standalone:  # pragma: no-cov-no-flake8
             print("Cannot autofix when run as a flake8 plugin.", file=sys.stderr)
             sys.exit(1)
         autofix_codes = set(get_matching_codes(options.autofix, all_codes))
@@ -457,6 +457,7 @@ def parse_async200_dict(raw_value: str) -> dict[str, str]:
 
 
 # not run if flake8 is installed
+# TODO: this is not tested at all atm, I'm not even sure if it works
 def parse_per_file_disable(  # pragma: no cover
     raw_value: str,
 ) -> dict[str, tuple[str, ...]]:

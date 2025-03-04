@@ -371,7 +371,7 @@ def with_has_call(
 
     """
     if isinstance(base, str):
-        base = (base,)  # pragma: no cover
+        base = (base,)
 
     # build matcher, using SaveMatchedNode to save the base and the function name.
     matcher = m.Call(

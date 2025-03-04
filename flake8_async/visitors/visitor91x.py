@@ -386,7 +386,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.new_body: cst.BaseSuite | None = None
 
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
-        if code is None:  # pragma: no branch
+        if code is None:
             code = "ASYNC911" if self.has_yield else "ASYNC910"
 
         return (
