@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.3.1
+======
+- Add except* support to ASYNC102, 103, 104, 120, 910, 911, 912.
+
 25.2.3
 =======
 - No longer require ``flake8`` for installation... so if you require support for config files you must install ``flake8-async[flake8]``

@@ -422,6 +422,10 @@ def _parse_eval_file(
         if not line or line[0] == "#":
             continue
 
+        # skip lines that *don't* have a comment
+        if "#" not in line:
+            continue
+
         # get text between `error:` and (end of line or another comment)
         k = re.findall(r"(error|ASYNC...)(_.*)?:([^#]*)(?=#|$)", line)
 

@@ -42,7 +42,7 @@ repos:
       hooks:
           - id: mypy
             # uses py311 syntax, mypy configured for py39
-            exclude: tests/eval_files/.*_py311.py
+            exclude: tests/(eval|autofix)_files/.*_py311.py
 
     - repo: https://github.com/RobertCraigie/pyright-python
       rev: v1.1.396
