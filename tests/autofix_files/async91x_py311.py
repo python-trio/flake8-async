@@ -44,12 +44,12 @@ async def foo_try_except_star_3():  # safe
         raise
 
 
-# Multiple except* handlers - should all guarantee checkpoint
+# Multiple except* handlers - should all guarantee checkpoint/raise
 async def foo_try_except_star_4():
     try:
         await foo()
     except* ValueError:
-        raise
+        await foo()
     except* TypeError:
         raise
     except* Exception:
