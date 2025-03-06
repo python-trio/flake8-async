@@ -160,7 +160,7 @@ class Visitor103_104(Flake8AsyncVisitor):
     visit_Yield = visit_Return
 
     # Treat Try's as fully covering only if `finally` always raises.
-    def visit_Try(self, node: ast.Try):
+    def visit_Try(self, node: ast.Try | ast.TryStar):  # type: ignore[name-defined]
         self.save_state(node, "cancelled_caught", copy=True)
         self.cancelled_caught = set()
 
@@ -178,6 +178,8 @@ class Visitor103_104(Flake8AsyncVisitor):
 
         # but it's fine if we raise in finally
         self.visit_nodes(node.finalbody)
+
+    visit_TryStar = visit_Try
 
     # Treat if's as fully covering if both `if` and `else` raise.
     # `elif` is parsed by the ast as a new if statement inside the else.

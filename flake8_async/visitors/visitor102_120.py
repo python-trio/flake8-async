@@ -149,7 +149,7 @@ class Visitor102(Flake8AsyncVisitor):
                 break
         self.visit_With(node)
 
-    def visit_Try(self, node: ast.Try):
+    def visit_Try(self, node: ast.Try | ast.TryStar):  # type: ignore[name-defined]
         self.save_state(
             node, "_critical_scope", "_trio_context_managers", "cancelled_caught"
         )
@@ -164,6 +164,8 @@ class Visitor102(Flake8AsyncVisitor):
         # comments and empty lines and stuff.
         self._critical_scope = Statement("try/finally", node.lineno, node.col_offset)
         self.visit_nodes(node.finalbody)
+
+    visit_TryStar = visit_Try
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
         # if we're inside a critical scope, a nested except should never override that

@@ -422,6 +422,10 @@ def _parse_eval_file(
         if not line or line[0] == "#":
             continue
 
+        # skip lines that *don't* have a comment
+        if "#" not in line:
+            continue
+
         # get text between `error:` and (end of line or another comment)
         k = re.findall(r"(error|ASYNC...)(_.*)?:([^#]*)(?=#|$)", line)
 
@@ -539,6 +543,7 @@ class SyncTransformer(ast.NodeTransformer):
 def test_noerror_on_sync_code(test: str, path: Path):
     if any(e in test for e in error_codes_ignored_when_checking_transformed_sync_code):
         return
+    check_version(test)
     with tokenize.open(path) as f:
         source = f.read()
     tree = SyncTransformer().visit(ast.parse(source))

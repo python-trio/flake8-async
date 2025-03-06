@@ -768,7 +768,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     # try can jump into any except or into the finally* at any point during it's
     # execution so we need to make sure except & finally can handle worst-case
     # * unless there's a bare except / except BaseException - not implemented.
-    def visit_Try(self, node: cst.Try):
+    def visit_Try(self, node: cst.Try | cst.TryStar):
         if not self.async_function:
             return
         self.save_state(node, "try_state", copy=True)
@@ -784,39 +784,41 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 Statement("yield", pos.line, pos.column)  # type: ignore
             )
 
-    def leave_Try_body(self, node: cst.Try):
+    def leave_Try_body(self, node: cst.Try | cst.TryStar):
         # save state at end of try for entering else
         self.try_state.try_checkpoint = self.uncheckpointed_statements
 
         # check that all except handlers checkpoint (await or most likely raise)
         self.try_state.except_uncheckpointed_statements = set()
 
-    def visit_ExceptHandler(self, node: cst.ExceptHandler):
+    def visit_ExceptHandler(self, node: cst.ExceptHandler | cst.ExceptStarHandler):
         # enter with worst case of try
         self.uncheckpointed_statements = (
             self.try_state.body_uncheckpointed_statements.copy()
         )
 
     def leave_ExceptHandler(
-        self, original_node: cst.ExceptHandler, updated_node: cst.ExceptHandler
-    ) -> cst.ExceptHandler:
+        self,
+        original_node: cst.ExceptHandler | cst.ExceptStarHandler,
+        updated_node: cst.ExceptHandler | cst.ExceptStarHandler,
+    ) -> Any:  # not worth creating a TypeVar to handle correctly
         self.try_state.except_uncheckpointed_statements.update(
             self.uncheckpointed_statements
         )
         return updated_node
 
-    def visit_Try_orelse(self, node: cst.Try):
+    def visit_Try_orelse(self, node: cst.Try | cst.TryStar):
         # check else
         # if else runs it's after all of try, so restore state to back then
         self.uncheckpointed_statements = self.try_state.try_checkpoint
 
-    def leave_Try_orelse(self, node: cst.Try):
+    def leave_Try_orelse(self, node: cst.Try | cst.TryStar):
         # checkpoint if else checkpoints, and all excepts checkpoint
         self.uncheckpointed_statements.update(
             self.try_state.except_uncheckpointed_statements
         )
 
-    def visit_Try_finalbody(self, node: cst.Try):
+    def visit_Try_finalbody(self, node: cst.Try | cst.TryStar):
         if node.finalbody:
             self.try_state.added = (
                 self.try_state.body_uncheckpointed_statements.difference(
@@ -835,13 +837,25 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             ):
                 self.uncheckpointed_statements.update(self.try_state.added)
 
-    def leave_Try_finalbody(self, node: cst.Try):
+    def leave_Try_finalbody(self, node: cst.Try | cst.TryStar):
         if node.finalbody:
             self.uncheckpointed_statements.difference_update(self.try_state.added)
 
-    def leave_Try(self, original_node: cst.Try, updated_node: cst.Try) -> cst.Try:
+    def leave_Try(
+        self, original_node: cst.Try | cst.TryStar, updated_node: cst.Try | cst.TryStar
+    ) -> cst.Try | cst.TryStar:
         self.restore_state(original_node)
         return updated_node
+
+    visit_TryStar = visit_Try
+    leave_TryStar = leave_Try
+    leave_TryStar_body = leave_Try_body
+    visit_TryStar_orelse = visit_Try_orelse
+    leave_TryStar_orelse = leave_Try_orelse
+    visit_TryStar_finalbody = visit_Try_finalbody
+    leave_TryStar_finalbody = leave_Try_finalbody
+    visit_ExceptStarHandler = visit_ExceptHandler
+    leave_ExceptStarHandler = leave_ExceptHandler
 
     def leave_If_test(self, node: cst.If | cst.IfExp) -> None:
         if not self.async_function:
