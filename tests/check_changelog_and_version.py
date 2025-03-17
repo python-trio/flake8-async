@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, TypeVar
 
+from typing_extensions import Self
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -27,7 +29,7 @@ class Version(NamedTuple):
     patch: int
 
     @classmethod
-    def from_string(cls: type[T], string: str) -> T:
+    def from_string(cls, string: str) -> Self:
         return cls(*map(int, string.split(".")))
 
     def __str__(self) -> str:

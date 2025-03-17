@@ -500,7 +500,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         # visit body
         # we're not gonna get FlattenSentinel or RemovalSentinel
-        self.new_body = cast(cst.BaseSuite, node.body.visit(self))
+        self.new_body = cast("cst.BaseSuite", node.body.visit(self))
 
         # we know that leave_FunctionDef for this FunctionDef will run immediately after
         # this function exits so we don't need to worry about save_state for new_body
