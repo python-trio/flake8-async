@@ -917,7 +917,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         if not self.async_function:
             return
         self.save_state(node, "match_state", copy=True)
-        self.match_state = MatchState(self.uncheckpointed_statements.copy())
+        self.match_state = MatchState(
+            base_uncheckpointed_statements=self.uncheckpointed_statements.copy()
+        )
 
     def visit_MatchCase(self, node: cst.MatchCase) -> None:
         # enter each case from the state after parsing the subject
