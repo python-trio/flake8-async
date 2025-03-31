@@ -202,7 +202,6 @@ class Visitor103_104(Flake8AsyncVisitor):
     def visit_Match(self, node: ast.Match):  # type: ignore[name-defined]
         if not self.unraised:
             return
-        self.visit(node.subject)  # this doesn't matter for 103/104, idr if it matters
         all_cases_raise = True
         has_fallback = False
         for case in node.cases:
