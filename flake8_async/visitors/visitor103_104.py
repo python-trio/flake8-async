@@ -199,6 +199,24 @@ class Visitor103_104(Flake8AsyncVisitor):
         # if body didn't raise, or it's unraised after else, set unraise
         self.unraised = not body_raised or self.unraised
 
+    def visit_Match(self, node: ast.Match):  # type: ignore[name-defined]
+        if not self.unraised:
+            return
+        all_cases_raise = True
+        has_fallback = False
+        for case in node.cases:
+            # check for "bare pattern", i.e `case varname:`
+            has_fallback |= (
+                case.guard is None
+                and isinstance(case.pattern, ast.MatchAs)  # type: ignore[attr-defined]
+                and case.pattern.pattern is None
+            )
+            self.visit_nodes(case.body)
+            all_cases_raise &= not self.unraised
+            self.unraised = True
+
+        self.unraised = not (all_cases_raise and has_fallback)
+
     # A loop is guaranteed to raise if:
     # condition always raises, or
     #   else always raises, and

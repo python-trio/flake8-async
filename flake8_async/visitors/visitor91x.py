@@ -198,6 +198,22 @@ class TryState:
         )
 
 
+@dataclass
+class MatchState:
+    # TryState, LoopState, and MatchState all do fairly similar things. It would be nice
+    # to harmonize them and share logic.
+    base_uncheckpointed_statements: set[Statement] = field(default_factory=set)
+    case_uncheckpointed_statements: set[Statement] = field(default_factory=set)
+    has_fallback: bool = False
+
+    def copy(self):
+        return MatchState(
+            base_uncheckpointed_statements=self.base_uncheckpointed_statements.copy(),
+            case_uncheckpointed_statements=self.case_uncheckpointed_statements.copy(),
+            has_fallback=self.has_fallback,
+        )
+
+
 def checkpoint_statement(library: str) -> cst.SimpleStatementLine:
     # logic before this should stop code from wanting to insert the non-existing
     # asyncio.lowlevel.checkpoint
@@ -373,6 +389,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         self.loop_state = LoopState()
         self.try_state = TryState()
+        self.match_state = MatchState()
 
         # ASYNC100
         self.has_checkpoint_stack: list[bool] = []
@@ -893,6 +910,55 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         _ = node.orelse.visit(self)
         self.leave_If(node, node)  # type: ignore
         return False  # libcst shouldn't visit subnodes again
+
+    def leave_Match_subject(self, node: cst.Match) -> None:
+        # We start the match logic after parsing the subject, instead of visit_Match,
+        # since the subject is always executed and might checkpoint.
+        if not self.async_function:
+            return
+        self.save_state(node, "match_state", copy=True)
+        self.match_state = MatchState(
+            base_uncheckpointed_statements=self.uncheckpointed_statements.copy()
+        )
+
+    def visit_MatchCase(self, node: cst.MatchCase) -> None:
+        # enter each case from the state after parsing the subject
+        self.uncheckpointed_statements = self.match_state.base_uncheckpointed_statements
+
+    def leave_MatchCase_guard(self, node: cst.MatchCase) -> None:
+        # `case _:` is no pattern and no guard, which means we know body is executed.
+        # But we also know that `case _ if <guard>:` is guaranteed to execute the guard,
+        # so for later logic we can treat them the same *if* there's no pattern and that
+        # guard checkpoints.
+        if (
+            isinstance(node.pattern, cst.MatchAs)
+            and node.pattern.pattern is None
+            and (node.guard is None or not self.uncheckpointed_statements)
+        ):
+            self.match_state.has_fallback = True
+
+    def leave_MatchCase(
+        self, original_node: cst.MatchCase, updated_node: cst.MatchCase
+    ) -> cst.MatchCase:
+        # collect the state at the end of each case
+        self.match_state.case_uncheckpointed_statements.update(
+            self.uncheckpointed_statements
+        )
+        return updated_node
+
+    def leave_Match(
+        self, original_node: cst.Match, updated_node: cst.Match
+    ) -> cst.Match:
+        # leave the Match with the worst-case of all branches
+        self.uncheckpointed_statements = self.match_state.case_uncheckpointed_statements
+        # if no fallback, also add the state at entering the match (after parsing subject)
+        if not self.match_state.has_fallback:
+            self.uncheckpointed_statements.update(
+                self.match_state.base_uncheckpointed_statements
+            )
+
+        self.restore_state(original_node)
+        return updated_node
 
     def visit_While(self, node: cst.While | cst.For):
         self.save_state(

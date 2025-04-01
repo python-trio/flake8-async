@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from re import Match
 
     import libcst as cst
-    from libcst._position import CodeRange
+    from libcst.metadata import CodeRange
 
 
 @utility_visitor
