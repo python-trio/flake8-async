@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.4.2
+======
+- Add :ref:`ASYNC125 <async125>` constant-absolute-deadline
+
 25.4.1
 ======
 - Add match-case (structural pattern matching) support to ASYNC103, 104, 910, 911 & 912.

@@ -102,6 +102,14 @@ _`ASYNC124`: async-function-could-be-sync
     This currently overlaps with :ref:`ASYNC910 <ASYNC910>` and :ref:`ASYNC911 <ASYNC911>` which, if enabled, will autofix the function to have :ref:`checkpoint`.
     This excludes class methods as they often have to be async for other reasons, if you really do want to check those you could manually run :ref:`ASYNC910 <ASYNC910>` and/or :ref:`ASYNC911 <ASYNC911>` and check the methods they trigger on.
 
+_`ASYNC125`: constant-absolute-deadline
+    Passing constant values (other than :data:`math.inf`) to timeouts expecting absolute
+    deadlines is nonsensical. These should always be defined relative to
+    :func:`trio.current_time`/:func:`anyio.current_time`, or you might want to use
+    :func:`trio.fail_after`/`:func:`trio.move_on_after`/:func:`anyio.fail_after`/
+    :func:`anyio.move_on_after`, or the ``relative_deadline`` parameter to
+    :class:`trio.CancelScope`.
+
 Blocking sync calls in async functions
 ======================================
 

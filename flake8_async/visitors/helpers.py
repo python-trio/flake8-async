@@ -6,6 +6,7 @@ Also contains the decorator definitions used to register error classes.
 from __future__ import annotations
 
 import ast
+from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, NamedTuple, TypeVar, Union
 
@@ -287,11 +288,20 @@ cancel_scope_names = (
 )
 
 
+@dataclass
+class MatchingCall:
+    node: ast.Call
+    name: str
+    base: str
+
+    def __str__(self) -> str:
+        return self.base + "." + self.name
+
+
 # convenience function used in a lot of visitors
-# should probably return a named tuple
 def get_matching_call(
     node: ast.AST, *names: str, base: Iterable[str] = ("trio", "anyio")
-) -> tuple[ast.Call, str, str] | None:
+) -> MatchingCall | None:
     if isinstance(base, str):
         base = (base,)
     if (
@@ -301,7 +311,7 @@ def get_matching_call(
         and node.func.value.id in base
         and node.func.attr in names
     ):
-        return node, node.func.attr, node.func.value.id
+        return MatchingCall(node, node.func.attr, node.func.value.id)
     return None
 
 
