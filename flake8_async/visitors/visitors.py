@@ -287,8 +287,7 @@ class Visitor115(Flake8AsyncVisitor):
             and isinstance(node.args[0], ast.Constant)
             and node.args[0].value == 0
         ):
-            # m[2] is set to node.func.value.id
-            self.error(node, m[2])
+            self.error(node, m.base)
 
 
 @error_class
@@ -326,7 +325,7 @@ class Visitor116(Flake8AsyncVisitor):
                     and arg.value > 86400
                 )
             ):
-                self.error(node, m[2])
+                self.error(node, m.base)
 
 
 @error_class
@@ -452,7 +451,49 @@ class Visitor122(Flake8AsyncVisitor):
                 node, "fail_after", "move_on_after", base=("trio", "anyio")
             )
         ):
-            self.error(node, f"{match[2]}.{match[1]}")
+            self.error(node, str(match))
+
+
+@error_class
+class Visitor125(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC125": (
+            "Using {} with a constant value is nonsensical, as the value is relative "
+            "to the runner clock. Use ``fail_after(...)``, ``move_on_after(...)``, "
+            "``CancelScope(relative_deadline=...)`` or calculate it relative to "
+            "``{}.current_time()``."
+        )
+    }
+
+    def visit_Call(self, node: ast.Call):
+        def is_constant(value: ast.expr) -> bool:
+            if isinstance(value, ast.Constant):
+                return True
+            if isinstance(value, ast.BinOp):
+                return is_constant(value.left) and is_constant(value.right)
+            return False
+
+        match = get_matching_call(
+            node, "fail_at", "move_on_at", "CancelScope", base=("trio", "anyio")
+        )
+        if match is None:
+            return
+
+        if match.name in ("fail_at", "move_on_at") and len(node.args) == 1:
+            value = node.args[0]
+        else:
+            for kw in node.keywords:
+                if kw.arg == "deadline":
+                    value = kw.value
+                    break
+            else:
+                return
+        if is_constant(value):
+            self.error(
+                value,
+                str(match),
+                match.base,
+            )
 
 
 @error_class_cst

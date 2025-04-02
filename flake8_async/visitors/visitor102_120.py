@@ -34,7 +34,7 @@ class Visitor102(Flake8AsyncVisitor):
     }
 
     class TrioScope:
-        def __init__(self, node: ast.Call, funcname: str, _):
+        def __init__(self, node: ast.Call, funcname: str):
             super().__init__()
             self.node = node
             self.funcname = funcname
@@ -126,7 +126,7 @@ class Visitor102(Flake8AsyncVisitor):
             if call is None:
                 continue
 
-            trio_scope = self.TrioScope(*call)
+            trio_scope = self.TrioScope(call.node, call.name)
             # check if it's saved in a variable
             if isinstance(item.optional_vars, ast.Name):
                 trio_scope.variable_name = item.optional_vars.id
