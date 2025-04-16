@@ -25,18 +25,18 @@ if TYPE_CHECKING:
 
     from libcst import Module
 
-    from .base import Error, Options
     from .visitors.flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
+from .base import Error, Options
 
 
 @dataclass
 class SharedState:
     options: Options
-    problems: list[Error] = field(default_factory=list)
-    noqas: dict[int, set[str]] = field(default_factory=dict)
+    problems: list[Error] = field(default_factory=list[Error])
+    noqas: dict[int, set[str]] = field(default_factory=dict[int, set[str]])
     library: tuple[str, ...] = ()
-    typed_calls: dict[str, str] = field(default_factory=dict)
-    variables: dict[str, str] = field(default_factory=dict)
+    typed_calls: dict[str, str] = field(default_factory=dict[str, str])
+    variables: dict[str, str] = field(default_factory=dict[str, str])
 
 
 class __CommonRunner:

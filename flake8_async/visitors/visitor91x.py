@@ -162,13 +162,21 @@ class LoopState:
     body_guaranteed_once: bool = False
     has_break: bool = False
 
-    uncheckpointed_before_continue: set[Statement] = field(default_factory=set)
-    uncheckpointed_before_break: set[Statement] = field(default_factory=set)
-
-    artificial_errors: set[cst.Return | cst.Yield] = field(default_factory=set)
-    nodes_needing_checkpoints: list[cst.Return | cst.Yield | ArtificialStatement] = (
-        field(default_factory=list)
+    uncheckpointed_before_continue: set[Statement] = field(
+        default_factory=set[Statement]
     )
+    uncheckpointed_before_break: set[Statement] = field(default_factory=set[Statement])
+    # pyright emits reportUnknownVariableType, requiring the generic to default_factory
+    # to be specified.
+    # But for these we require a union, and `|` doesn't work on py39, and uses of
+    # `Union` gets autofixed by ruff.
+    # So.... let's just ignore the error for now
+    artificial_errors: set[  # pyright: ignore[reportUnknownVariableType]
+        cst.Return | cst.Yield
+    ] = field(default_factory=set)
+    nodes_needing_checkpoints: list[  # pyright: ignore[reportUnknownVariableType]
+        cst.Return | cst.Yield | ArtificialStatement
+    ] = field(default_factory=list)
 
     def copy(self):
         return LoopState(
@@ -184,10 +192,14 @@ class LoopState:
 
 @dataclass
 class TryState:
-    body_uncheckpointed_statements: set[Statement] = field(default_factory=set)
-    try_checkpoint: set[Statement] = field(default_factory=set)
-    except_uncheckpointed_statements: set[Statement] = field(default_factory=set)
-    added: set[Statement] = field(default_factory=set)
+    body_uncheckpointed_statements: set[Statement] = field(
+        default_factory=set[Statement]
+    )
+    try_checkpoint: set[Statement] = field(default_factory=set[Statement])
+    except_uncheckpointed_statements: set[Statement] = field(
+        default_factory=set[Statement]
+    )
+    added: set[Statement] = field(default_factory=set[Statement])
 
     def copy(self):
         return TryState(
@@ -202,8 +214,12 @@ class TryState:
 class MatchState:
     # TryState, LoopState, and MatchState all do fairly similar things. It would be nice
     # to harmonize them and share logic.
-    base_uncheckpointed_statements: set[Statement] = field(default_factory=set)
-    case_uncheckpointed_statements: set[Statement] = field(default_factory=set)
+    base_uncheckpointed_statements: set[Statement] = field(
+        default_factory=set[Statement]
+    )
+    case_uncheckpointed_statements: set[Statement] = field(
+        default_factory=set[Statement]
+    )
     has_fallback: bool = False
 
     def copy(self):
