@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
+from .base import Error, Options
 from .visitors import (
     ERROR_CLASSES,
     ERROR_CLASSES_CST,
@@ -26,7 +27,6 @@ if TYPE_CHECKING:
     from libcst import Module
 
     from .visitors.flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
-from .base import Error, Options
 
 
 @dataclass
