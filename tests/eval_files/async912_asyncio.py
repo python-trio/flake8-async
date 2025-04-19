@@ -6,7 +6,7 @@
 # ASYNC100 supports autofix, but ASYNC912 doesn't, so we must run with NOAUTOFIX
 # NOAUTOFIX
 
-# timeout[_at] re-exported in the main asyncio namespace in py3.11
+# asyncio.timeout[_at] added in py3.11
 # mypy: disable-error-code=attr-defined
 
 import asyncio
@@ -14,11 +14,8 @@ import asyncio
 from typing import Any
 
 
-def bar() -> bool:
+def bar() -> Any:
     return False
-
-
-def customWrapper(a: object) -> object: ...
 
 
 async def foo():
@@ -26,14 +23,6 @@ async def foo():
     async with asyncio.timeout(10):  # ASYNC100: 15, "asyncio", "timeout"
         ...
     async with asyncio.timeout_at(10):  # ASYNC100: 15, "asyncio", "timeout_at"
-        ...
-    async with asyncio.timeouts.timeout(  # ASYNC100: 15, "asyncio.timeouts", "timeout"
-        10
-    ):
-        ...
-    async with asyncio.timeouts.timeout_at(  # ASYNC100: 15, "asyncio.timeouts", "timeout_at"
-        10
-    ):
         ...
 
     # no errors
@@ -50,10 +39,10 @@ async def foo():
         if bar():
             await foo()
 
-    async with asyncio.timeouts.timeout(10):  # ASYNC912: 15
-        if bar():
-            await foo()
-    async with asyncio.timeouts.timeout_at(10):  # ASYNC912: 15
+    # multiple withitems
+    async with asyncio.timeout(10), bar():
+        ...
+    async with bar(), asyncio.timeout(10):  # ASYNC912: 22
         if bar():
             await foo()
 

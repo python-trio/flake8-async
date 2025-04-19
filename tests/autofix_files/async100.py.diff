@@ -1,8 +1,8 @@
 ---
 +++
 @@ x,24 x,24 @@
+     return False
 
- import trio
 
 -with trio.move_on_after(10):  # error: 5, "trio", "move_on_after"
 -    ...
@@ -189,3 +189,41 @@
 
 
  # async100 does not consider *redundant* cancel scopes
+@@ x,29 x,23 @@
+
+
+ async def autofix_multi_withitem():
+-    with trio.CancelScope(), open("foo"):  # error: 9, "trio", "CancelScope"
+-        ...
++    with open("foo"):  # error: 9, "trio", "CancelScope"
++        ...
++    # error: 8, "trio", "CancelScope"
++    # error: 8, "trio", "CancelScope"
++    ...
++
+     with (
+-        trio.CancelScope(),  # error: 8, "trio", "CancelScope"
+-        trio.CancelScope(),  # error: 8, "trio", "CancelScope"
++        open("") as _,  # error: 8, "trio", "fail_after"
+     ):
+         ...
+
+     with (
+-        open("") as _,
+-        trio.fail_after(10),  # error: 8, "trio", "fail_after"
++        open("") as _,  # error: 8, "trio", "move_on_after"
+     ):
+         ...
+
+     with (
+-        trio.fail_after(5),  # error: 8, "trio", "fail_after"
+-        open("") as _,
+-        trio.move_on_after(5),  # error: 8, "trio", "move_on_after"
+-    ):
+-        ...
+-
+-    with (
+-        trio.move_on_after(10),  # error: 8, "trio", "move_on_after"
+         open("") as f,
+     ):
+         ...
