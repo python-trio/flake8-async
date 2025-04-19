@@ -2,12 +2,11 @@
 # ANYIO_NO_ERROR
 # BASE_LIBRARY asyncio
 
-# timeout[_at] re-exported in the main asyncio namespace in py3.11
+# asyncio.timeout[_at] added in py3.11
 # mypy: disable-error-code=attr-defined
 # AUTOFIX
 
 import asyncio
-import asyncio.timeouts
 
 
 async def foo():
@@ -16,7 +15,18 @@ async def foo():
     with asyncio.timeout(10):  # error: 9, "asyncio", "timeout"
         ...
 
-    with asyncio.timeouts.timeout_at(10):  # error: 9, "asyncio.timeouts", "timeout_at"
+
+# this is technically only a problem with asyncio, since timeout primitives in trio/anyio
+# are sync cm's
+async def multi_withitem():
+    with asyncio.timeout(10), open("foo"):  # error: 9, "asyncio", "timeout"
         ...
-    with asyncio.timeouts.timeout(10):  # error: 9, "asyncio.timeouts", "timeout"
+    with open("foo"), asyncio.timeout(10):  # error: 22, "asyncio", "timeout"
+        ...
+    # retain explicit trailing comma (?)
+    with (
+        open("foo"),
+        open("bar"),
+        asyncio.timeout(10),  # error: 8, "asyncio", "timeout"
+    ):
         ...

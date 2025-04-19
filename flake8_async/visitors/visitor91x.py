@@ -19,21 +19,21 @@ from typing import TYPE_CHECKING, Any, cast
 
 import libcst as cst
 import libcst.matchers as m
-from libcst.metadata import PositionProvider
+from libcst.metadata import CodeRange, PositionProvider
 
 from ..base import Statement
 from .flake8asyncvisitor import Flake8AsyncVisitor_cst
 from .helpers import (
-    AttributeCall,
+    MatchingCall,
     cancel_scope_names,
     disable_codes_by_default,
     error_class_cst,
     flatten_preserving_comments,
     fnmatch_qualified_name_cst,
     func_has_decorator,
+    get_matching_call_cst,
     identifier_to_string,
     iter_guaranteed_once_cst,
-    with_has_call,
 )
 
 if TYPE_CHECKING:
@@ -374,6 +374,14 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
 disable_codes_by_default("ASYNC910", "ASYNC911", "ASYNC912", "ASYNC913")
 
 
+@dataclass
+class ContextManager:
+    has_checkpoint: bool | None = None
+    call: MatchingCall[cst.Call] | None = None
+    line: int | None = None
+    column: int | None = None
+
+
 @error_class_cst
 class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     error_codes: Mapping[str, str] = {
@@ -408,8 +416,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.match_state = MatchState()
 
         # ASYNC100
-        self.has_checkpoint_stack: list[bool] = []
-        self.node_dict: dict[cst.With, list[AttributeCall]] = {}
+        self.has_checkpoint_stack: list[ContextManager] = []
         self.taskgroup_has_start_soon: dict[str, bool] = {}
 
         # --exception-suppress-context-manager
@@ -429,7 +436,11 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         )
 
     def checkpoint_cancel_point(self) -> None:
-        self.has_checkpoint_stack = [True] * len(self.has_checkpoint_stack)
+        for cm in reversed(self.has_checkpoint_stack):
+            if cm.has_checkpoint:
+                # Everything further down in the stack is already True.
+                break
+            cm.has_checkpoint = True
         # don't need to look for any .start_soon() calls
         self.taskgroup_has_start_soon.clear()
 
@@ -705,59 +716,106 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     # missing-checkpoint warning when there might in fact be one (i.e. a false alarm).
     def visit_With_body(self, node: cst.With):
         self.save_state(node, "taskgroup_has_start_soon", copy=True)
-        self._checkpoint_with(node, entry=True)
+
+        is_suppressing = False
 
         # if this might suppress exceptions, we cannot treat anything inside it as
         # checkpointing.
         if self._is_exception_suppressing_context_manager(node):
             self.save_state(node, "uncheckpointed_statements", copy=True)
 
-        if res := (
-            with_has_call(node, *cancel_scope_names)
-            or with_has_call(
-                node, "timeout", "timeout_at", base=("asyncio", "asyncio.timeouts")
-            )
-        ):
-            pos = self.get_metadata(PositionProvider, node).start  # pyright: ignore
-            line: int = pos.line  # pyright: ignore
-            column: int = pos.column  # pyright: ignore
-            self.uncheckpointed_statements.add(
-                ArtificialStatement("with", line, column)
-            )
-            self.node_dict[node] = res
-            self.has_checkpoint_stack.append(False)
-        else:
-            self.has_checkpoint_stack.append(True)
+        for withitem in node.items:
+            self.has_checkpoint_stack.append(ContextManager())
+            if get_matching_call_cst(
+                withitem.item, "open_nursery", "create_task_group"
+            ):
+                if withitem.asname is not None and isinstance(
+                    withitem.asname.name, cst.Name
+                ):
+                    self.taskgroup_has_start_soon[withitem.asname.name.value] = False
+                self.checkpoint_schedule_point()
+                # Technically somebody could set open_nursery or create_task_group as
+                # suppressing context managers, but we're not add logic for that.
+                continue
+
+            if bool(getattr(node, "asynchronous", False)):
+                self.checkpoint()
+
+            # not a clean function call
+            if not isinstance(withitem.item, cst.Call) or not isinstance(
+                withitem.item.func, (cst.Name, cst.Attribute)
+            ):
+                continue
+
+            if (
+                fnmatch_qualified_name_cst(
+                    (withitem.item.func,),
+                    "contextlib.suppress",
+                    *self.suppress_imported_as,
+                    *self.options.exception_suppress_context_managers,
+                )
+                is not None
+            ):
+                # Don't re-update state if there's several suppressing cm's.
+                if not is_suppressing:
+                    self.save_state(node, "uncheckpointed_statements", copy=True)
+                    is_suppressing = True
+                continue
+
+            if res := (
+                get_matching_call_cst(withitem.item, *cancel_scope_names)
+                or get_matching_call_cst(
+                    withitem.item,
+                    "timeout",
+                    "timeout_at",
+                    base="asyncio",
+                )
+            ):
+                # typing issue: https://github.com/Instagram/LibCST/issues/1107
+                pos = cst.ensure_type(
+                    self.get_metadata(PositionProvider, withitem),
+                    CodeRange,
+                ).start
+                self.uncheckpointed_statements.add(
+                    ArtificialStatement("withitem", pos.line, pos.column)
+                )
+
+                cm = self.has_checkpoint_stack[-1]
+                cm.line = pos.line
+                cm.column = pos.column
+                cm.call = res
+                cm.has_checkpoint = False
 
     def leave_With(self, original_node: cst.With, updated_node: cst.With):
-        # Uses leave_With instead of leave_With_body because we need access to both
-        # original and updated node
-        # ASYNC100
-        if not self.has_checkpoint_stack.pop():
-            autofix = len(updated_node.items) == 1
-            for res in self.node_dict[original_node]:
+        withitems = list(updated_node.items)
+        for i in reversed(range(len(updated_node.items))):
+            cm = self.has_checkpoint_stack.pop()
+            # ASYNC100
+            if cm.has_checkpoint is False:
+                res = cm.call
+                assert res is not None
                 # bypass 910 & 911's should_autofix logic, which excludes asyncio
-                # (TODO: and uses self.noautofix ... which I don't remember what it's for)
-                autofix &= self.error(
-                    res.node, res.base, res.function, error_code="ASYNC100"
-                ) and super().should_autofix(res.node, code="ASYNC100")
+                if self.error(
+                    res.node, res.base, res.name, error_code="ASYNC100"
+                ) and super().should_autofix(res.node, code="ASYNC100"):
+                    if len(withitems) == 1:
+                        # Remove this With node, bypassing later logic.
+                        return flatten_preserving_comments(updated_node)
+                    if i == len(withitems) - 1:
+                        # preserve trailing comma, or remove comma if there was none
+                        withitems[-2] = withitems[-2].with_changes(
+                            comma=withitems[-1].comma
+                        )
+                    withitems.pop(i)
 
-            if autofix:
-                return flatten_preserving_comments(updated_node)
-        # ASYNC912
-        else:
-            pos = self.get_metadata(  # pyright: ignore
-                PositionProvider, original_node
-            ).start  # pyright: ignore
-            line: int = pos.line  # pyright: ignore
-            column: int = pos.column  # pyright: ignore
-            s = ArtificialStatement("with", line, column)
-            if s in self.uncheckpointed_statements:
-                self.uncheckpointed_statements.remove(s)
-                for res in self.node_dict[original_node]:
-                    self.error(res.node, error_code="ASYNC912")
-
-        self.node_dict.pop(original_node, None)
+            # ASYNC912
+            elif cm.call is not None:
+                assert cm.line is not None
+                assert cm.column is not None
+                s = ArtificialStatement("withitem", cm.line, cm.column)
+                if s in self.uncheckpointed_statements:
+                    self.uncheckpointed_statements.remove(s)
+                    self.error(cm.call.node, error_code="ASYNC912")
 
         # if exception-suppressing, restore all uncheckpointed statements from
         # before the `with`.
@@ -767,7 +825,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             self.uncheckpointed_statements.update(prev_checkpoints)
 
         self._checkpoint_with(original_node, entry=False)
-        return updated_node
+
+        return updated_node.with_changes(items=withitems)
 
     # error if no checkpoint since earlier yield or function entry
     def leave_Yield(

@@ -8,7 +8,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, NamedTuple, TypeVar, Union
+from typing import TYPE_CHECKING, Generic, TypeVar, Union
 
 import libcst as cst
 import libcst.matchers as m
@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     T_EITHER = TypeVar(
         "T_EITHER", bound=Union[Flake8AsyncVisitor, Flake8AsyncVisitor_cst]
     )
+
+T_Call = TypeVar("T_Call", bound=Union[cst.Call, ast.Call])
 
 
 def error_class(error_class: type[T]) -> type[T]:
@@ -289,8 +291,8 @@ cancel_scope_names = (
 
 
 @dataclass
-class MatchingCall:
-    node: ast.Call
+class MatchingCall(Generic[T_Call]):
+    node: T_Call
     name: str
     base: str
 
@@ -301,7 +303,7 @@ class MatchingCall:
 # convenience function used in a lot of visitors
 def get_matching_call(
     node: ast.AST, *names: str, base: Iterable[str] = ("trio", "anyio")
-) -> MatchingCall | None:
+) -> MatchingCall[ast.Call] | None:
     if isinstance(base, str):
         base = (base,)
     if (
@@ -316,6 +318,23 @@ def get_matching_call(
 
 
 # ___ CST helpers ___
+def get_matching_call_cst(
+    node: cst.CSTNode, *names: str, base: Iterable[str] = ("trio", "anyio")
+) -> MatchingCall[cst.Call] | None:
+    if isinstance(base, str):
+        base = (base,)
+    if (
+        isinstance(node, cst.Call)
+        and isinstance(node.func, cst.Attribute)
+        and node.func.attr.value in names
+        and isinstance(node.func.value, (cst.Name, cst.Attribute))
+    ):
+        attr_base = identifier_to_string(node.func.value)
+        if attr_base is not None and attr_base in base:
+            return MatchingCall(node, node.func.attr.value, attr_base)
+    return None
+
+
 def oneof_names(*names: str):
     return m.OneOf(*map(m.Name, names))
 
@@ -327,12 +346,6 @@ def list_contains(
     seq: Sequence[CSTNode_T], matcher: m.BaseMatcherNode
 ) -> Iterator[CSTNode_T]:
     yield from (item for item in seq if m.matches(item, matcher))
-
-
-class AttributeCall(NamedTuple):
-    node: cst.Call
-    base: str
-    function: str
 
 
 # the custom __or__ in libcst breaks pyright type checking. It's possible to use
@@ -365,7 +378,7 @@ def identifier_to_string(node: cst.CSTNode) -> str | None:
 
 def with_has_call(
     node: cst.With, *names: str, base: Iterable[str] | str = ("trio", "anyio")
-) -> list[AttributeCall]:
+) -> list[MatchingCall[cst.Call]]:
     """Check if a with statement has a matching call, returning a list with matches.
 
     `names` specify the names of functions to match, `base` specifies the
@@ -396,7 +409,7 @@ def with_has_call(
         )
     )
 
-    res_list: list[AttributeCall] = []
+    res_list: list[MatchingCall[cst.Call]] = []
     for item in node.items:
         if res := m.extract(item.item, matcher):
             assert isinstance(item.item, cst.Call)
@@ -405,7 +418,9 @@ def with_has_call(
             base_string = identifier_to_string(res["base"])
             assert base_string is not None, "subscripts should never get matched"
             res_list.append(
-                AttributeCall(item.item, base_string, res["function"].value)
+                MatchingCall(
+                    node=item.item, base=base_string, name=res["function"].value
+                )
             )
     return res_list
 
