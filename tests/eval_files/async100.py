@@ -2,7 +2,13 @@
 # AUTOFIX
 # ASYNCIO_NO_ERROR # timeout primitives are named differently in asyncio
 
+import contextlib
 import trio
+
+
+def condition() -> bool:
+    return False
+
 
 with trio.move_on_after(10):  # error: 5, "trio", "move_on_after"
     ...
@@ -214,3 +220,35 @@ async def nursery_exit_blocks_with_start():
         async with trio.open_nursery() as n:
             with trio.CancelScope():
                 await n.start(trio.sleep, 0)
+
+
+async def autofix_multi_withitem():
+    with trio.CancelScope(), open("foo"):  # error: 9, "trio", "CancelScope"
+        ...
+
+    # this one is completely removed
+    with (
+        trio.CancelScope(),  # error: 8, "trio", "CancelScope"
+        trio.CancelScope(),  # error: 8, "trio", "CancelScope"
+    ):
+        ...
+
+    # these keep the `open`
+    with (
+        open("aa") as _,
+        trio.fail_after(10),  # error: 8, "trio", "fail_after"
+    ):
+        ...
+
+    with (
+        trio.fail_after(5),  # error: 8, "trio", "fail_after"
+        open("bb") as _,
+        trio.move_on_after(5),  # error: 8, "trio", "move_on_after"
+    ):
+        ...
+
+    with (
+        trio.move_on_after(10),  # error: 8, "trio", "move_on_after"
+        open("cc") as f,
+    ):
+        ...
