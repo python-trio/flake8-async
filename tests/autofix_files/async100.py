@@ -225,21 +225,24 @@ async def nursery_exit_blocks_with_start():
 async def autofix_multi_withitem():
     with open("foo"):  # error: 9, "trio", "CancelScope"
         ...
+
+    # this one is completely removed
     # error: 8, "trio", "CancelScope"
     # error: 8, "trio", "CancelScope"
     ...
 
+    # these keep the `open`
     with (
-        open("") as _,  # error: 8, "trio", "fail_after"
+        open("aa") as _,  # error: 8, "trio", "fail_after"
     ):
         ...
 
     with (
-        open("") as _,  # error: 8, "trio", "move_on_after"
+        open("bb") as _,  # error: 8, "trio", "move_on_after"
     ):
         ...
 
     with (
-        open("") as f,
+        open("cc") as f,
     ):
         ...

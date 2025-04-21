@@ -225,27 +225,30 @@ async def nursery_exit_blocks_with_start():
 async def autofix_multi_withitem():
     with trio.CancelScope(), open("foo"):  # error: 9, "trio", "CancelScope"
         ...
+
+    # this one is completely removed
     with (
         trio.CancelScope(),  # error: 8, "trio", "CancelScope"
         trio.CancelScope(),  # error: 8, "trio", "CancelScope"
     ):
         ...
 
+    # these keep the `open`
     with (
-        open("") as _,
+        open("aa") as _,
         trio.fail_after(10),  # error: 8, "trio", "fail_after"
     ):
         ...
 
     with (
         trio.fail_after(5),  # error: 8, "trio", "fail_after"
-        open("") as _,
+        open("bb") as _,
         trio.move_on_after(5),  # error: 8, "trio", "move_on_after"
     ):
         ...
 
     with (
         trio.move_on_after(10),  # error: 8, "trio", "move_on_after"
-        open("") as f,
+        open("cc") as f,
     ):
         ...
