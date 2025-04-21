@@ -4,6 +4,11 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.4.3
+======
+- :ref:`ASYNC100 <async100>` can now autofix ``with`` statements with multiple items.
+- Fixed a bug where multiple ``with`` items would not interact, leading to ASYNC100 and ASYNC9xx false alarms. https://github.com/python-trio/flake8-async/issues/156
+
 25.4.2
 ======
 - Add :ref:`ASYNC125 <async125>` constant-absolute-deadline
