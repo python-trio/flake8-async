@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.4.4
+======
+- :ref:`ASYNC900 <async900>` now accepts and recommends :func:`trio.as_safe_channel`.
+
 25.4.3
 ======
 - :ref:`ASYNC100 <async100>` can now autofix ``with`` statements with multiple items.
