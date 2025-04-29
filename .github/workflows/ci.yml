@@ -40,10 +40,8 @@ jobs:
                   python-version: ${{ matrix.python-version }}
             - name: Install dependencies
               run: python -m pip install --upgrade pip setuptools tox
-            - name: Run tests with flake8_6
-              run: python -m tox -e flake8_6
-            - name: Run tests with flake8_7+
-              run: python -m tox -e flake8_7
+            - name: Run tests with flake8
+              run: python -m tox -e flake8
             - name: Run tests without flake8
               run: python -m tox -e noflake8 -- --no-cov
 
