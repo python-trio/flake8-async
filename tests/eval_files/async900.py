@@ -1,10 +1,13 @@
 # type: ignore
 # ARG --no-checkpoint-warning-decorator=asynccontextmanager,other_context_manager
 # transform-async-generator-decorators set further down
+
+# trio will also recommend trio.as_safe_channel, see async900_trio
+# NOTRIO
 from contextlib import asynccontextmanager
 
 
-async def foo1():  # ASYNC900: 0, 'asynccontextmanager, fixture, this_is_like_a_context_manager'
+async def foo1():  # ASYNC900: 0, 'contextlib.asynccontextmanager, pytest.fixture, this_is_like_a_context_manager'
     yield
     yield
 
@@ -16,7 +19,7 @@ async def foo2():
 
 @asynccontextmanager
 async def foo3():
-    async def bar():  # ASYNC900: 4, 'asynccontextmanager, fixture, this_is_like_a_context_manager'
+    async def bar():  # ASYNC900: 4, 'contextlib.asynccontextmanager, pytest.fixture, this_is_like_a_context_manager'
         yield
 
     yield
@@ -38,7 +41,7 @@ async def async_fixtures_can_take_arguments():
 
 # no-checkpoint-warning-decorator now ignored
 @other_context_manager
-async def foo5():  # ASYNC900: 0, 'asynccontextmanager, fixture, this_is_like_a_context_manager'
+async def foo5():  # ASYNC900: 0, 'contextlib.asynccontextmanager, pytest.fixture, this_is_like_a_context_manager'
     yield
 
 

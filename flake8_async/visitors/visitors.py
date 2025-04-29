@@ -555,18 +555,21 @@ class Visitor900(Flake8AsyncVisitor):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.unsafe_function: ast.AsyncFunctionDef | None = None
-        self.transform_decorators = (
-            "asynccontextmanager",
-            "fixture",
+        self.transform_decorators = [
+            "contextlib.asynccontextmanager",
+            "pytest.fixture",
             *self.options.transform_async_generator_decorators,
-        )
+        ]
+        # only recommend if using trio
+        if "trio" in self.library:
+            self.transform_decorators.insert(0, "trio.as_safe_channel")
 
     def visit_AsyncFunctionDef(
         self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
     ):
         self.save_state(node, "unsafe_function")
         if isinstance(node, ast.AsyncFunctionDef) and not has_decorator(
-            node, *self.transform_decorators
+            node, *(d.split(".")[-1] for d in self.transform_decorators)
         ):
             self.unsafe_function = node
         else:

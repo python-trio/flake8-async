@@ -76,7 +76,9 @@ ASYNC118 : cancelled-class-saved
 
 _`ASYNC119` : yield-in-cm-in-async-gen
    ``yield`` in context manager in async generator is unsafe, the cleanup may be delayed until ``await`` is no longer allowed.
-   We strongly encourage you to read :pep:`533` and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_, or better yet avoid async generators entirely (see `ASYNC900`_ ) in favor of context managers which return an iterable :ref:`channel/stream/queue <channel_stream_queue>`.
+   We strongly encourage you to read :pep:`533` and use `async with aclosing(...) <https://docs.python.org/3/library/contextlib.html#contextlib.aclosing>`_.
+   :func:`trio.as_safe_channel` has been designed to be a drop-in replacement to transform
+   any unsafe async generator into a context manager that uses :ref:`streams <channel_stream_queue>` and safely runs the generator in a background task.
 
 _`ASYNC120` : await-in-except
     Dangerous :ref:`checkpoint` inside an ``except`` block.
