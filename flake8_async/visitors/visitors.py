@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any, cast
 
 from .flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
@@ -181,20 +182,25 @@ class Visitor113(Flake8AsyncVisitor):
         self.asynccontextmanager = False
         self.aenter = False
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        self.save_state(node, "aenter")
+        self.potential_errors: dict[str, list[ast.Call]] = defaultdict(list)
 
-        self.aenter = node.name == "__aenter__" or has_decorator(
-            node, "asynccontextmanager"
-        )
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        self.save_state(node, "aenter", "asynccontextmanager", "potential_errors")
+
+        self.aenter = node.name == "__aenter__"
+        self.asynccontextmanager = has_decorator(node, "asynccontextmanager")
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        self.save_state(node, "aenter")
+        self.save_state(node, "aenter", "asynccontextmanager", "potential_errors")
         # sync function should never be named __aenter__ or have @asynccontextmanager
-        self.aenter = False
+        self.aenter = self.asynccontextmanager = False
 
     def visit_Yield(self, node: ast.Yield):
-        self.aenter = False
+        for nodes in self.potential_errors.values():
+            for n in nodes:
+                self.error(n)
+        self.potential_errors.clear()
+        self.aenter = self.asynccontextmanager = False
 
     def visit_Call(self, node: ast.Call) -> None:
         def is_startable(n: ast.expr, *startable_list: str) -> bool:
@@ -210,14 +216,14 @@ class Visitor113(Flake8AsyncVisitor):
                 return any(is_startable(nn, *startable_list) for nn in n.args)
             return False
 
-        def is_nursery_call(node: ast.expr):
+        def is_nursery_call(node: ast.expr) -> str | None:
             if not isinstance(node, ast.Attribute) or node.attr not in (
                 "start_soon",
                 "create_task",
             ):
-                return False
+                return None
             var = ast.unparse(node.value)
-            return (
+            if (
                 ("trio" in self.library and var.endswith("nursery"))
                 or ("anyio" in self.library and var.endswith("task_group"))
                 or (
@@ -228,11 +234,12 @@ class Visitor113(Flake8AsyncVisitor):
                         "asyncio.TaskGroup",
                     )
                 )
-            )
+            ):
+                return var
+            return None
 
         if (
-            self.aenter
-            and is_nursery_call(node.func)
+            (var := is_nursery_call(node.func)) is not None
             and len(node.args) > 0
             and is_startable(
                 node.args[0],
@@ -241,7 +248,29 @@ class Visitor113(Flake8AsyncVisitor):
                 *self.options.startable_in_context_manager,
             )
         ):
-            self.error(node)
+            if self.aenter:
+                self.error(node)
+            elif self.asynccontextmanager:
+                self.potential_errors[var].append(node)
+
+    def visit_AsyncWith(self, node: ast.AsyncWith | ast.With):
+        self.visit_nodes(node.items)
+        self.visit_nodes(node.body)
+        for item in node.items:
+            if (
+                get_matching_call(item.context_expr, "open_nursery", base="trio")
+                or get_matching_call(
+                    item.context_expr, "create_task_group", base="anyio"
+                )
+                or get_matching_call(item.context_expr, "TaskGroup", base="asyncio")
+            ) and isinstance(item.optional_vars, ast.Name):
+
+                self.potential_errors.pop(item.optional_vars.id, None)
+
+    # open_nursery/create_task_group only works with AsyncWith, but in case somebody
+    # is doing something very weird we'll be conservative and possibly clear
+    # some potential errors
+    visit_With = visit_AsyncWith
 
 
 # Checks that all async functions with a "task_status" parameter have a match in

@@ -24,9 +24,18 @@ async def foo():
     # we don't check for `async with`
     with trio.open_nursery() as bar:  # type: ignore[attr-defined]
         bar.start_soon(my_startable)  # ASYNC113: 8
+        yield
+
+
+@asynccontextmanager
+async def foo2():
     async with trio.open_nursery() as bar:
         bar.start_soon(my_startable)  # ASYNC113: 8
+        yield
 
+
+@asynccontextmanager
+async def foo3():
     boo: trio.Nursery = ...  # type: ignore
     boo.start_soon(my_startable)  # ASYNC113: 4
 
@@ -132,3 +141,42 @@ async def foo_nested_sync_def():
             bar.start_soon(my_startable)
 
         yield
+
+
+@asynccontextmanager
+async def false_alarm():
+    async with trio.open_nursery() as nursery:
+        nursery.start_soon(my_startable)
+    yield
+
+
+# this would ideally error, but not worth the extra logic
+@asynccontextmanager
+async def should_error():
+    async with trio.open_nursery() as nursery:
+        nursery.start_soon(my_startable)
+        # overrides the nursery variable
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(my_startable)
+        yield
+
+
+@asynccontextmanager
+async def foo_sync_with_closed():
+    # we don't check for `async with`
+    with trio.open_nursery() as bar:  # type: ignore[attr-defined]
+        bar.start_soon(my_startable)
+    yield
+
+
+# this one is surprisingly hard to fix
+# the easiest way would be with a leave_AsyncFunctionDef, but that's only a thing in
+# cst visitors; and we can't do the standard thing of manually visiting children in
+# visit_AsyncFunctionDef because we need the interleaving of the utility visitor.
+# So I either need to convert the visitor to cst, including VisitorTypeTracker, or
+# add logic to Flake8AsyncRunner to also support leave_XXX.
+# The latter is probably not too bad but... a tomorrow problem
+class FalseAlarm:
+    async def __aenter__(self):
+        with trio.open_nursery() as nursery:
+            nursery.start_soon(my_startable)  # ASYNC113: 12
