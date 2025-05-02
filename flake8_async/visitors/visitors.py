@@ -254,22 +254,17 @@ class Visitor113(Flake8AsyncVisitor):
                 self.potential_errors[var].append(node)
 
     def visit_AsyncWith(self, node: ast.AsyncWith | ast.With):
-        self.visit_nodes(node.items)
-        self.visit_nodes(node.body)
-        for item in node.items:
-            if (
-                get_matching_call(item.context_expr, "open_nursery", base="trio")
-                or get_matching_call(
-                    item.context_expr, "create_task_group", base="anyio"
-                )
-                or get_matching_call(item.context_expr, "TaskGroup", base="asyncio")
-            ) and isinstance(item.optional_vars, ast.Name):
-
-                self.potential_errors.pop(item.optional_vars.id, None)
+        # Entirely skip any nurseries that doesn't have any yields in them.
+        # This fixes an otherwise very thorny false alarm.
+        # In the worst case this does mean we iterate over the body twice, but might
+        # actually be a performance gain on average due to setting `novisit`
+        if not any(isinstance(n, ast.Yield) for b in node.body for n in ast.walk(b)):
+            self.novisit = True
+            return
 
     # open_nursery/create_task_group only works with AsyncWith, but in case somebody
-    # is doing something very weird we'll be conservative and possibly clear
-    # some potential errors
+    # is doing something very weird we'll be conservative and possibly avoid
+    # some potential false alarms
     visit_With = visit_AsyncWith
 
 

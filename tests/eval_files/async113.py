@@ -150,11 +150,10 @@ async def false_alarm():
     yield
 
 
-# this would ideally error, but not worth the extra logic
 @asynccontextmanager
 async def should_error():
     async with trio.open_nursery() as nursery:
-        nursery.start_soon(my_startable)
+        nursery.start_soon(my_startable)  # ASYNC113: 8
         # overrides the nursery variable
         async with trio.open_nursery() as nursery:
             nursery.start_soon(my_startable)
@@ -169,14 +168,25 @@ async def foo_sync_with_closed():
     yield
 
 
-# this one is surprisingly hard to fix
-# the easiest way would be with a leave_AsyncFunctionDef, but that's only a thing in
-# cst visitors; and we can't do the standard thing of manually visiting children in
-# visit_AsyncFunctionDef because we need the interleaving of the utility visitor.
-# So I either need to convert the visitor to cst, including VisitorTypeTracker, or
-# add logic to Flake8AsyncRunner to also support leave_XXX.
-# The latter is probably not too bad but... a tomorrow problem
+# fixed by entirely skipping nurseries without yields in them
 class FalseAlarm:
     async def __aenter__(self):
         with trio.open_nursery() as nursery:
-            nursery.start_soon(my_startable)  # ASYNC113: 12
+            nursery.start_soon(my_startable)
+
+
+@asynccontextmanager
+async def yield_before_start_soon():
+    with trio.open_nursery() as bar:
+        yield
+        bar.start_soon(my_startable)
+
+
+# This was broken when visit_AsyncWith manually visited subnodes due to not
+# letting TypeTrackerVisitor interject.
+@asynccontextmanager
+async def nested():
+    with trio.open_nursery() as foo:
+        with trio.open_nursery() as bar:
+            bar.start_soon(my_startable)  # error: 12
+            yield
