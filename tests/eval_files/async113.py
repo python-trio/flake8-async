@@ -24,9 +24,18 @@ async def foo():
     # we don't check for `async with`
     with trio.open_nursery() as bar:  # type: ignore[attr-defined]
         bar.start_soon(my_startable)  # ASYNC113: 8
+        yield
+
+
+@asynccontextmanager
+async def foo2():
     async with trio.open_nursery() as bar:
         bar.start_soon(my_startable)  # ASYNC113: 8
+        yield
 
+
+@asynccontextmanager
+async def foo3():
     boo: trio.Nursery = ...  # type: ignore
     boo.start_soon(my_startable)  # ASYNC113: 4
 
@@ -132,3 +141,52 @@ async def foo_nested_sync_def():
             bar.start_soon(my_startable)
 
         yield
+
+
+@asynccontextmanager
+async def false_alarm():
+    async with trio.open_nursery() as nursery:
+        nursery.start_soon(my_startable)
+    yield
+
+
+@asynccontextmanager
+async def should_error():
+    async with trio.open_nursery() as nursery:
+        nursery.start_soon(my_startable)  # ASYNC113: 8
+        # overrides the nursery variable
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(my_startable)
+        yield
+
+
+@asynccontextmanager
+async def foo_sync_with_closed():
+    # we don't check for `async with`
+    with trio.open_nursery() as bar:  # type: ignore[attr-defined]
+        bar.start_soon(my_startable)
+    yield
+
+
+# fixed by entirely skipping nurseries without yields in them
+class FalseAlarm:
+    async def __aenter__(self):
+        with trio.open_nursery() as nursery:
+            nursery.start_soon(my_startable)
+
+
+@asynccontextmanager
+async def yield_before_start_soon():
+    with trio.open_nursery() as bar:
+        yield
+        bar.start_soon(my_startable)
+
+
+# This was broken when visit_AsyncWith manually visited subnodes due to not
+# letting TypeTrackerVisitor interject.
+@asynccontextmanager
+async def nested():
+    with trio.open_nursery() as foo:
+        with trio.open_nursery() as bar:
+            bar.start_soon(my_startable)  # error: 12
+            yield

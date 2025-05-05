@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 
 # CalVer: YY.month.patch, e.g. first release of July 2022 == "22.7.1"
-__version__ = "25.4.4"
+__version__ = "25.5.1"
 
 
 # taken from https://github.com/Zac-HD/shed

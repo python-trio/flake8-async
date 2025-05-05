@@ -132,8 +132,10 @@ async def foo4(): ...
 @asynccontextmanager()  # type: ignore[call-arg]
 async def foo_paren():
     nursery.start_soon(trio.run_process)  # error: 4
+    yield
 
 
 @asynccontextmanager(1, 2, 3)  # type: ignore[call-arg]
 async def foo_params():
     nursery.start_soon(trio.run_process)  # error: 4
+    yield

@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.5.1
+======
+- Fixed :ref:`ASYNC113 <async113>` false alarms if the ``start_soon`` calls are in a nursery cm that was closed before the yield point.
+
 25.4.4
 ======
 - :ref:`ASYNC900 <async900>` now accepts and recommends :func:`trio.as_safe_channel`.
