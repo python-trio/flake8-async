@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.5.2
+======
+- :ref:`ASYNC120 <async120>` no longer requires cancel scopes to have a timeout. https://github.com/python-trio/flake8-async/issues/272
+
 25.5.1
 ======
 - Fixed :ref:`ASYNC113 <async113>` false alarms if the ``start_soon`` calls are in a nursery cm that was closed before the yield point.

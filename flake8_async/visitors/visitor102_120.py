@@ -40,16 +40,6 @@ class Visitor102(Flake8AsyncVisitor):
             self.funcname = funcname
             self.variable_name: str | None = None
             self.shielded: bool = False
-            self.has_timeout: bool = True
-
-            # scope.shielded is assigned to in visit_Assign
-
-            if self.funcname == "CancelScope":
-                self.has_timeout = False
-                for kw in node.keywords:
-                    # note: sets to True even if timeout is explicitly set to inf
-                    if kw.arg == "deadline":
-                        self.has_timeout = True
 
             # trio 0.27 adds shield parameter to all scope helpers
             if self.funcname in cancel_scope_names:
@@ -79,7 +69,7 @@ class Visitor102(Flake8AsyncVisitor):
         self, node: ast.Await | ast.AsyncFor | ast.AsyncWith
     ) -> None:
         if self._critical_scope is not None and not any(
-            cm.has_timeout and cm.shielded for cm in self._trio_context_managers
+            cm.shielded for cm in self._trio_context_managers
         ):
             # non-critical exception handlers have the statement name set to "except"
             if self._critical_scope.name == "except":
