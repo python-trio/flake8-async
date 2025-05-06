@@ -33,7 +33,7 @@ class Visitor4xx(Flake8AsyncVisitor):
 
     error_codes: Mapping[str, str] = {
         "ASYNC400": (
-            "Accessing attribute {} on ExceptionGroup as if it was a bare Exception"
+            "Accessing attribute {} on ExceptionGroup as if it was a bare Exception."
         )
     }
 
