@@ -6,7 +6,7 @@ Changelog
 
 25.5.2
 ======
-- :ref:`ASYNC120 <async120>` no longer requires cancel scopes to have a timeout. `(issue #272) <https://github.com/python-trio/flake8-async/issues/272>`_
+- :ref:`ASYNC102 <async102>` and :ref:`ASYNC120 <async120>` no longer requires cancel scopes to have a timeout. `(issue #272) <https://github.com/python-trio/flake8-async/issues/272>`_
 - Add :ref:`ASYNC400 <async400>` except-star-invalid-attribute.
 
 25.5.1
