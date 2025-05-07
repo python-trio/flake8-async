@@ -7,6 +7,7 @@ Changelog
 25.5.2
 ======
 - :ref:`ASYNC120 <async120>` no longer requires cancel scopes to have a timeout. `(issue #272) <https://github.com/python-trio/flake8-async/issues/272>`_
+- Add :ref:`ASYNC400 <async400>` except-star-invalid-attribute.
 
 25.5.1
 ======
@@ -23,7 +24,7 @@ Changelog
 
 25.4.2
 ======
-- Add :ref:`ASYNC125 <async125>` constant-absolute-deadline
+- Add :ref:`ASYNC125 <async125>` constant-absolute-deadline.
 
 25.4.1
 ======
@@ -35,7 +36,7 @@ Changelog
 
 25.2.3
 =======
-- No longer require ``flake8`` for installation... so if you require support for config files you must install ``flake8-async[flake8]``
+- No longer require ``flake8`` for installation... so if you require support for config files you must install ``flake8-async[flake8]``.
 
 25.2.2
 =======
