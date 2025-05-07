@@ -26,6 +26,10 @@ from hypothesmith import from_grammar, from_node
 from flake8_async import Plugin
 from flake8_async.base import Error, Statement
 from flake8_async.visitors import ERROR_CLASSES, ERROR_CLASSES_CST
+from flake8_async.visitors.visitor4xx import EXCGROUP_ATTRS
+
+if sys.version_info < (3, 11):
+    from exceptiongroup import ExceptionGroup
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -844,6 +848,13 @@ def test_910_permutations():
             assert errors, "# missing alarm:\n" + function_str
         else:
             assert not errors, "# false alarm:\n" + function_str
+
+
+def test_async400_excgroup_attributes():
+    for attr in dir(ExceptionGroup):
+        if attr.startswith("__") and attr.endswith("__"):
+            continue
+        assert attr in EXCGROUP_ATTRS
 
 
 # from https://docs.python.org/3/library/itertools.html#itertools-recipes

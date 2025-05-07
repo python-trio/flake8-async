@@ -24,7 +24,9 @@ EXCGROUP_ATTRS = (
     # from BaseException
     "args",
     "with_traceback",
-    "add_notes",
+    "add_note",
+    # in the backport
+    "_is_protocol",
 )
 
 

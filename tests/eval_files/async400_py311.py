@@ -15,7 +15,7 @@ except* ValueError as e:
     # from BaseException
     e.args
     e.with_traceback
-    e.add_notes
+    e.add_note
 
     # ignore anything that looks like a dunder
     e.__foo__

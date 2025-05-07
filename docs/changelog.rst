@@ -4,7 +4,7 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
-25.5.2
+FUTURE
 ======
 - Add :ref:`ASYNC400 <async400>` except-star-invalid-attribute.
 
