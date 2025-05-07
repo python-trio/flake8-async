@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+FUTURE
+======
+- Add :ref:`ASYNC400 <async400>` except-star-invalid-attribute.
+
 25.5.1
 ======
 - Fixed :ref:`ASYNC113 <async113>` false alarms if the ``start_soon`` calls are in a nursery cm that was closed before the yield point.
@@ -19,7 +23,7 @@ Changelog
 
 25.4.2
 ======
-- Add :ref:`ASYNC125 <async125>` constant-absolute-deadline
+- Add :ref:`ASYNC125 <async125>` constant-absolute-deadline.
 
 25.4.1
 ======
@@ -31,7 +35,7 @@ Changelog
 
 25.2.3
 =======
-- No longer require ``flake8`` for installation... so if you require support for config files you must install ``flake8-async[flake8]``
+- No longer require ``flake8`` for installation... so if you require support for config files you must install ``flake8-async[flake8]``.
 
 25.2.2
 =======

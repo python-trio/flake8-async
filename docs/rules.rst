@@ -182,6 +182,11 @@ _`ASYNC300` : create-task-no-reference
     Note that this rule won't check whether the variable the result is saved in is susceptible to being garbage-collected itself. See the asyncio documentation for best practices.
     You might consider instead using a :ref:`TaskGroup <taskgroup_nursery>` and calling :meth:`asyncio.TaskGroup.create_task` to avoid this problem, and gain the advantages of structured concurrency with e.g. better cancellation semantics.
 
+ExceptionGroup rules
+====================
+
+_`ASYNC400` : except-star-invalid-attribute
+    When converting a codebase to use `except* <except_star>` it's easy to miss that the caught exception(s) are wrapped in a group, so accessing attributes on the caught exception must now check the contained exceptions. This checks for any attribute access on a caught ``except*`` that's not a known valid attribute on `ExceptionGroup`. This can be safely disabled on a type-checked or coverage-covered code base.
 
 Optional rules disabled by default
 ==================================
