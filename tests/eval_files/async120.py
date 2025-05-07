@@ -121,3 +121,13 @@ async def foo_nested_funcdef():
             await foo()
 
         raise
+
+
+# shielded but no timeout no longer triggers async120
+# https://github.com/python-trio/flake8-async/issues/272
+async def foo_shield_no_timeout():
+    try:
+        ...
+    finally:
+        with trio.CancelScope(shield=True):
+            await foo()

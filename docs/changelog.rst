@@ -4,8 +4,9 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
-FUTURE
+25.5.2
 ======
+- :ref:`ASYNC102 <async102>` and :ref:`ASYNC120 <async120>` no longer requires cancel scopes to have a timeout. `(issue #272) <https://github.com/python-trio/flake8-async/issues/272>`_
 - Add :ref:`ASYNC400 <async400>` except-star-invalid-attribute.
 
 25.5.1
@@ -19,7 +20,7 @@ FUTURE
 25.4.3
 ======
 - :ref:`ASYNC100 <async100>` can now autofix ``with`` statements with multiple items.
-- Fixed a bug where multiple ``with`` items would not interact, leading to ASYNC100 and ASYNC9xx false alarms. https://github.com/python-trio/flake8-async/issues/156
+- Fixed a bug where multiple ``with`` items would not interact, leading to ASYNC100 and ASYNC9xx false alarms. `(issue #367) <https://github.com/python-trio/flake8-async/issues/367>`_
 
 25.4.2
 ======
@@ -159,7 +160,7 @@ FUTURE
 
 24.3.5
 ======
-- ASYNC102 (no await inside finally or critical except) no longer raises warnings for calls to ``aclose()`` on objects in trio/anyio code. See https://github.com/python-trio/flake8-async/issues/156
+- ASYNC102 (no await inside finally or critical except) no longer raises warnings for calls to ``aclose()`` on objects in trio/anyio code. See `(issue #156) <https://github.com/python-trio/flake8-async/issues/156>`_
 
 24.3.4
 ======

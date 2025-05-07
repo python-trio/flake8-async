@@ -100,8 +100,9 @@ async def foo():
     try:
         pass
     finally:
+        # it's now fine to have a shield and no timeout
         with trio.CancelScope(shield=True):
-            await foo()  # error: 12, Statement("try/finally", lineno-4)
+            await foo()
     try:
         pass
     finally:
