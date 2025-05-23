@@ -42,6 +42,12 @@ async def foo():
     await trio.sleep(inf.inf)  # error: 10, "trio"
     await trio.sleep(inf.anything)
 
+    # in trio the kwarg name is 'seconds', in anyio it's 'delay', but
+    # we error regardless of what it is. #382
+    await trio.sleep(seconds=inf)  # error: 10, "trio"
+    await trio.sleep(delay=inf)  # error: 10, "trio"
+    await trio.sleep(anything=inf)  # error: 10, "trio"
+
 
 # does not require the call to be awaited, nor in an async fun
 trio.sleep(86401)  # error: 0, "trio"

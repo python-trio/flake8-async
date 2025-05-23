@@ -22,6 +22,19 @@ async def afoo():
     time.sleep(0)
     sleep(0)
 
+    # in trio it's called 'seconds', in anyio it's 'delay', but
+    # we don't care about the kwarg name. #382
+    await trio.sleep(seconds=0)  # error: 10, "trio"
+    await trio.sleep(delay=0)  # error: 10, "trio"
+    await trio.sleep(anything=0)  # error: 10, "trio"
+
+    await trio.sleep(seconds=1)
+
+    await trio.sleep()
+
+    # we don't care to suppress this
+    await trio.sleep(0, seconds=1)  # error: 10, "trio"
+
 
 # don't require being inside a function
 trio.sleep(0)  # error: 0, "trio"
