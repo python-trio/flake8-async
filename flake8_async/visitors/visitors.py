@@ -305,11 +305,16 @@ class Visitor115(Flake8AsyncVisitor):
     }
 
     def visit_Call(self, node: ast.Call):
+        if not (m := get_matching_call(node, "sleep")):
+            return
         if (
-            (m := get_matching_call(node, "sleep"))
-            and len(node.args) == 1
+            len(node.args) == 1
             and isinstance(node.args[0], ast.Constant)
             and node.args[0].value == 0
+        ) or (
+            len(node.keywords) == 1
+            and isinstance(node.keywords[0].value, ast.Constant)
+            and node.keywords[0].value.value == 0
         ):
             self.error(node, m.base)
 
@@ -324,32 +329,40 @@ class Visitor116(Flake8AsyncVisitor):
     }
 
     def visit_Call(self, node: ast.Call):
-        if (m := get_matching_call(node, "sleep")) and len(node.args) == 1:
+        if not (m := get_matching_call(node, "sleep")):
+            return
+        if len(node.args) == 1:
             arg = node.args[0]
-            if (
-                # `trio.sleep(math.inf)`
-                (isinstance(arg, ast.Attribute) and arg.attr == "inf")
-                # `trio.sleep(inf)`
-                or (isinstance(arg, ast.Name) and arg.id == "inf")
-                # `trio.sleep(float("inf"))`
-                or (
-                    isinstance(arg, ast.Call)
-                    and isinstance(arg.func, ast.Name)
-                    and arg.func.id == "float"
-                    and len(arg.args)
-                    and isinstance(arg.args[0], ast.Constant)
-                    and arg.args[0].value == "inf"
-                )
-                # `trio.sleep(1e999)` (constant value inf)
-                # `trio.sleep(86401)`
-                # `trio.sleep(86400.1)`
-                or (
-                    isinstance(arg, ast.Constant)
-                    and isinstance(arg.value, (int, float))
-                    and arg.value > 86400
-                )
-            ):
-                self.error(node, m.base)
+        elif len(node.keywords) == 1:
+            arg = node.keywords[0].value
+        else:
+            # invalid call, not our problem
+            return
+
+        if (
+            # `trio.sleep(math.inf)`
+            (isinstance(arg, ast.Attribute) and arg.attr == "inf")
+            # `trio.sleep(inf)`
+            or (isinstance(arg, ast.Name) and arg.id == "inf")
+            # `trio.sleep(float("inf"))`
+            or (
+                isinstance(arg, ast.Call)
+                and isinstance(arg.func, ast.Name)
+                and arg.func.id == "float"
+                and len(arg.args)
+                and isinstance(arg.args[0], ast.Constant)
+                and arg.args[0].value == "inf"
+            )
+            # `trio.sleep(1e999)` (constant value inf)
+            # `trio.sleep(86401)`
+            # `trio.sleep(86400.1)`
+            or (
+                isinstance(arg, ast.Constant)
+                and isinstance(arg.value, (int, float))
+                and arg.value > 86400
+            )
+        ):
+            self.error(node, m.base)
 
 
 @error_class
