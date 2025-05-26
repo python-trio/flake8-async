@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.5.3
+======
+- :ref:`ASYNC115 <async115>` and :ref:`ASYNC116 <async116>` now also checks kwargs.
+
 25.5.2
 ======
 - :ref:`ASYNC102 <async102>` and :ref:`ASYNC120 <async120>` no longer requires cancel scopes to have a timeout. `(issue #272) <https://github.com/python-trio/flake8-async/issues/272>`_
