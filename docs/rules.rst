@@ -65,13 +65,13 @@ _`ASYNC113` : start-soon-in-aenter
 _`ASYNC114` : startable-not-in-config
     Startable function (i.e. has a ``task_status`` keyword parameter) not in :ref:`--startable-in-context-manager <--startable-in-context-manager>` parameter list, please add it so ASYNC113 can catch errors when using it.
 
-ASYNC115 : async-zero-sleep
+_`ASYNC115` : async-zero-sleep
     Replace :func:`trio.sleep(0) <trio.sleep>`/:func:`anyio.sleep(0) <anyio.sleep>` with the more suggestive :func:`trio.lowlevel.checkpoint`/:func:`anyio.lowlevel.checkpoint`.
 
-ASYNC116 : long-sleep-not-forever
+_`ASYNC116` : long-sleep-not-forever
     :func:`trio.sleep`/:func:`anyio.sleep` with >24 hour interval should usually be :func:`trio.sleep_forever`/:func:`anyio.sleep_forever`.
 
-ASYNC118 : cancelled-class-saved
+_`ASYNC118` : cancelled-class-saved
     Don't assign the value of :func:`anyio.get_cancelled_exc_class` to a variable, since that breaks linter checks and multi-backend programs.
 
 _`ASYNC119` : yield-in-cm-in-async-gen
