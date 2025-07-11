@@ -76,7 +76,7 @@ def test_systemexit_0(
     tmp_path.joinpath("example.py").write_text("")
 
     with pytest.raises(SystemExit) as exc_info:
-        from flake8_async import __main__  # noqa: F401
+        from flake8_async import __main__  # noqa: F401, PLC0415
 
     assert exc_info.value.code == 0
     out, err = capsys.readouterr()
@@ -91,7 +91,7 @@ def test_systemexit_1(
     monkeypatch_argv(monkeypatch, tmp_path)
 
     with pytest.raises(SystemExit) as exc_info:
-        from flake8_async import __main__  # noqa: F401
+        from flake8_async import __main__  # noqa: F401, PLC0415
 
     assert exc_info.value.code == 1
     out, err = capsys.readouterr()
@@ -174,7 +174,7 @@ select = ASYNC220
 """
     )
 
-    from flake8_async.visitors.visitor2xx import Visitor22X
+    from flake8_async.visitors.visitor2xx import Visitor22X  # noqa: PLC0415
 
     err_msg = Visitor22X.error_codes["ASYNC220"].format(
         "subprocess.Popen",
@@ -193,7 +193,7 @@ select = ASYNC220
 
     # construct the full error message
     expected = f"{err_file}:{lineno}:5: ASYNC220 {err_msg}\n"
-    from flake8.main.cli import main
+    from flake8.main.cli import main  # noqa: PLC0415
 
     returnvalue = main(
         argv=[
@@ -246,7 +246,7 @@ def test_200_from_config_flake8_internals(
     # replace ./ with tmp_path/
     err_msg = str(tmp_path) + EXAMPLE_PY_TEXT[1:]
 
-    from flake8.main.cli import main
+    from flake8.main.cli import main  # noqa: PLC0415
 
     returnvalue = main(
         argv=[
@@ -330,7 +330,7 @@ def test_900_default_off():
 
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_900_default_off_flake8(capsys: pytest.CaptureFixture[str]):
-    from flake8.main.cli import main
+    from flake8.main.cli import main  # noqa: PLC0415
 
     returnvalue = main(
         argv=[

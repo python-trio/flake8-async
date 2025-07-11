@@ -102,3 +102,6 @@ class Error:
     def __str__(self) -> str:
         # flake8 adds 1 to the yielded column from `__iter__`, so we do the same here
         return f"{self.line}:{self.col+1}: {self.format_message()}"
+
+    def __hash__(self) -> int:
+        return hash(self.cmp())

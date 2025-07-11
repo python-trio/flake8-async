@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, TypeVar
 
+from git.repo import Repo
 from typing_extensions import Self
 
 if TYPE_CHECKING:
@@ -90,8 +91,6 @@ def test_version_increments_are_correct() -> None:
 
 
 def ensure_tagged() -> None:
-    from git.repo import Repo
-
     last_version = next(iter(get_releases()))
     repo = Repo(ROOT_PATH)
     if str(last_version) not in iter(map(str, repo.tags)):

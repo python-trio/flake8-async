@@ -46,7 +46,7 @@ class Visitor102(Flake8AsyncVisitor):
                 for kw in node.keywords:
                     # Only accepts constant values
                     if kw.arg == "shield" and isinstance(kw.value, ast.Constant):
-                        self.shielded = kw.value.value
+                        self.shielded = bool(kw.value.value)
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -200,7 +200,7 @@ class Visitor102(Flake8AsyncVisitor):
                         )
                     )
                 ):
-                    scope.shielded = node.value.value
+                    scope.shielded = bool(node.value.value)
 
     def visit_FunctionDef(
         self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda
