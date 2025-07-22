@@ -16,9 +16,7 @@ if TYPE_CHECKING:
 
     from ..runner import SharedState
 
-    HasLineCol = Union[
-        ast.expr, ast.stmt, ast.arg, ast.excepthandler, ast.alias, Statement
-    ]
+    HasLineCol = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
 
 
 class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
