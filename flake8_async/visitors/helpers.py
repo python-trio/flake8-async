@@ -6,6 +6,7 @@ Also contains the decorator definitions used to register error classes.
 from __future__ import annotations
 
 import ast
+from collections.abc import Sized
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Generic, TypeVar, Union
@@ -140,14 +141,9 @@ def iter_guaranteed_once(iterable: ast.expr) -> bool:
             else:
                 return True
         return False
-    # once we drop 3.9 we can add `and not isinstance(iterable.value, types.EllipsisType)`
-    # to get rid of `type: ignore`. Or just live with the fact that pyright doesn't
-    # make use of the `hasattr`.
+
     if isinstance(iterable, ast.Constant):
-        return (
-            hasattr(iterable.value, "__len__")
-            and len(iterable.value) > 0  # pyright: ignore[reportArgumentType]
-        )
+        return isinstance(iterable.value, Sized) and len(iterable.value) > 0
 
     if isinstance(iterable, ast.Dict):
         for key, val in zip(iterable.keys, iterable.values):
