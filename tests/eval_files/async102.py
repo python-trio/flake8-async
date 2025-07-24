@@ -1,6 +1,6 @@
 # type: ignore
 # ARG --enable=ASYNC102,ASYNC120
-# NOASYNCIO # TODO: support asyncio shields
+# ASYNCIO_NO_ERROR  # ASYNC102 not applicable to asyncio
 from contextlib import asynccontextmanager
 
 import trio

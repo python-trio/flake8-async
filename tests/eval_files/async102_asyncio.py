@@ -2,6 +2,7 @@
 # NOANYIO
 # NOTRIO
 # BASE_LIBRARY asyncio
+# ASYNCIO_NO_ERROR  # ASYNC102 not applicable to asyncio
 from contextlib import asynccontextmanager
 
 import asyncio

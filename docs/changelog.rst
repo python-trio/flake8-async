@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.7.1
+======
+- :ref:`ASYNC102 <async102>` no longer triggered for asyncio due to different cancellation semantics it uses.
+
 25.5.3
 ======
 - :ref:`ASYNC115 <async115>` and :ref:`ASYNC116 <async116>` now also checks kwargs.

@@ -24,8 +24,8 @@ _`ASYNC101` : yield-in-cancel-scope
 _`ASYNC102` : await-in-finally-or-cancelled
     ``await`` inside ``finally``, :ref:`cancelled-catching <cancelled>` ``except:``, or ``__aexit__`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
     If not, the async call will immediately raise a new cancellation, suppressing any cancellation that was caught.
+    Not applicable to asyncio due to edge-based cancellation semantics it uses as opposed to level-based used by trio and anyio.
     See :ref:`ASYNC120 <async120>` for the general case where other exceptions might get suppressed.
-    This is currently not able to detect asyncio shields.
 
 ASYNC103 : no-reraise-cancelled
     :ref:`cancelled`-catching exception that does not reraise the exception.

@@ -7,6 +7,8 @@
 # ANYIO_NO_ERROR
 # TRIO_NO_ERROR
 
+# ASYNCIO_NO_ERROR  # ASYNC102 not applicable to asyncio
+
 # See also async102_aclose_args.py - which makes sure trio/anyio raises errors if there
 # are arguments to aclose().
 

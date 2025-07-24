@@ -1,5 +1,7 @@
 # type: ignore
 
+# ASYNCIO_NO_ERROR  # ASYNC102 not applicable to asyncio
+
 # trio/anyio should still raise errors if there's args
 # asyncio will always raise errors
 

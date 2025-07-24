@@ -1,4 +1,5 @@
 # ARG --enable=ASYNC102
+# ASYNCIO_NO_ERROR  # ASYNC102 not applicable to asyncio
 
 import trio
 from typing import Any
