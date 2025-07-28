@@ -310,3 +310,39 @@ async def foo_nested_cs():
 # treat __aexit__ as a critical scope
 async def __aexit__():
     await foo()  # error: 4, Statement("__aexit__", lineno-1)
+
+
+# exclude finally: await x.aclose()
+# trio/anyio marks arg-less aclose() as safe
+async def foo_aclose_noargs():
+    # no type tracking in this check, we allow any call that looks like
+    # `await [...].aclose()`
+    x = None
+
+    try:
+        ...
+    except BaseException:
+        await x.aclose()
+        await x.y.aclose()
+    finally:
+        await x.aclose()
+        await x.y.aclose()
+
+
+# trio/anyio should still raise errors if there's args
+async def foo():
+    # no type tracking in this check
+    x = None
+
+    try:
+        ...
+    except BaseException:
+        await x.aclose(foo)  # ASYNC102: 8, Statement("BaseException", lineno-1)
+        await x.aclose(bar=foo)  # ASYNC102: 8, Statement("BaseException", lineno-2)
+        await x.aclose(*foo)  # ASYNC102: 8, Statement("BaseException", lineno-3)
+        await x.aclose(None)  # ASYNC102: 8, Statement("BaseException", lineno-4)
+    finally:
+        await x.aclose(foo)  # ASYNC102: 8, Statement("try/finally", lineno-8)
+        await x.aclose(bar=foo)  # ASYNC102: 8, Statement("try/finally", lineno-9)
+        await x.aclose(*foo)  # ASYNC102: 8, Statement("try/finally", lineno-10)
+        await x.aclose(None)  # ASYNC102: 8, Statement("try/finally", lineno-11)

@@ -1,9 +1,9 @@
 # type: ignore
+# this test will raise the same errors with trio, despite trio.get_cancelled_exc_class not existing
+# marked not to run the tests though as error messages will only refer to anyio
 # NOTRIO
 # ASYNCIO_NO_ERROR  # ASYNC102 not applicable to asyncio
 # BASE_LIBRARY anyio
-# this test will raise the same errors with trio/asyncio, despite [trio|asyncio].get_cancelled_exc_class not existing
-# marked not to run the tests though as error messages will only refer to anyio
 import anyio
 from anyio import get_cancelled_exc_class
 
