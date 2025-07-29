@@ -312,8 +312,7 @@ async def __aexit__():
     await foo()  # error: 4, Statement("__aexit__", lineno-1)
 
 
-# exclude finally: await x.aclose()
-# trio/anyio marks arg-less aclose() as safe
+# exclude `finally: await x.aclose()` with no arguments
 async def foo_aclose_noargs():
     # no type tracking in this check, we allow any call that looks like
     # `await [...].aclose()`
@@ -329,7 +328,7 @@ async def foo_aclose_noargs():
         await x.y.aclose()
 
 
-# trio/anyio should still raise errors if there's args
+# should still raise errors if there's args, as that indicates it's a non-standard aclose
 async def foo():
     # no type tracking in this check
     x = None
