@@ -1,6 +1,6 @@
 # type: ignore
 # ARG --enable=ASYNC102,ASYNC120
-# NOASYNCIO # TODO: support asyncio shields
+# ASYNCIO_NO_ERROR  # ASYNC102 not applicable to asyncio
 from contextlib import asynccontextmanager
 
 import trio
@@ -310,3 +310,38 @@ async def foo_nested_cs():
 # treat __aexit__ as a critical scope
 async def __aexit__():
     await foo()  # error: 4, Statement("__aexit__", lineno-1)
+
+
+# exclude `finally: await x.aclose()` with no arguments
+async def foo_aclose_noargs():
+    # no type tracking in this check, we allow any call that looks like
+    # `await [...].aclose()`
+    x = None
+
+    try:
+        ...
+    except BaseException:
+        await x.aclose()
+        await x.y.aclose()
+    finally:
+        await x.aclose()
+        await x.y.aclose()
+
+
+# should still raise errors if there's args, as that indicates it's a non-standard aclose
+async def foo():
+    # no type tracking in this check
+    x = None
+
+    try:
+        ...
+    except BaseException:
+        await x.aclose(foo)  # ASYNC102: 8, Statement("BaseException", lineno-1)
+        await x.aclose(bar=foo)  # ASYNC102: 8, Statement("BaseException", lineno-2)
+        await x.aclose(*foo)  # ASYNC102: 8, Statement("BaseException", lineno-3)
+        await x.aclose(None)  # ASYNC102: 8, Statement("BaseException", lineno-4)
+    finally:
+        await x.aclose(foo)  # ASYNC102: 8, Statement("try/finally", lineno-8)
+        await x.aclose(bar=foo)  # ASYNC102: 8, Statement("try/finally", lineno-9)
+        await x.aclose(*foo)  # ASYNC102: 8, Statement("try/finally", lineno-10)
+        await x.aclose(None)  # ASYNC102: 8, Statement("try/finally", lineno-11)

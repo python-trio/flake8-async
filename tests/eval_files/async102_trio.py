@@ -1,5 +1,5 @@
-# NOASYNCIO
 # NOANYIO - since anyio.Cancelled does not exist
+# ASYNCIO_NO_ERROR  # ASYNC102 not applicable to asyncio
 import trio
 
 

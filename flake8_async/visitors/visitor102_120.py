@@ -74,7 +74,8 @@ class Visitor102(Flake8AsyncVisitor):
             # non-critical exception handlers have the statement name set to "except"
             if self._critical_scope.name == "except":
                 self._potential_120.append((node, self._critical_scope))
-            else:
+            # not applicable to asyncio due to different cancellation semantics it uses
+            elif self.library != ("asyncio",):
                 self.error(node, self._critical_scope, error_code="ASYNC102")
 
     def visit_Raise(self, node: ast.Raise):
@@ -84,10 +85,7 @@ class Visitor102(Flake8AsyncVisitor):
 
     def is_safe_aclose_call(self, node: ast.Await) -> bool:
         return (
-            # don't mark calls safe in asyncio-only files
-            # a more defensive option would be `asyncio not in self.library`
-            self.library != ("asyncio",)
-            and isinstance(node.value, ast.Call)
+            isinstance(node.value, ast.Call)
             # only known safe if no arguments
             and not node.value.args
             and not node.value.keywords
