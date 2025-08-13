@@ -81,8 +81,6 @@ repos:
           - id: debug-statements
             language_version: python3
           - id: end-of-file-fixer
-          - id: fix-encoding-pragma
-            args: [--remove]
           - id: trailing-whitespace
             args: ['--markdown-linebreak-ext=md,markdown']
 
