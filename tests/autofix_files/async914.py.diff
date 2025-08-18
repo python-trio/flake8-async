@@ -1,0 +1,363 @@
+---
++++
+@@ x,13 x,11 @@
+ async def foo_none_true():
+     if condition():
+         await trio.lowlevel.checkpoint()
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8  # true
+     await trio.lowlevel.checkpoint()
+
+
+ async def foo_none_obj():
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8  # obj
+         await foo()
+     await trio.lowlevel.checkpoint()
+
+@@ x,31 x,26 @@
+
+ async def foo_true_true():
+     await trio.lowlevel.checkpoint()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+     if condition():
+         ...
+
+
+ async def foo_true_obj():
+     await trio.lowlevel.checkpoint()  # false -> obj
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4  # true -> obj
+     if condition():
+         await foo()
+
+
+ async def sequence_00():
+     await trio.lowlevel.checkpoint()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def sequence_01():
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+     await foo()
+
+
+ async def sequence_10():
+     await foo()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def sequence_11():
+@@ x,44 x,33 @@
+ # all permutations of 3
+ async def sequencing_000():
+     await trio.lowlevel.checkpoint()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def sequencing_001():
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+     await foo()
+
+
+ async def sequencing_010():
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+-    await foo()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
++    await foo()
+
+
+ async def sequencing_011():
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+     await foo()
+     await foo()
+
+
+ async def sequencing_100():
+     await foo()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def sequencing_101():
+     await foo()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+     await foo()
+
+
+ async def sequencing_110():
+     await foo()
+     await foo()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def sequencing_111():
+@@ x,7 x,6 @@
+
+
+ async def foo_raise():
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+     raise
+
+
+@@ x,9 x,9 @@
+ async def foo_if_3():
+     await trio.lowlevel.checkpoint()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
++    else:
++        pass
+
+
+ async def foo_if_4():
+@@ x,25 x,22 @@
+         await trio.lowlevel.checkpoint()
+     else:
+         await trio.lowlevel.checkpoint()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def foo_if_5():
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
++    else:
++        pass
+     await foo()
+
+
+ async def foo_if_6():
+     # lowlevel checkpoints made redundant within the same block will warn
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-        await foo()
+-    else:
+-        await foo()
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        await foo()
++    else:
++        await foo()
+
+
+ async def foo_if_7():
+@@ x,34 x,31 @@
+ async def foo_if_0000():
+     await trio.lowlevel.checkpoint()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
++        pass
++    else:
++        pass
+
+
+ async def foo_if_0001():
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+-    if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++    if condition():
++        pass
++    else:
++        pass
+     await foo()
+
+
+ async def foo_if_0010():  # not ideal
+     await trio.lowlevel.checkpoint()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    else:
+-        await foo()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
++        pass
++    else:
++        await foo()
+
+
+ async def foo_if_0010_2():  # not ideal
+     await trio.lowlevel.checkpoint()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     else:
+         await foo()
+
+@@ x,17 x,15 @@
+     if condition():
+         await foo()
+     else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
++        pass
+
+
+ async def foo_if_1000():
+     await foo()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
++        pass
++    else:
++        pass
+
+
+ async def foo_if_1000_1():
+@@ x,7 x,6 @@
+         await trio.lowlevel.checkpoint()
+     else:
+         await trio.lowlevel.checkpoint()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def foo_if_1000_2():
+@@ x,36 x,32 @@
+         yield
+         await trio.lowlevel.checkpoint()
+     else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
++        pass
+
+
+ async def foo_if_1000_3():
+     await foo()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+         yield
+     else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     await trio.lowlevel.checkpoint()
+
+
+ async def foo_if_1000_4():
+     await foo()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     else:
+         yield
+         await trio.lowlevel.checkpoint()
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def foo_if_1000_5():
+     await foo()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
++    else:
+         yield
+     await trio.lowlevel.checkpoint()
+
+@@ x,9 x,9 @@
+ async def foo_if_1000_6():
+     await foo()
+     if condition():
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    else:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
++    else:
++        pass
+     yield
+     await trio.lowlevel.checkpoint()
+
+@@ x,8 x,6 @@
+     await trio.lowlevel.checkpoint()
+     while condition():
+         await trio.lowlevel.checkpoint()  # ignored
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    await trio.lowlevel.checkpoint()  # ASYNC914: 4
+
+
+ async def foo_while_2():
+@@ x,15 x,15 @@
+ async def foo_try_1():
+     await trio.lowlevel.checkpoint()
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    except:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
++    except:
++        pass
+
+
+ async def foo_try_2():
+     await trio.lowlevel.checkpoint()
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     except:
+         await foo()
+
+@@ x,7 x,7 @@
+     try:
+         await foo()
+     except:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+
+
+ async def foo_try_4():
+@@ x,15 x,15 @@
+ async def foo_try_5():
+     await foo()
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    except:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
++    except:
++        pass
+
+
+ async def foo_try_6():
+     await foo()
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     except:
+         await foo()
+
+@@ x,7 x,7 @@
+     try:
+         await foo()
+     except:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+
+
+ async def foo_try_8():
+@@ x,7 x,7 @@
+
+ async def foo_try_9():
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     except:
+         await foo()
+     else:
+@@ x,7 x,7 @@
+
+ async def foo_try_12():
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     except:
+         ...
+     else:

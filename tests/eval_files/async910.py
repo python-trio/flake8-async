@@ -1,5 +1,4 @@
 # AUTOFIX
-# ASYNCIO_NO_AUTOFIX
 # mypy: disable-error-code="unreachable"
 from __future__ import annotations
 
@@ -9,6 +8,7 @@ from typing import Any, overload
 
 import pytest
 import trio
+import trio.lowlevel
 
 _ = ""
 
@@ -16,13 +16,13 @@ custom_disabled_decorator: Any = ...
 
 
 async def foo() -> Any:
-    await foo()
+    await trio.lowlevel.checkpoint()
 
 
 def bar() -> Any: ...
 
 
-# ARG --enable=ASYNC910,ASYNC911
+# ARG --enable=ASYNC910,ASYNC911,ASYNC914
 # ARG --no-checkpoint-warning-decorator=custom_disabled_decorator
 
 
@@ -57,24 +57,24 @@ async def foo1():  # error: 0, "exit", Statement("function definition", lineno)
 # If
 async def foo_if_1():  # error: 0, "exit", Statement("function definition", lineno)
     if _:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_if_2():
     if _:
-        await foo()
+        await trio.lowlevel.checkpoint()
     else:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_if_3():
-    await foo()
+    await trio.lowlevel.checkpoint()
     if _:
         ...
 
 
 async def foo_if_4():  # safe
-    await foo()
+    await trio.lowlevel.checkpoint()
     if ...:
         ...
     else:
@@ -83,16 +83,20 @@ async def foo_if_4():  # safe
 
 # IfExp
 async def foo_ifexp_1():  # safe
-    print(await foo() if _ else await foo())
+    print(await trio.lowlevel.checkpoint() if _ else await trio.lowlevel.checkpoint())
 
 
 async def foo_ifexp_2():  # error: 0, "exit", Statement("function definition", lineno)
-    print(_ if False and await foo() else await foo())
+    print(
+        _
+        if False and await trio.lowlevel.checkpoint()
+        else await trio.lowlevel.checkpoint()
+    )
 
 
 # nested function definition
 async def foo_func_1():
-    await foo()
+    await trio.lowlevel.checkpoint()
 
     async def foo_func_2():  # error: 4, "exit", Statement("function definition", lineno)
         bar()
@@ -103,7 +107,7 @@ async def foo_func_1():
 # fmt: off
 async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
     async def foo_func_4():
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_func_5():  # error: 0, "exit", Statement("function definition", lineno)
@@ -139,95 +143,95 @@ async def foo_overload_1(_: str): ...
 
 
 async def foo_overload_1(_: bytes | str):
-    await foo()
+    await trio.lowlevel.checkpoint()
 
 
 # conditions
 async def foo_condition_1():  # safe
-    if await foo():
+    if await trio.lowlevel.checkpoint():
         ...
 
 
 async def foo_condition_2():  # error: 0, "exit", Statement("function definition", lineno)
-    if False and await foo():
+    if False and await trio.lowlevel.checkpoint():
         ...
 
 
 async def foo_condition_3():  # error: 0, "exit", Statement("function definition", lineno)
-    if ... and await foo():
+    if ... and await trio.lowlevel.checkpoint():
         ...
 
 
 async def foo_condition_4():  # safe
-    while await foo():
+    while await trio.lowlevel.checkpoint():
         ...
 
 
 async def foo_condition_5():  # safe
-    for i in await foo():
+    for i in await trio.lowlevel.checkpoint():
         ...
 
 
 async def foo_condition_6():  # in theory error, but not worth parsing
-    for i in (None, await foo()):
+    for i in (None, await trio.lowlevel.checkpoint()):
         break
 
 
 # loops
 async def foo_while_1():  # error: 0, "exit", Statement("function definition", lineno)
     while _:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_while_2():  # now safe
     while _:
-        await foo()
+        await trio.lowlevel.checkpoint()
     else:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_while_3():  # safe
-    await foo()
+    await trio.lowlevel.checkpoint()
     while _:
         ...
 
 
 async def foo_while_4():  # error: 0, "exit", Statement("function definition", lineno)
     while False:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 # for
 async def foo_for_1():  # error: 0, "exit", Statement("function definition", lineno)
     for _ in "":
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_for_2():  # now safe
     for _ in "":
-        await foo()
+        await trio.lowlevel.checkpoint()
     else:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_while_break_1():  # safe
     while bar():
-        await foo()
+        await trio.lowlevel.checkpoint()
         break
     else:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_while_break_2():  # error: 0, "exit", Statement("function definition", lineno)
     while bar():
         break
     else:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_while_break_3():  # error: 0, "exit", Statement("function definition", lineno)
     while bar():
-        await foo()
+        await trio.lowlevel.checkpoint()
         break
     else:
         ...
@@ -242,22 +246,22 @@ async def foo_while_break_4():  # error: 0, "exit", Statement("function definiti
 
 async def foo_while_continue_1():  # safe
     while bar():
-        await foo()
+        await trio.lowlevel.checkpoint()
         continue
     else:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_while_continue_2():  # safe
     while bar():
         continue
     else:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_while_continue_3():  # error: 0, "exit", Statement("function definition", lineno)
     while bar():
-        await foo()
+        await trio.lowlevel.checkpoint()
         continue
     else:
         ...
@@ -289,7 +293,7 @@ async def foo_raise_1():  # safe
 
 async def foo_raise_2():  # safe
     if _:
-        await foo()
+        await trio.lowlevel.checkpoint()
     else:
         raise ValueError()
 
@@ -297,15 +301,26 @@ async def foo_raise_2():  # safe
 # try
 # safe only if (try or else) and all except bodies either await or raise
 # if `foo()` raises a ValueError it's not checkpointed
-async def foo_try_1():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_try_1a():  # error: 0, "exit", Statement("function definition", lineno)
     try:
-        await foo()
+        await trio.lowlevel.checkpoint()
     except ValueError:
         ...
     except:
         raise
     else:
-        await foo()
+        ...
+
+
+async def foo_try_1b():  # error: 0, "exit", Statement("function definition", lineno)
+    try:
+        ...
+    except ValueError:
+        ...
+    except:
+        raise
+    else:
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_try_2():  # safe
@@ -316,14 +331,14 @@ async def foo_try_2():  # safe
     except:
         raise
     finally:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_try_3():  # safe
     try:
-        await foo()
+        await trio.lowlevel.checkpoint()
     except ValueError:
-        await foo()
+        await trio.lowlevel.checkpoint()
     except:
         raise
 
@@ -336,11 +351,11 @@ async def foo_try_4():  # safe
     except:
         raise
     else:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_try_5():  # safe
-    await foo()
+    await trio.lowlevel.checkpoint()
     try:
         pass
     except:
@@ -360,11 +375,18 @@ async def foo_try_6():  # error: 0, "exit", Statement("function definition", lin
 
 async def foo_try_7():  # safe
     try:
-        await foo()
+        await trio.lowlevel.checkpoint()
     except:
-        await foo()
+        await trio.lowlevel.checkpoint()
     else:
         pass
+
+
+async def foo_try_8():  # error: 0, "exit", Statement("function definition", lineno)
+    try:
+        ...
+    except:
+        await trio.lowlevel.checkpoint()
 
 
 # https://github.com/python-trio/flake8-async/issues/45
@@ -435,46 +457,46 @@ async def foo_return_1():
 async def foo_return_2():  # safe
     if _:
         return  # error: 8, "return", Statement("function definition", lineno-2)
-    await foo()
+    await trio.lowlevel.checkpoint()
 
 
 async def foo_return_3():  # error: 0, "exit", Statement("function definition", lineno)
     if _:
-        await foo()
+        await trio.lowlevel.checkpoint()
         return  # safe
 
 
 # loop over non-empty static collection
 async def foo_loop_static():
     for i in [1, 2, 3]:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 # also handle range with constants
 async def foo_range_1():
     for i in range(5):
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_range_2():
     for i in range(5, 10):
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_range_3():
     for i in range(10, 5, -1):
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_range_4():  # error: 0, "exit", Statement("function definition", lineno)
     for i in range(10, 5):
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 # error on complex parameters
 async def foo_range_5():  # error: 0, "exit", Statement("function definition", lineno)
     for i in range(3 - 2):
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 # https://github.com/python-trio/flake8-async/issues/47
@@ -485,7 +507,7 @@ async def f():
             return
         # If you delete this loop, no warning.
         while bar():
-            await foo()
+            await trio.lowlevel.checkpoint()
 
 
 async def f1():
@@ -552,12 +574,12 @@ async def foo_test_return2():
 
 
 async def foo_comprehension_1():
-    [... for x in range(10) if await foo()]
+    [... for x in range(10) if await trio.lowlevel.checkpoint()]
 
 
 # should error
 async def foo_comprehension_2():  # error: 0, "exit", Statement("function definition", lineno)
-    [await foo() for x in range(10) if bar()]
+    [await trio.lowlevel.checkpoint() for x in range(10) if bar()]
 
 
 async def foo_comprehension_3():
@@ -572,7 +594,7 @@ async def foo_comprehension_3():
 
 
 async def await_in_gen_target():
-    (print(x) for x in await foo())
+    (print(x) for x in await trio.lowlevel.checkpoint())
 
 
 async def await_everywhere_except_gen_target():  # error: 0, "exit", Statement("function definition", lineno)
@@ -594,7 +616,7 @@ async def fn_226():  # error: 0, "exit", Statement("function definition", lineno
 # the await() is evaluated in the parent scope
 async def foo_default_value_await():
     async def bar(  # error: 4, "exit", Statement("function definition", lineno)
-        arg=await foo(),
+        arg=await trio.lowlevel.checkpoint(),
     ):
         print()
 
@@ -603,4 +625,4 @@ async def foo_nested_empty_async():
     # this previously errored because leave_FunctionDef assumed a non-empty body
     async def bar(): ...
 
-    await foo()
+    await trio.lowlevel.checkpoint()

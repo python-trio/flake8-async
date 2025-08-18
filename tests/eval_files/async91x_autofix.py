@@ -1,6 +1,4 @@
 # AUTOFIX
-# asyncio will raise the same errors, but does not have autofix available
-# ASYNCIO_NO_AUTOFIX
 from __future__ import annotations
 
 """Docstring for file
@@ -8,16 +6,18 @@ from __future__ import annotations
 So we make sure that import is added after it.
 """
 # isort: skip_file
-# ARG --enable=ASYNC910,ASYNC911
+# ARG --enable=ASYNC910,ASYNC911,ASYNC914
 
 from typing import Any
+
+import trio
 
 
 def bar() -> Any: ...
 
 
 async def foo() -> Any:
-    await foo()
+    await trio.lowlevel.checkpoint()
 
 
 async def foo1():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
@@ -44,24 +44,24 @@ async def foo_if():
 
 
 async def foo_while():
-    await foo()
+    await trio.lowlevel.checkpoint()
     while True:
         yield  # ASYNC911: 8, "yield", Statement("yield", lineno)
 
 
 async def foo_while2():
-    await foo()
+    await trio.lowlevel.checkpoint()
     while True:
         yield
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo_while3():
-    await foo()
+    await trio.lowlevel.checkpoint()
     while True:
         if bar():
             return
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 # check that multiple checkpoints don't get inserted
@@ -91,7 +91,7 @@ async def foo_while_nested_func():
         async def bar():
             while bar():
                 ...
-            await foo()
+            await trio.lowlevel.checkpoint()
 
 
 # Code coverage: visitors run when inside a sync function that has an async function.
@@ -125,6 +125,6 @@ async def livelocks():
 async def no_checkpoint():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     while bar():
         try:
-            await foo("1")  # type: ignore[call-arg]
+            await trio.lowlevel.checkpoint("1")  # type: ignore[call-arg]
         except TypeError:
             ...

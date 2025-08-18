@@ -1,7 +1,7 @@
 ---
 +++
 @@ x,6 x,7 @@
- # ASYNCIO_NO_AUTOFIX
+ # AUTOFIX
 
 
 +import trio

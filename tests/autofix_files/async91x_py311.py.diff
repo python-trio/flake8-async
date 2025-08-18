@@ -1,9 +1,11 @@
 ---
 +++
-@@ x,6 x,7 @@
+@@ x,7 x,8 @@
+     except* RuntimeError:
          raise
      else:
-         await foo()
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
 +    await trio.lowlevel.checkpoint()
 
 
@@ -11,7 +13,7 @@
 @@ x,6 x,7 @@
          ...
      else:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -29,5 +31,81 @@
      while True:  # ASYNC913: 4
 +        await trio.lowlevel.checkpoint()
          try:
-             await foo()
-         except* ValueError:
+             # If this was lowlevel it'd be marked as ASYNC914 after we insert a checkpoint
+             # before the try. TODO: Ideally it'd be fixed in the same pass.
+@@ x,15 x,15 @@
+ async def foo_try_1():
+     await trio.lowlevel.checkpoint()
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    except* BaseException:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
++    except* BaseException:
++        pass
+
+
+ async def foo_try_2():
+     await trio.lowlevel.checkpoint()
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     except* BaseException:
+         await foo()
+
+@@ x,7 x,7 @@
+     try:
+         await foo()
+     except* BaseException:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+
+
+ async def foo_try_4():
+@@ x,15 x,15 @@
+ async def foo_try_5():
+     await foo()
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
+-    except* BaseException:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
++    except* BaseException:
++        pass
+
+
+ async def foo_try_6():
+     await foo()
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     except* BaseException:
+         await foo()
+
+@@ x,7 x,7 @@
+     try:
+         await foo()
+     except* BaseException:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+
+
+ async def foo_try_8():
+@@ x,7 x,7 @@
+
+ async def foo_try_9():
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     except* BaseException:
+         await foo()
+     else:
+@@ x,7 x,7 @@
+
+ async def foo_try_12():
+     try:
+-        await trio.lowlevel.checkpoint()  # ASYNC914: 8
++        pass
+     except* BaseException:
+         ...
+     else:

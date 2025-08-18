@@ -8,7 +8,6 @@ It currently does not care if 910/911 would also be triggered."""
 # not what the user wants though, so this would be a case in favor of making 910/911 not
 # trigger when async124 does.
 # AUTOFIX # all errors get "fixed" except for foo_fix_no_subfix in async124_no_autofix.py
-# ASYNCIO_NO_AUTOFIX
 from typing import Any, overload
 from pytest import fixture
 
