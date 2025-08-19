@@ -1,13 +1,5 @@
 ---
 +++
-@@ x,6 x,7 @@
- # ARG --enable=ASYNC910,ASYNC911
-
- from typing import Any
-+import trio
-
-
- def bar() -> Any: ...
 @@ x,30 x,38 @@
 
  async def foo1():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
@@ -41,7 +33,7 @@
 
 
  async def foo_while():
-     await foo()
+     await trio.lowlevel.checkpoint()
      while True:
 +        await trio.lowlevel.checkpoint()
          yield  # ASYNC911: 8, "yield", Statement("yield", lineno)
@@ -79,7 +71,7 @@
 
          async def bar():
 @@ x,3 x,4 @@
-             await foo("1")  # type: ignore[call-arg]
+             await trio.lowlevel.checkpoint("1")  # type: ignore[call-arg]
          except TypeError:
              ...
 +    await trio.lowlevel.checkpoint()

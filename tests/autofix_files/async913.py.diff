@@ -1,13 +1,6 @@
 ---
 +++
-@@ x,12 x,14 @@
- # ASYNCIO_NO_AUTOFIX
-
-
-+import trio
- def condition() -> bool:
-     return False
-
+@@ x,6 x,7 @@
 
  async def foo():
      while True:  # ASYNC913: 4
@@ -21,8 +14,8 @@
      while True:  # ASYNC913: 4
 +        await trio.lowlevel.checkpoint()
          if condition():
-             await foo()
-
+             # This await would trigger ASYNC914 (if it was a lowlevel) after
+             # a checkpoint is inserted outside the if statement.
 @@ x,19 x,23 @@
      while True:
          if condition():
@@ -53,7 +46,7 @@
      while True:  # ASYNC913: 4
 +        await trio.lowlevel.checkpoint()
          if ...:
-             await foo()
+             await foo()  # would also trigger 914 if lowlevel
              return
 @@ x,6 x,7 @@
 
@@ -65,7 +58,7 @@
 
 @@ x,14 x,18 @@
  async def foo_indef_and_911():
-     await foo()
+     await trio.lowlevel.checkpoint()
      while True:  # ASYNC913: 4
 +        await trio.lowlevel.checkpoint()
          if condition():
@@ -76,7 +69,7 @@
 
 
  async def foo_indef_and_911_2():
-     await foo()
+     await trio.lowlevel.checkpoint()
      while True:  # ASYNC913: 4
 +        await trio.lowlevel.checkpoint()
          while condition():

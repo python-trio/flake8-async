@@ -2,7 +2,6 @@
 # see exception_suppress_context_manager.py for main testing
 
 # AUTOFIX
-# ASYNCIO_NO_AUTOFIX
 
 from contextlib import *
 
