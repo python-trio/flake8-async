@@ -120,7 +120,7 @@ class Visitor21X(Visitor200):
 class Visitor212(Visitor200):
     error_codes: Mapping[str, str] = {
         "ASYNC212": (
-            "Blocking sync HTTP call {1} on httpx object {0}, use httpx.AsyncClient."
+            "Blocking sync HTTP call {0} on httpx object {1}, use httpx.AsyncClient."
         )
     }
 
