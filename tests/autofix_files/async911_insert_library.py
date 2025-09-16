@@ -1,7 +1,6 @@
 # ensure that import gets added when adding checkpoints in loop body
 
 # AUTOFIX
-# ASYNCIO_NO_AUTOFIX
 
 
 import trio
