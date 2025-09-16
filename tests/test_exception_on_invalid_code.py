@@ -10,7 +10,7 @@ from flake8_async.visitors.helpers import iter_guaranteed_once, iter_guaranteed_
 
 def _raises_on_code_cst(source: str):
     expression = cst.parse_expression(source)
-    with pytest.raises(RuntimeError, match="Invalid literal values.*"):
+    with pytest.raises(RuntimeError, match="Invalid literal values"):
         iter_guaranteed_once_cst(expression)
 
 
@@ -24,7 +24,7 @@ def _raises_on_code_ast(source: str):
     assert isinstance(expression, ast.Expr)
     call = expression.value
     assert isinstance(call, ast.Call)
-    with pytest.raises(RuntimeError, match="Invalid literal values.*"):
+    with pytest.raises(RuntimeError, match="Invalid literal values"):
         iter_guaranteed_once(call)
 
 
