@@ -1,9 +1,9 @@
-# ARG --enable=ASYNC910,ASYNC911,ASYNC913
+# ARG --enable=ASYNC910,ASYNC911,ASYNC913,ASYNC914
 # AUTOFIX
-# ASYNCIO_NO_AUTOFIX
-
 
 import trio
+
+
 def condition() -> bool:
     return False
 
@@ -16,13 +16,16 @@ async def foo():
 
 async def foo2():
     while True:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo3():
     while True:  # ASYNC913: 4
         await trio.lowlevel.checkpoint()
         if condition():
+            # This await would trigger ASYNC914 (if it was a lowlevel) after
+            # a checkpoint is inserted outside the if statement.
+            # TODO: Ideally we'd fix both in a single pass.
             await foo()
 
 
@@ -60,7 +63,7 @@ async def foo_indef_and_910():
     while True:  # ASYNC913: 4
         await trio.lowlevel.checkpoint()
         if ...:
-            await foo()
+            await foo()  # would also trigger 914 if lowlevel
             return
 
 
@@ -72,7 +75,7 @@ async def foo_indef_and_910_2():
 
 
 async def foo_indef_and_911():
-    await foo()
+    await trio.lowlevel.checkpoint()
     while True:  # ASYNC913: 4
         await trio.lowlevel.checkpoint()
         if condition():
@@ -83,7 +86,7 @@ async def foo_indef_and_911():
 
 
 async def foo_indef_and_911_2():
-    await foo()
+    await trio.lowlevel.checkpoint()
     while True:  # ASYNC913: 4
         await trio.lowlevel.checkpoint()
         while condition():

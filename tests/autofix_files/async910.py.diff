@@ -10,15 +10,15 @@
  # If
  async def foo_if_1():  # error: 0, "exit", Statement("function definition", lineno)
      if _:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
  async def foo_if_2():
 @@ x,6 x,7 @@
-
- async def foo_ifexp_2():  # error: 0, "exit", Statement("function definition", lineno)
-     print(_ if False and await foo() else await foo())
+         if False and await trio.lowlevel.checkpoint()
+         else await trio.lowlevel.checkpoint()
+     )
 +    await trio.lowlevel.checkpoint()
 
 
@@ -34,7 +34,7 @@
 @@ x,17 x,21 @@
  async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
      async def foo_func_4():
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -55,13 +55,13 @@
 
 @@ x,11 x,13 @@
  async def foo_condition_2():  # error: 0, "exit", Statement("function definition", lineno)
-     if False and await foo():
+     if False and await trio.lowlevel.checkpoint():
          ...
 +    await trio.lowlevel.checkpoint()
 
 
  async def foo_condition_3():  # error: 0, "exit", Statement("function definition", lineno)
-     if ... and await foo():
+     if ... and await trio.lowlevel.checkpoint():
          ...
 +    await trio.lowlevel.checkpoint()
 
@@ -70,7 +70,7 @@
 @@ x,6 x,7 @@
  async def foo_while_1():  # error: 0, "exit", Statement("function definition", lineno)
      while _:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -78,14 +78,14 @@
 @@ x,12 x,14 @@
  async def foo_while_4():  # error: 0, "exit", Statement("function definition", lineno)
      while False:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
  # for
  async def foo_for_1():  # error: 0, "exit", Statement("function definition", lineno)
      for _ in "":
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -93,7 +93,7 @@
 @@ x,6 x,7 @@
          break
      else:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -133,7 +133,15 @@
 @@ x,6 x,7 @@
          raise
      else:
-         await foo()
+         ...
++    await trio.lowlevel.checkpoint()
+
+
+ async def foo_try_1b():  # error: 0, "exit", Statement("function definition", lineno)
+@@ x,6 x,7 @@
+         raise
+     else:
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -146,6 +154,14 @@
 
 
  async def foo_try_7():  # safe
+@@ x,6 x,7 @@
+         ...
+     except:
+         await trio.lowlevel.checkpoint()
++    await trio.lowlevel.checkpoint()
+
+
+ # https://github.com/python-trio/flake8-async/issues/45
 @@ x,6 x,7 @@
          await trio.sleep(0)
      except:
@@ -172,11 +188,11 @@
      if _:
 +        await trio.lowlevel.checkpoint()
          return  # error: 8, "return", Statement("function definition", lineno-2)
-     await foo()
+     await trio.lowlevel.checkpoint()
 
 @@ x,6 x,7 @@
      if _:
-         await foo()
+         await trio.lowlevel.checkpoint()
          return  # safe
 +    await trio.lowlevel.checkpoint()
 
@@ -185,14 +201,14 @@
 @@ x,12 x,14 @@
  async def foo_range_4():  # error: 0, "exit", Statement("function definition", lineno)
      for i in range(10, 5):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
  # error on complex parameters
  async def foo_range_5():  # error: 0, "exit", Statement("function definition", lineno)
      for i in range(3 - 2):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -200,7 +216,7 @@
 @@ x,6 x,7 @@
  # should error
  async def foo_comprehension_2():  # error: 0, "exit", Statement("function definition", lineno)
-     [await foo() for x in range(10) if bar()]
+     [await trio.lowlevel.checkpoint() for x in range(10) if bar()]
 +    await trio.lowlevel.checkpoint()
 
 
@@ -222,7 +238,7 @@
 
  # the await() is evaluated in the parent scope
 @@ x,6 x,7 @@
-         arg=await foo(),
+         arg=await trio.lowlevel.checkpoint(),
      ):
          print()
 +        await trio.lowlevel.checkpoint()

@@ -1,6 +1,7 @@
-# ARG --enable=ASYNC910,ASYNC911,ASYNC913
+# ARG --enable=ASYNC910,ASYNC911,ASYNC913,ASYNC914
 # AUTOFIX
-# ASYNCIO_NO_AUTOFIX
+
+import trio
 
 
 def condition() -> bool:
@@ -14,12 +15,15 @@ async def foo():
 
 async def foo2():
     while True:
-        await foo()
+        await trio.lowlevel.checkpoint()
 
 
 async def foo3():
     while True:  # ASYNC913: 4
         if condition():
+            # This await would trigger ASYNC914 (if it was a lowlevel) after
+            # a checkpoint is inserted outside the if statement.
+            # TODO: Ideally we'd fix both in a single pass.
             await foo()
 
 
@@ -52,7 +56,7 @@ async def foo_conditional_nested():
 async def foo_indef_and_910():
     while True:  # ASYNC913: 4
         if ...:
-            await foo()
+            await foo()  # would also trigger 914 if lowlevel
             return
 
 
@@ -63,7 +67,7 @@ async def foo_indef_and_910_2():
 
 
 async def foo_indef_and_911():
-    await foo()
+    await trio.lowlevel.checkpoint()
     while True:  # ASYNC913: 4
         if condition():
             yield  # ASYNC911: 12, "yield", Stmt("yield", line)  # ASYNC911: 12, "yield", Stmt("yield", line+2)
@@ -72,7 +76,7 @@ async def foo_indef_and_911():
 
 
 async def foo_indef_and_911_2():
-    await foo()
+    await trio.lowlevel.checkpoint()
     while True:  # ASYNC913: 4
         while condition():
             yield  # ASYNC911: 12, "yield", Stmt("yield", line)
