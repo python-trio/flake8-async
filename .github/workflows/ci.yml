@@ -13,10 +13,11 @@ jobs:
     pyright:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Set up Python
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v6
               with:
+                  python-version: 3.x
                   cache: pip
             - name: Install typing dependencies
               run: pip install -r requirements-typing.txt
@@ -30,14 +31,15 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+                python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
             fail-fast: false
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v6
               with:
                   python-version: ${{ matrix.python-version }}
+                  allow-prereleases: true
             - name: Install dependencies
               run: python -m pip install --upgrade pip setuptools tox
             - name: Run tests with flake8
@@ -50,11 +52,11 @@ jobs:
         strategy:
             fail-fast: false
         steps:
-            - uses: actions/checkout@v4
-            - name: Set up Python 3.13
-              uses: actions/setup-python@v5
+            - uses: actions/checkout@v5
+            - name: Set up Python
+              uses: actions/setup-python@v6
               with:
-                  python-version: 3.13
+                  python-version: 3.x
             - name: Install dependencies
               run: |
                   python -m pip install --upgrade pip setuptools tox
@@ -67,9 +69,11 @@ jobs:
         needs: [pyright, test]
         if: github.repository == 'python-trio/flake8-async' && github.ref == 'refs/heads/main'
         steps:
-            - uses: actions/checkout@v4
-            - name: Set up Python 3
-              uses: actions/setup-python@v5
+            - uses: actions/checkout@v5
+            - name: Set up Python
+              uses: actions/setup-python@v6
+              with:
+                  python-version: 3.x
             - name: Install tools
               run: python -m pip install --upgrade build pip setuptools wheel twine gitpython
             - name: Upload new release
