@@ -73,7 +73,7 @@ jobs:
             - name: Set up Python
               uses: actions/setup-python@v6
               with:
-                python-version: 3.x
+                  python-version: 3.x
             - name: Install tools
               run: python -m pip install --upgrade build pip setuptools wheel twine gitpython
             - name: Upload new release
