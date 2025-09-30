@@ -1,7 +1,7 @@
 ---
 +++
 @@ x,6 x,7 @@
- # ASYNCIO_NO_AUTOFIX
+ # AUTOFIX # all errors get "fixed" except for foo_fix_no_subfix in async124_no_autofix.py
  from typing import Any, overload
  from pytest import fixture
 +import trio
