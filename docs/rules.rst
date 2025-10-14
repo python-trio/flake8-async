@@ -85,16 +85,16 @@ _`ASYNC120` : await-in-except
     If this checkpoint is cancelled, the current active exception will be replaced by the ``Cancelled`` exception, and cannot be reraised later.
     This will not trigger when :ref:`ASYNC102 <ASYNC102>` does, and if you don't care about losing non-cancelled exceptions you could disable this rule.
     This is currently not able to detect asyncio shields.
-    
+
     To handle this correctly, use a shielded cancel scope with a timeout::
-    
+
         try:
             await process()
         except Exception:
             with trio.fail_after(seconds, shield=True):
                 await cleanup()
             raise
-    
+
     The shield prevents cancellation from replacing the current exception, while the timeout ensures cleanup can't block indefinitely. Use :func:`trio.move_on_after` if you want to suppress timeout errors rather than raise them.
 
 _`ASYNC121`: control-flow-in-taskgroup
