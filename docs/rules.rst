@@ -86,6 +86,17 @@ _`ASYNC120` : await-in-except
     This will not trigger when :ref:`ASYNC102 <ASYNC102>` does, and if you don't care about losing non-cancelled exceptions you could disable this rule.
     This is currently not able to detect asyncio shields.
 
+    To handle this correctly, use a shielded cancel scope with a timeout::
+
+        try:
+            await process()
+        except Exception:
+            with trio.fail_after(seconds, shield=True):
+                await cleanup()
+            raise
+
+    The shield prevents cancellation from replacing the current exception, while the timeout ensures cleanup can't block indefinitely. Use :func:`trio.move_on_after` if you want to suppress timeout errors rather than raise them.
+
 _`ASYNC121`: control-flow-in-taskgroup
     `return`, `continue`, and `break` inside a :ref:`taskgroup_nursery` can lead to counterintuitive behaviour. Refactor the code to instead cancel the :ref:`cancel_scope` inside the TaskGroup/Nursery and place the statement outside of the TaskGroup/Nursery block. In asyncio a user might expect the statement to have an immediate effect, but it will wait for all tasks to finish before having an effect. See `Trio issue #1493 <https://github.com/python-trio/trio/issues/1493>`_ for further issues specific to trio/anyio.
 
