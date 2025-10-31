@@ -1,7 +1,6 @@
 # ARG --enable=ASYNC103,ASYNC104
 import sys
 
-
 try:
     ...
 # raise different exception
