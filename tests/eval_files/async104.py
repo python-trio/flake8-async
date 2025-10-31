@@ -1,4 +1,7 @@
 # ARG --enable=ASYNC103,ASYNC104
+import sys
+
+
 try:
     ...
 # raise different exception
@@ -104,7 +107,8 @@ def foo2():
         else:
             return  # type: ignore[unreachable] # error: 12
         finally:
-            return  # error: 12
+            if sys.version_info < (3, 14):
+                return  # error: 12
 
 
 # don't avoid re-raise with continue/break
