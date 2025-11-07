@@ -231,6 +231,10 @@ _`ASYNC913` : indefinite-loop-no-guaranteed-checkpoint
     An indefinite loop (e.g. ``while True``) has no guaranteed :ref:`checkpoint <checkpoint>`. This could potentially cause a deadlock.
     This will also error if there's no guaranteed :ref:`cancel point <cancel_point>`, where even though it won't deadlock the loop might become an uncancelable dry-run loop.
 
+_`ASYNC914`: redundant-lowlevel-checkpoint
+    Warns on calls to :func:`trio.lowlevel.checkpoint`, :func:`anyio.lowlevel.checkpoint` and :func:`asyncio.sleep` that are not required to satisfy `ASYNC910`_, `ASYNC911`_ and `ASYNC912`_.
+    Excessive calls to the scheduler will impact performance, and bloat the code, but sometimes you do want to trigger checkpoints at specific points and can safely ignore this warning.
+
 .. _autofix-support:
 
 Autofix support

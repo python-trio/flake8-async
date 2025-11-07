@@ -4,6 +4,11 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+25.8.1
+======
+- Added :ref:`ASYNC914 <async914>` redundant-lowlevel-checkpoint.
+- :ref:`ASYNC910 <async910>`, :ref:`ASYNC911 <async911>` and :ref:`ASYNC913 <async913>` can now autofix asyncio code by inserting `asyncio.await(0)`.
+
 25.7.1
 ======
 - :ref:`ASYNC102 <async102>` no longer triggered for asyncio due to different cancellation semantics it uses.

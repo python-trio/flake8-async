@@ -8,11 +8,11 @@
      yield  # error: 4, "yield", Statement("function definition", lineno-1)
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Statement("yield", lineno-1)
-     await foo()
+     await trio.lowlevel.checkpoint()
 
 @@ x,22 x,29 @@
  async def foo_yield_3():  # error: 0, "exit", Statement("yield", lineno+2)
-     await foo()
+     await trio.lowlevel.checkpoint()
      yield
 +    await trio.lowlevel.checkpoint()
 
@@ -34,7 +34,7 @@
 
 
  async def foo_yield_return_2():
-     await foo()
+     await trio.lowlevel.checkpoint()
      yield
 +    await trio.lowlevel.checkpoint()
      return  # error: 4, "return", Statement("yield", lineno-1)
@@ -66,7 +66,7 @@
  async def foo_async_for_3():  # safe
 @@ x,13 x,16 @@
  async def foo_for():  # error: 0, "exit", Statement("yield", lineno+3)
-     await foo()
+     await trio.lowlevel.checkpoint()
      for i in "":
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno)
@@ -75,7 +75,7 @@
 
  async def foo_for_1():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+3)
      for _ in "":
-         await foo()
+         await trio.lowlevel.checkpoint()
          yield
 +    await trio.lowlevel.checkpoint()
 
@@ -83,14 +83,14 @@
  # while
 @@ x,13 x,16 @@
      else:
-         await foo()  # will always run
+         await trio.lowlevel.checkpoint()  # will always run
      yield  # safe
 +    await trio.lowlevel.checkpoint()
 
 
  # simple yield-in-loop case
  async def foo_while_2():  # error: 0, "exit", Statement("yield", lineno+3)
-     await foo()
+     await trio.lowlevel.checkpoint()
      while foo():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno)
@@ -99,7 +99,7 @@
 
  # no checkpoint after yield if else is entered
 @@ x,39 x,52 @@
-         await foo()
+         await trio.lowlevel.checkpoint()
          yield
      else:
 +        await trio.lowlevel.checkpoint()
@@ -109,7 +109,7 @@
 
  # check that errors are suppressed in visit_While
  async def foo_while_4():  # error: 0, "exit", Statement("yield", lineno+3) # error: 0, "exit", Statement("yield", lineno+5) # error: 0, "exit", Statement("yield", lineno+7)
-     await foo()
+     await trio.lowlevel.checkpoint()
      while foo():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno) # error: 8, "yield", Statement("yield", lineno+2) # error: 8, "yield", Statement("yield", lineno+4)
@@ -124,7 +124,7 @@
 
  # check that state management is handled in for loops as well
  async def foo_while_4_for():  # error: 0, "exit", Statement("yield", lineno+3) # error: 0, "exit", Statement("yield", lineno+5) # error: 0, "exit", Statement("yield", lineno+7)
-     await foo()
+     await trio.lowlevel.checkpoint()
      for i in bar():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno) # error: 8, "yield", Statement("yield", lineno+2) # error: 8, "yield", Statement("yield", lineno+4)
@@ -139,7 +139,7 @@
 
  # check error suppression is reset
  async def foo_while_5():
-     await foo()
+     await trio.lowlevel.checkpoint()
      while foo():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno)
@@ -149,23 +149,23 @@
              yield  # error: 12, "yield", Statement("function definition", lineno-1)
 +            await trio.lowlevel.checkpoint()
 
-     await foo()
+     await trio.lowlevel.checkpoint()
 
 @@ x,16 x,19 @@
  async def foo_while_continue_1():  # error: 0, "exit", Statement("yield", lineno+3)
-     await foo()
+     await trio.lowlevel.checkpoint()
      while foo():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno)
          if condition():
              continue
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
  # multiple continues
  async def foo_while_continue_2():  # error: 0, "exit", Statement("yield", lineno+3)
-     await foo()
+     await trio.lowlevel.checkpoint()
      while foo():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno)
@@ -174,7 +174,7 @@
 @@ x,6 x,7 @@
          while foo():
              yield  # safe
-             await foo()
+             await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -182,7 +182,7 @@
 @@ x,7 x,9 @@
              break
      else:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Statement("function definition", lineno-6)
 +    await trio.lowlevel.checkpoint()
@@ -192,23 +192,23 @@
 @@ x,6 x,7 @@
          if condition():
              break
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
  # guaranteed if else and break
 @@ x,6 x,7 @@
      else:
-         await foo()  # runs if 0-iter
+         await trio.lowlevel.checkpoint()  # runs if 0-iter
      yield  # safe
 +    await trio.lowlevel.checkpoint()
 
 
  # break at non-guaranteed checkpoint
 @@ x,7 x,9 @@
-         await foo()  # might not run
+         await trio.lowlevel.checkpoint()  # might not run
      else:
-         await foo()  # might not run
+         await trio.lowlevel.checkpoint()  # might not run
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Statement("function definition", lineno-7)
 +    await trio.lowlevel.checkpoint()
@@ -216,9 +216,9 @@
 
  # check break is reset on nested
 @@ x,7 x,9 @@
-             await foo()
+             await trio.lowlevel.checkpoint()
          yield  # safe
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Statement("yield", lineno-9)
 +    await trio.lowlevel.checkpoint()
@@ -226,7 +226,7 @@
 
  # check multiple breaks
 @@ x,7 x,9 @@
-         await foo()
+         await trio.lowlevel.checkpoint()
          if condition():
              break
 +    await trio.lowlevel.checkpoint()
@@ -245,7 +245,7 @@
  async def foo_while_endless_1():
 @@ x,6 x,7 @@
      while foo():
-         await foo()
+         await trio.lowlevel.checkpoint()
          yield
 +    await trio.lowlevel.checkpoint()
 
@@ -265,13 +265,13 @@
  # no checkpoint after yield in ValueError
 @@ x,12 x,14 @@
      try:
-         await foo()
+         await trio.lowlevel.checkpoint()
      except ValueError:
 +        await trio.lowlevel.checkpoint()
          # try might not have checkpointed
          yield  # error: 8, "yield", Statement("function definition", lineno-5)
      except:
-         await foo()
+         await trio.lowlevel.checkpoint()
      else:
          pass
 +    await trio.lowlevel.checkpoint()
@@ -280,7 +280,7 @@
  async def foo_try_3():  # error: 0, "exit", Statement("yield", lineno+6)
 @@ x,13 x,16 @@
      except:
-         await foo()
+         await trio.lowlevel.checkpoint()
      else:
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("function definition", lineno-6)
@@ -294,17 +294,17 @@
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("function definition", lineno-4)
      finally:
-         await foo()
+         await trio.lowlevel.checkpoint()
 @@ x,6 x,7 @@
      try:
-         await foo()
+         await trio.lowlevel.checkpoint()
      finally:
 +        await trio.lowlevel.checkpoint()
          # try might crash before checkpoint
          yield  # error: 8, "yield", Statement("function definition", lineno-5)
-         await foo()
+         await trio.lowlevel.checkpoint()
 @@ x,7 x,9 @@
-         await foo()
+         await trio.lowlevel.checkpoint()
      except ValueError:
          pass
 +    await trio.lowlevel.checkpoint()
@@ -315,11 +315,11 @@
  async def foo_try_7():  # error: 0, "exit", Statement("yield", lineno+17)
 @@ x,6 x,7 @@
          yield
-         await foo()
+         await trio.lowlevel.checkpoint()
      except SyntaxError:
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno-7)
-         await foo()
+         await trio.lowlevel.checkpoint()
      finally:
 @@ x,6 x,7 @@
      # by any of the excepts, jumping straight to the finally.
@@ -332,13 +332,21 @@
 @@ x,6 x,7 @@
          raise
      else:
-         await foo()
+         await trio.lowlevel.checkpoint()
++    await trio.lowlevel.checkpoint()
+
+
+ async def foo_try_8b():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+3)
+@@ x,6 x,7 @@
+         ...
+     except:
+         raise
 +    await trio.lowlevel.checkpoint()
 
 
  # no checkpoint after yield in else
 @@ x,6 x,7 @@
-         await foo()
+         await trio.lowlevel.checkpoint()
      else:
          yield
 +    await trio.lowlevel.checkpoint()
@@ -347,31 +355,31 @@
  # bare except means we'll jump to finally after full execution of either try or the except
 @@ x,6 x,7 @@
      except ValueError:
-         await foo()
+         await trio.lowlevel.checkpoint()
      finally:
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("function definition", lineno-6)
-         await foo()
+         await trio.lowlevel.checkpoint()
 
 @@ x,6 x,7 @@
      try:
-         await foo()
+         await trio.lowlevel.checkpoint()
      finally:
 +        await trio.lowlevel.checkpoint()
          # try might crash before checkpoint
          yield  # error: 8, "yield", Statement("function definition", lineno-5)
-         await foo()
+         await trio.lowlevel.checkpoint()
 @@ x,9 x,11 @@
  # if
  async def foo_if_1():
      if condition():
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("function definition", lineno-2)
-         await foo()
+         await trio.lowlevel.checkpoint()
      else:
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("function definition", lineno-5)
-         await foo()
+         await trio.lowlevel.checkpoint()
 
 @@ x,7 x,9 @@
          ...
@@ -394,7 +402,7 @@
 
  async def foo_if_4():  # error: 0, "exit", Statement("yield", lineno+7)
 @@ x,7 x,9 @@
-         await foo()
+         await trio.lowlevel.checkpoint()
      else:
          ...
 +    await trio.lowlevel.checkpoint()
@@ -415,7 +423,7 @@
  async def foo_if_6():  # error: 0, "exit", Statement("yield", lineno+8)
 @@ x,7 x,9 @@
          yield
-         await foo()
+         await trio.lowlevel.checkpoint()
          ...
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Statement("yield", lineno-5)
@@ -424,17 +432,17 @@
 
  async def foo_if_7():  # error: 0, "exit", Statement("function definition", lineno)
 @@ x,6 x,7 @@
-         await foo()
+         await trio.lowlevel.checkpoint()
          yield
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
  async def foo_if_8():  # error: 0, "exit", Statement("function definition", lineno)
 @@ x,21 x,25 @@
-         await foo()
+         await trio.lowlevel.checkpoint()
          yield
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
@@ -458,7 +466,7 @@
 
  # normal function
 @@ x,7 x,9 @@
-     await foo()
+     await trio.lowlevel.checkpoint()
 
      async def foo_func_2():  # error: 4, "exit", Statement("yield", lineno+1)
 +        await trio.lowlevel.checkpoint()
@@ -470,14 +478,14 @@
 @@ x,6 x,7 @@
 
      async def foo_func_4():
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
 
 
  async def foo_func_5():  # error: 0, "exit", Statement("yield", lineno+2)
 @@ x,12 x,14 @@
          async def foo_func_7():
-             await foo()
+             await trio.lowlevel.checkpoint()
              ...
 +    await trio.lowlevel.checkpoint()
  # fmt: on
@@ -493,23 +501,23 @@
 @@ x,6 x,7 @@
          if condition():
              continue
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-7)
 
      # continue/else
 @@ x,6 x,7 @@
              continue
-         await foo()
+         await trio.lowlevel.checkpoint()
      else:
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Stmt("yield", line-8)
-     await foo()
+     await trio.lowlevel.checkpoint()
      yield
 @@ x,6 x,7 @@
 
      for _ in ():
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
@@ -517,17 +525,17 @@
 @@ x,14 x,17 @@
 
      for _ in "   ".strip():
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in range(0):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in (*range(0),):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
@@ -535,12 +543,12 @@
 @@ x,10 x,12 @@
 
      for _ in {**{}}:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in {**{}, **{}}:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
@@ -548,38 +556,38 @@
 @@ x,31 x,38 @@
 
      for _ in {}:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in "":
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in """""":
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in [[], []][0]:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for _ in [[], []].__getitem__(0):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      # not handled
      for _ in list((1, 2)):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-5)
 
      for _ in list():
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
@@ -587,7 +595,7 @@
 @@ x,6 x,7 @@
          if condition():
              break
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-6)
 
@@ -595,7 +603,7 @@
 @@ x,6 x,7 @@
 
      while False:
-         await foo()  # type: ignore[unreachable]
+         await trio.lowlevel.checkpoint()  # type: ignore[unreachable]
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
@@ -603,13 +611,13 @@
 @@ x,11 x,13 @@
      # false positive on containers
      while [1, 2]:
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-5)
 
      # will get caught by any number of linters, but trio911 will also complain
      for _ in 5:  # type: ignore
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-5)
 
@@ -617,12 +625,12 @@
 @@ x,10 x,12 @@
 
      for i in range(1 + 1):  # not handled
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      for i in range(None):  # type: ignore
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
@@ -630,7 +638,7 @@
 @@ x,6 x,7 @@
 
      for i in range(-3.5):  # type: ignore
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
@@ -638,28 +646,28 @@
 @@ x,20 x,24 @@
 
      for i in range(10, 5):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      # binary operations are not handled
      for i in range(3 - 2):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-5)
 
      for i in range(10**3):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-4)
 
      # nor nested unary operations
      for i in range(--3):
-         await foo()
+         await trio.lowlevel.checkpoint()
 +    await trio.lowlevel.checkpoint()
      yield  # error: 4, "yield", Stmt("yield", line-5)
 
-     await foo()
+     await trio.lowlevel.checkpoint()
 @@ x,6 x,7 @@
 
      # guaranteed iteration and await in value, but test is not guaranteed

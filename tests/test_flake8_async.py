@@ -128,6 +128,14 @@ def replace_library(string: str, original: str = "trio", new: str = "anyio") -> 
                 from_ = anyio_
                 to_ = trio_
             string = replace_str(string, from_, to_)
+    elif original == "trio" and new == "asyncio":
+        string = replace_str(
+            string, r"trio.lowlevel.checkpoint\(\)", "asyncio.sleep(0)"
+        )
+    elif original == "asyncio" and new == "trio":
+        string = replace_str(
+            string, r"asyncio.sleep\(0\)", r"trio.lowlevel.checkpoint\(\)"
+        )
     return replace_str(string, original, new)
 
 

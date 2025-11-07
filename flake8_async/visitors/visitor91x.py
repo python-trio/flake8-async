@@ -6,6 +6,7 @@ Visitor91X contains checks for
 * ASYNC911 async-generator-no-checkpoint
 * ASYNC912 cancel-scope-no-guaranteed-checkpoint
 * ASYNC913 indefinite-loop-no-guaranteed-checkpoint
+* ASYNC914 redundant-lowlevel-checkpoint
 
 Visitor124 contains
 * ASYNC124 async-function-could-be-sync
@@ -178,6 +179,15 @@ class LoopState:
         cst.Return | cst.Yield | ArtificialStatement
     ] = field(default_factory=list)
 
+    # fmt: off
+    # https://github.com/psf/black/issues/4733
+    possibly_redundant_lowlevel_checkpoints: list[  # pyright: ignore[reportUnknownVariableType]
+        cst.BaseExpression
+    ] = field(
+        default_factory=list
+    )
+    # fmt: on
+
     def copy(self):
         return LoopState(
             infinite_loop=self.infinite_loop,
@@ -187,6 +197,7 @@ class LoopState:
             uncheckpointed_before_break=self.uncheckpointed_before_break.copy(),
             artificial_errors=self.artificial_errors.copy(),
             nodes_needing_checkpoints=self.nodes_needing_checkpoints.copy(),
+            possibly_redundant_lowlevel_checkpoints=self.possibly_redundant_lowlevel_checkpoints.copy(),
         )
 
 
@@ -233,10 +244,11 @@ class MatchState:
 def checkpoint_statement(library: str) -> cst.SimpleStatementLine:
     # logic before this should stop code from wanting to insert the non-existing
     # asyncio.lowlevel.checkpoint
-    assert library != "asyncio"
-    return cst.SimpleStatementLine(
-        [cst.Expr(cst.parse_expression(f"await {library}.lowlevel.checkpoint()"))]
-    )
+    if library == "asyncio":
+        expr = "await asyncio.sleep(0)"
+    else:
+        expr = f"await {library}.lowlevel.checkpoint()"
+    return cst.SimpleStatementLine([cst.Expr(cst.parse_expression(expr))])
 
 
 class CommonVisitors(cst.CSTTransformer, ABC):
@@ -256,6 +268,7 @@ class CommonVisitors(cst.CSTTransformer, ABC):
         self.explicitly_imported_library: dict[str, bool] = {
             "trio": False,
             "anyio": False,
+            "asyncio": False,
         }
         self.add_import: set[str] = set()
 
@@ -371,7 +384,7 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
     leave_Return = leave_Yield  # type: ignore
 
 
-disable_codes_by_default("ASYNC910", "ASYNC911", "ASYNC912", "ASYNC913")
+disable_codes_by_default("ASYNC910", "ASYNC911", "ASYNC912", "ASYNC913", "ASYNC914")
 
 
 @dataclass
@@ -380,6 +393,37 @@ class ContextManager:
     call: MatchingCall[cst.Call] | None = None
     line: int | None = None
     column: int | None = None
+
+
+class LowlevelCheckpointsRemover(cst.CSTTransformer):
+    def __init__(self, stmts_to_remove: set[cst.Await]):
+        super().__init__()
+        self.stmts_to_remove = stmts_to_remove
+
+    def leave_Await(
+        self, original_node: cst.Await, updated_node: cst.Await
+    ) -> cst.Await:
+        # return original node to preserve identity
+        return original_node
+
+    # we can return RemovalSentinel from Await, so instead need to remove the line.
+    # This would break the code if it's the only line in a block, but currently the logic
+    # would only ever trigger on multi-statement blocks so we don't need to worry.
+
+    def leave_SimpleStatementLine(
+        self,
+        original_node: cst.SimpleStatementLine,
+        updated_node: cst.SimpleStatementLine,
+    ) -> cst.SimpleStatementLine | cst.RemovalSentinel:
+        if (
+            len(original_node.body) == 1
+            and isinstance(original_node.body[0], cst.Expr)
+            and (stmt := original_node.body[0].value) in self.stmts_to_remove
+        ):
+            # type checker fails to infer type narrowing from membership check
+            self.stmts_to_remove.discard(stmt)  # type: ignore[arg-type]
+            return cst.RemoveFromParent()
+        return original_node
 
 
 @error_class_cst
@@ -402,6 +446,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "{0}.{1} context contains no checkpoints, remove the context or add"
             " `await {0}.lowlevel.checkpoint()`."
         ),
+        "ASYNC914": "Redundant checkpoint with no effect on program execution.",
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -410,6 +455,15 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.async_function = False
         self.uncheckpointed_statements: set[Statement] = set()
         self.comp_unknown = False
+        self.checkpointed_by_lowlevel = False
+
+        # value == False, not redundant (or not determined to be redundant yet)
+        # value == True, there were no uncheckpointed statements when we encountered it
+        # value = expr/stmt, made redundant by the given expr/stmt
+        self.lowlevel_checkpoints: dict[
+            cst.Await, cst.BaseStatement | cst.BaseExpression | cst.Raise | bool
+        ] = {}
+        self.lowlevel_checkpoint_updated_nodes: dict[cst.Await, cst.Await] = {}
 
         self.loop_state = LoopState()
         self.try_state = TryState()
@@ -429,11 +483,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         if code is None:
             code = "ASYNC911" if self.has_yield else "ASYNC910"
 
-        return (
-            not self.noautofix
-            and super().should_autofix(node, code)
-            and self.library != ("asyncio",)
-        )
+        return not self.noautofix and super().should_autofix(node, code)
 
     def checkpoint_cancel_point(self) -> None:
         for cm in reversed(self.has_checkpoint_stack):
@@ -508,6 +558,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "has_yield",
             "async_function",
             "uncheckpointed_statements",
+            "lowlevel_checkpoints",
+            "checkpointed_by_lowlevel",
+            "lowlevel_checkpoint_updated_nodes",
             # comp_unknown does not need to be saved
             "loop_state",
             "try_state",
@@ -570,10 +623,27 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         if self.new_body is not None:
             updated_node = updated_node.with_changes(body=self.new_body)
+
+        res: cst.FunctionDef = updated_node
+        to_remove: set[cst.Await] = set()
+        for expr, value in self.lowlevel_checkpoints.items():
+            if (
+                value is not False
+                and self.error(expr, error_code="ASYNC914")
+                and self.should_autofix(original_node, code="ASYNC914")
+            ):
+                to_remove.add(self.lowlevel_checkpoint_updated_nodes.pop(expr))
+
+        if to_remove:
+            remover = LowlevelCheckpointsRemover(to_remove)
+            visited = updated_node.visit(remover)
+            assert isinstance(visited, cst.FunctionDef)
+            res = visited
+
         self.restore_state(original_node)
         # reset self.new_body
         self.new_body = None
-        return updated_node
+        return res
 
     # error if function exit/return/yields with uncheckpointed statements
     # returns a bool indicating if any real (i.e. not artificial) errors were raised
@@ -651,18 +721,56 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             error_code="ASYNC911" if self.has_yield else "ASYNC910",
         )
 
+    def is_lowlevel_checkpoint(self, node: cst.BaseExpression) -> bool:
+        return m.matches(
+            node,
+            m.Call(
+                m.Attribute(
+                    m.Attribute(m.Name("trio") | m.Name("anyio"), m.Name("lowlevel")),
+                    m.Name("checkpoint"),
+                )
+            )
+            | m.Call(
+                m.Attribute(m.Name("asyncio"), m.Name("sleep")), [m.Arg(m.Integer("0"))]
+            ),
+        )
+
     def leave_Await(
-        self, original_node: cst.Await, updated_node: cst.Await
+        self, original_node: cst.Await | cst.Raise, updated_node: cst.Await | cst.Raise
     ) -> cst.Await:
-        # the expression being awaited is not checkpointed
-        # so only set checkpoint after the await node
+        # The expression being awaited is not checkpointed
+        # so we place all logic in `leave_Await` instead of `visit_Await`.
 
-        # all nodes are now checkpointed
+        # ASYNC914
+        # do a match against the awaited expr
+        # if that is trio.lowlevel.checkpoint, and uncheckpointed statements
+        # are empty, raise ASYNC914.
+        # To avoid false alarms we avoid marking the first checkpoint in
+        # a loop as redundant.
+        if (
+            isinstance(original_node, cst.Await)
+            and self.is_lowlevel_checkpoint(original_node.expression)
+            and self.uncheckpointed_statements != {ARTIFICIAL_STATEMENT}
+        ):
+            if not self.uncheckpointed_statements:
+                self.lowlevel_checkpoints[original_node] = True
+            else:
+                self.lowlevel_checkpoints[original_node] = False
+            # We need the original node to get the line/column when raising the error,
+            # but the updated node when removing it with autofixing.
+            self.lowlevel_checkpoint_updated_nodes[original_node] = cast(
+                "cst.Await", updated_node
+            )
+        elif not self.uncheckpointed_statements:
+            for expr, value in self.lowlevel_checkpoints.items():
+                if value is False:
+                    self.lowlevel_checkpoints[expr] = original_node
+
         self.checkpoint()
-        return updated_node
+        return updated_node  # type: ignore  # raise/await blabla, see below
 
-    # raising exception means we don't need to checkpoint so we can treat it as one
-    # can't use TypeVar due to libcst's built-in type checking not supporting it
+    # Raising exception means we don't need to checkpoint so we can treat it as one.
+    # Can't use TypeVar due to libcst's built-in type checking not supporting it.
     leave_Raise = leave_Await  # type: ignore
 
     def _is_exception_suppressing_context_manager(self, node: cst.With) -> bool:
@@ -854,16 +962,60 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         assert original_node.deep_equals(updated_node)
         return original_node
 
+    def _merge_lowlevel_checkpoint_branch(
+        self,
+        node: (
+            cst.Try
+            | cst.TryStar
+            | cst.ExceptHandler
+            | cst.ExceptStarHandler
+            | cst.If
+            | cst.IfExp
+            | cst.MatchCase
+            | cst.For
+            | cst.While
+        ),
+    ) -> None:
+        # Value can be True, False, or a CSTNode.
+        # Checkpoints can be in one, or both, of the branches.
+        # In order for a statement to be in both branches with different values,
+        # imagine a statement before an `if`, that is made redundant within the `if`,
+        # and we then merge the if-entered and if-not-entered branches.
+        branch_cp = self.outer[node]["lowlevel_checkpoints"]
+        for cp, value in self.lowlevel_checkpoints.items():
+            old_value = branch_cp.get(cp, None)
+            if old_value is None or value is old_value:
+                continue
+            if False in (value, old_value):
+                # If checkpoint was made redundant in one branch, but not
+                # in another, it's not redundant.
+                self.lowlevel_checkpoints[cp] = False
+            elif True in (value, old_value):
+                # Nothing to checkpoint in one branch, but was made redundant
+                # by a specific statement in the other branch.
+                # Keep it as "nothing to checkpoint".
+                self.lowlevel_checkpoints[cp] = True
+            else:
+                raise AssertionError("logic error")
+        # Add checkpoints that were added in the other branch.
+        for cp, old_value in branch_cp.items():
+            if cp not in self.lowlevel_checkpoints:
+                self.lowlevel_checkpoints[cp] = old_value
+
     # valid checkpoint if there's valid checkpoints (or raise) in:
     # (try or else) and all excepts, or in finally
     #
     # try can jump into any except or into the finally* at any point during it's
     # execution so we need to make sure except & finally can handle worst-case
     # * unless there's a bare except / except BaseException - not implemented.
+
+    # ASYNC914 does not do sophisticated handling of finally/else, it simply views
+    # every single try/except/finally/else block as independent blocks we *might* enter.
+    # In practice this has the only effect that we
     def visit_Try(self, node: cst.Try | cst.TryStar):
         if not self.async_function:
             return
-        self.save_state(node, "try_state", copy=True)
+        self.save_state(node, "try_state", "lowlevel_checkpoints", copy=True)
         # except & finally guaranteed to enter with checkpoint if checkpointed
         # before try and no yield in try body.
         self.try_state.body_uncheckpointed_statements = (
@@ -877,65 +1029,84 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             )
 
     def leave_Try_body(self, node: cst.Try | cst.TryStar):
+        if not self.async_function:
+            return
         # save state at end of try for entering else
         self.try_state.try_checkpoint = self.uncheckpointed_statements
 
         # check that all except handlers checkpoint (await or most likely raise)
         self.try_state.except_uncheckpointed_statements = set()
 
+        self._merge_lowlevel_checkpoint_branch(node)
+
     def visit_ExceptHandler(self, node: cst.ExceptHandler | cst.ExceptStarHandler):
+        if not self.async_function:
+            return
         # enter with worst case of try
         self.uncheckpointed_statements = (
             self.try_state.body_uncheckpointed_statements.copy()
         )
+        self.save_state(node, "lowlevel_checkpoints", copy=True)
 
     def leave_ExceptHandler(
         self,
         original_node: cst.ExceptHandler | cst.ExceptStarHandler,
         updated_node: cst.ExceptHandler | cst.ExceptStarHandler,
     ) -> Any:  # not worth creating a TypeVar to handle correctly
+        if not self.async_function:
+            return updated_node
         self.try_state.except_uncheckpointed_statements.update(
             self.uncheckpointed_statements
         )
+        self._merge_lowlevel_checkpoint_branch(original_node)
         return updated_node
 
     def visit_Try_orelse(self, node: cst.Try | cst.TryStar):
+        if not self.async_function:
+            return
         # check else
         # if else runs it's after all of try, so restore state to back then
         self.uncheckpointed_statements = self.try_state.try_checkpoint
 
     def leave_Try_orelse(self, node: cst.Try | cst.TryStar):
+        if not self.async_function:
+            return
         # checkpoint if else checkpoints, and all excepts checkpoint
         self.uncheckpointed_statements.update(
             self.try_state.except_uncheckpointed_statements
         )
+        self._merge_lowlevel_checkpoint_branch(node)
 
     def visit_Try_finalbody(self, node: cst.Try | cst.TryStar):
-        if node.finalbody:
-            self.try_state.added = (
-                self.try_state.body_uncheckpointed_statements.difference(
-                    self.uncheckpointed_statements
-                )
-            )
-            # if there's no bare except or except BaseException, we can jump into
-            # finally from any point in try. But the exception will be reraised after
-            # finally, so track what we add so it can be removed later.
-            # (This is for catching return or yield in the finally, which is usually
-            # very bad)
-            if not any(
-                h.type is None
-                or (isinstance(h.type, cst.Name) and h.type.value == "BaseException")
-                for h in node.handlers
-            ):
-                self.uncheckpointed_statements.update(self.try_state.added)
+        if not self.async_function or not node.finalbody:
+            return
+        self.try_state.added = self.try_state.body_uncheckpointed_statements.difference(
+            self.uncheckpointed_statements
+        )
+        # if there's no bare except or except BaseException, we can jump into
+        # finally from any point in try. But the exception will be reraised after
+        # finally, so track what we add so it can be removed later.
+        # (This is for catching return or yield in the finally, which is usually
+        # very bad)
+        if not any(
+            h.type is None
+            or (isinstance(h.type, cst.Name) and h.type.value == "BaseException")
+            for h in node.handlers
+        ):
+            self.uncheckpointed_statements.update(self.try_state.added)
 
     def leave_Try_finalbody(self, node: cst.Try | cst.TryStar):
-        if node.finalbody:
-            self.uncheckpointed_statements.difference_update(self.try_state.added)
+        if not self.async_function or not node.finalbody:
+            return
+        self.uncheckpointed_statements.difference_update(self.try_state.added)
+        self._merge_lowlevel_checkpoint_branch(node)
 
     def leave_Try(
         self, original_node: cst.Try | cst.TryStar, updated_node: cst.Try | cst.TryStar
     ) -> cst.Try | cst.TryStar:
+        if not self.async_function:
+            return updated_node
+        del self.outer[original_node]["lowlevel_checkpoints"]
         self.restore_state(original_node)
         return updated_node
 
@@ -949,23 +1120,32 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     visit_ExceptStarHandler = visit_ExceptHandler
     leave_ExceptStarHandler = leave_ExceptHandler
 
+    def _swap(self, node: cst.CSTNode, name: str) -> None:
+        a = self.outer[node][name]
+        self.outer[node][name] = getattr(self, name)
+        setattr(self, name, a)
+
+    # if a previous lowlevel checkpoint is marked as redundant after all bodies, then
+    # it's redundant.
+    # If any body marks it as necessary, then it's necessary.
+    # Otherwise, it keeps its state from before.
     def leave_If_test(self, node: cst.If | cst.IfExp) -> None:
         if not self.async_function:
             return
-        self.save_state(node, "uncheckpointed_statements", copy=True)
+        self.save_state(
+            node, "uncheckpointed_statements", "lowlevel_checkpoints", copy=True
+        )
 
     def leave_If_body(self, node: cst.If | cst.IfExp) -> None:
         if not self.async_function:
             return
 
-        # restore state to after test, saving current state instead
-        (
-            self.uncheckpointed_statements,
-            self.outer[node]["uncheckpointed_statements"],
-        ) = (
-            self.outer[node]["uncheckpointed_statements"],
-            self.uncheckpointed_statements,
-        )
+        # Restore state to after test, saving current state instead.
+        # This is importantly not executed after `else`.
+        # `elif` is represented by nested if/else, so we only need to handle the
+        # if/else case correctly.
+        self._swap(node, "uncheckpointed_statements")
+        self._swap(node, "lowlevel_checkpoints")
 
     def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
         if self.async_function:
@@ -973,6 +1153,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             self.uncheckpointed_statements.update(
                 self.outer[original_node]["uncheckpointed_statements"]
             )
+            self._merge_lowlevel_checkpoint_branch(original_node)
         return updated_node
 
     # libcst calls attributes in the order they appear in the code, so we manually
@@ -1011,6 +1192,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             and (node.guard is None or not self.uncheckpointed_statements)
         ):
             self.match_state.has_fallback = True
+        self.save_state(node, "lowlevel_checkpoints", copy=True)
 
     def leave_MatchCase(
         self, original_node: cst.MatchCase, updated_node: cst.MatchCase
@@ -1019,6 +1201,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.match_state.case_uncheckpointed_statements.update(
             self.uncheckpointed_statements
         )
+        self._merge_lowlevel_checkpoint_branch(original_node)
         return updated_node
 
     def leave_Match(
@@ -1039,6 +1222,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.save_state(
             node,
             "loop_state",
+            "lowlevel_checkpoints",
             copy=True,
         )
         self.loop_state = LoopState()
@@ -1151,6 +1335,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                     self.loop_state.uncheckpointed_before_continue
                 )
 
+        # ASYNC914
+        self._merge_lowlevel_checkpoint_branch(node)
+
     leave_For_body = leave_While_body
 
     def leave_While_orelse(self, node: cst.For | cst.While):
@@ -1170,6 +1357,17 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         # reset break & continue in case of nested loops
         self.outer[node]["uncheckpointed_statements"] = self.uncheckpointed_statements
+
+        # TODO: if this loop always checkpoints
+        # e.g. from being an async for, or being guaranteed to run once, or other stuff.
+        # then we can warn about redundant checkpoints before the loop.
+        # ... except if the reason we always checkpoint is due to redundant checkpoints
+        # we're about to remove.... :thinking:
+
+        # ASYNC914
+        if node.orelse:
+            self._merge_lowlevel_checkpoint_branch(node)
+        del self.outer[node]["lowlevel_checkpoints"]
 
     leave_For_orelse = leave_While_orelse
 
@@ -1238,7 +1436,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     def visit_BooleanOperation_right(self, node: cst.BooleanOperation):
         if not self.async_function:
             return
-        self.save_state(node, "uncheckpointed_statements", copy=True)
+        self.save_state(
+            node, "uncheckpointed_statements", "lowlevel_checkpoints", copy=True
+        )
 
     def leave_BooleanOperation_right(self, node: cst.BooleanOperation):
         if not self.async_function:
@@ -1246,6 +1446,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.uncheckpointed_statements.update(
             self.outer[node]["uncheckpointed_statements"]
         )
+        self.lowlevel_checkpoints = self.outer[node]["lowlevel_checkpoints"]
 
     # comprehensions are simpler than loops, since they cannot contain yields
     # or many other complicated statements, but their subfields are not in the order
@@ -1324,7 +1525,11 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         """
         for alias in node.names:
             if m.matches(
-                alias, m.ImportAlias(name=m.Name("trio") | m.Name("anyio"), asname=None)
+                alias,
+                m.ImportAlias(
+                    name=m.Name("trio") | m.Name("anyio") | m.Name("asyncio"),
+                    asname=None,
+                ),
             ):
                 assert isinstance(alias.name.value, str)
                 self.explicitly_imported_library[alias.name.value] = True

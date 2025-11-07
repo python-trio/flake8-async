@@ -2,7 +2,6 @@
 # ARG --enable=ASYNC910,ASYNC911
 
 # AUTOFIX
-# ASYNCIO_NO_AUTOFIX
 
 # 912 is tested in eval_files/async912.py to avoid problems with autofix/asyncio
 
