@@ -29,7 +29,7 @@ repos:
       rev: v3.21.0
       hooks:
           - id: pyupgrade
-            args: [--py39-plus]
+            args: [--py310-plus]
             exclude: tests/eval_files/async103.py
 
     - repo: https://github.com/pycqa/isort
@@ -41,8 +41,8 @@ repos:
       rev: v1.18.2
       hooks:
           - id: mypy
-            # uses py311 syntax, mypy configured for py39
-            exclude: tests/(eval|autofix)_files/.*_py(310|311).py
+            # uses py311 syntax, mypy configured for py310
+            exclude: tests/(eval|autofix)_files/.*_py311.py
 
     - repo: https://github.com/RobertCraigie/pyright-python
       rev: v1.1.407

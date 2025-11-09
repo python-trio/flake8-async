@@ -166,17 +166,12 @@ class LoopState:
         default_factory=set[Statement]
     )
     uncheckpointed_before_break: set[Statement] = field(default_factory=set[Statement])
-    # pyright emits reportUnknownVariableType, requiring the generic to default_factory
-    # to be specified.
-    # But for these we require a union, and `|` doesn't work on py39, and uses of
-    # `Union` gets autofixed by ruff.
-    # So.... let's just ignore the error for now
-    artificial_errors: set[  # pyright: ignore[reportUnknownVariableType]
-        cst.Return | cst.Yield
-    ] = field(default_factory=set)
-    nodes_needing_checkpoints: list[  # pyright: ignore[reportUnknownVariableType]
-        cst.Return | cst.Yield | ArtificialStatement
-    ] = field(default_factory=list)
+    artificial_errors: set[cst.Return | cst.Yield] = field(
+        default_factory=set[cst.Return | cst.Yield]
+    )
+    nodes_needing_checkpoints: list[cst.Return | cst.Yield | ArtificialStatement] = (
+        field(default_factory=list[cst.Return | cst.Yield | ArtificialStatement])
+    )
 
     def copy(self):
         return LoopState(

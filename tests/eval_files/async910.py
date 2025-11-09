@@ -409,22 +409,24 @@ async def try_bare_except_reraises():
         ...
 
 
-async def return_in_finally_bare_except_checkpoint():
-    try:
-        await trio.sleep(0)
-    except:
-        await trio.sleep(0)
-    finally:
-        return
-
-
-async def return_in_finally_bare_except_empty():
-    try:
-        await trio.sleep(0)
-    except:
-        ...
-    finally:
-        return  # error: 8, 'return', Statement('function definition', lineno-6)
+# return in finally is a SyntaxError on py314. We currently don't have
+# test infra to set a max python version for an eval file.
+# async def return_in_finally_bare_except_checkpoint():
+#     try:
+#         await trio.sleep(0)
+#     except:
+#         await trio.sleep(0)
+#     finally:
+#         return
+#
+#
+# async def return_in_finally_bare_except_empty():
+#     try:
+#         await trio.sleep(0)
+#     except:
+#         ...
+#     finally:
+#         return  # error: 8, 'return', Statement('function definition', lineno-6)
 
 
 # early return

@@ -154,13 +154,7 @@
 
 
  # safe
-@@ x,16 x,19 @@
-     except:
-         ...
-     finally:
-+        await trio.lowlevel.checkpoint()
-         return  # error: 8, 'return', Statement('function definition', lineno-6)
-
+@@ x,11 x,13 @@
 
  # early return
  async def foo_return_1():

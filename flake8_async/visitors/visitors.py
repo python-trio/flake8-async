@@ -128,8 +128,7 @@ class Visitor112(Flake8AsyncVisitor):
                 nursery_type = "task group"
                 start_methods = ("create_task",)
             else:
-                # incorrectly marked as not covered on py39
-                continue  # pragma: no cover  # https://github.com/nedbat/coveragepy/issues/198
+                continue
 
             body_call = node.body[0].value
             if isinstance(body_call, ast.Await):

@@ -78,8 +78,40 @@
          yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-2) # ASYNC911: 8, "yield", Statement("yield", lineno)
 
          async def bar():
-@@ x,3 x,4 @@
+@@ x,6 x,7 @@
              await foo("1")  # type: ignore[call-arg]
          except TypeError:
+             ...
++    await trio.lowlevel.checkpoint()
+
+
+ # structural pattern matching
+@@ x,6 x,7 @@
+             ...
+         case _:
+             await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ async def match_no_fallback() -> (  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+@@ x,6 x,7 @@
+             await foo()
+         case _ if True:
+             await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ async def match_fallback_is_guarded() -> (  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+@@ x,6 x,7 @@
+             await foo()
+         case _ if foo():
+             await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ async def match_all_cases() -> None:
+@@ x,3 x,4 @@
+             ...
+         case _ if await foo():
              ...
 +    await trio.lowlevel.checkpoint()
