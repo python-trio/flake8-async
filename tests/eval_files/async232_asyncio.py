@@ -82,7 +82,7 @@ async def file_text_5(f: TextIOWrapper | None = None):
         f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
-async def file_text_6(f: Optional[TextIOWrapper] = None):
+async def file_text_6(f: TextIOWrapper | None = None):
     f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     if f:
         f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
@@ -228,12 +228,12 @@ async def attribute_access_on_object():
 
 # The type checker is very naive, and will not do any parsing of logic pertaining
 # to the type
-async def type_restricting_1(f: Optional[TextIOWrapper] = None):
+async def type_restricting_1(f: TextIOWrapper | None = None):
     if f is None:
         f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
-async def type_restricting_2(f: Optional[TextIOWrapper] = None):
+async def type_restricting_2(f: TextIOWrapper | None = None):
     if isinstance(f, TextIOWrapper):
         return
     f.read()  # ASYNC232_asyncio: 4, 'read', 'f'

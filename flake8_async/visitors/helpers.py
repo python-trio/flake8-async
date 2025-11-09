@@ -9,7 +9,7 @@ import ast
 from collections.abc import Sized
 from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, Generic, TypeVar, Union
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import libcst as cst
 import libcst.matchers as m
@@ -35,11 +35,9 @@ if TYPE_CHECKING:
 
     T = TypeVar("T", bound=Flake8AsyncVisitor)
     T_CST = TypeVar("T_CST", bound=Flake8AsyncVisitor_cst)
-    T_EITHER = TypeVar(
-        "T_EITHER", bound=Union[Flake8AsyncVisitor, Flake8AsyncVisitor_cst]
-    )
+    T_EITHER = TypeVar("T_EITHER", bound=Flake8AsyncVisitor | Flake8AsyncVisitor_cst)
 
-T_Call = TypeVar("T_Call", bound=Union[cst.Call, ast.Call])
+T_Call = TypeVar("T_Call", bound=cst.Call | ast.Call)
 
 
 def error_class(error_class: type[T]) -> type[T]:
