@@ -82,7 +82,7 @@ async def file_text_5(f: TextIOWrapper | None = None):
         f.read()  # ASYNC232_asyncio: 8, 'read', 'f'
 
 
-async def file_text_6(f: TextIOWrapper | None = None):
+async def file_text_6(f: Optional[TextIOWrapper] = None):
     f.read()  # ASYNC232_asyncio: 4, 'read', 'f'
     if f:
         f.read()  # ASYNC232_asyncio: 8, 'read', 'f'

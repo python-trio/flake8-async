@@ -30,7 +30,8 @@ repos:
       hooks:
           - id: pyupgrade
             args: [--py310-plus]
-            exclude: tests/eval_files/async103.py
+            # async232 explicitly tests Optional[]
+            exclude: tests/eval_files/async(103|232|232_asyncio).py
 
     - repo: https://github.com/pycqa/isort
       rev: 7.0.0
