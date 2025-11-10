@@ -166,13 +166,11 @@ def test_200_options(capsys: pytest.CaptureFixture[str]):
 
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_anyio_from_config(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-    assert tmp_path.joinpath(".flake8").write_text(
-        """
+    assert tmp_path.joinpath(".flake8").write_text("""
 [flake8]
 anyio = True
 select = ASYNC220
-"""
-    )
+""")
 
     from flake8_async.visitors.visitor2xx import Visitor22X  # noqa: PLC0415
 
@@ -210,24 +208,20 @@ select = ASYNC220
 
 # `code` parameter temporarily introduced to test deprecation of trio200-blocking-calls
 def _test_async200_from_config_common(tmp_path: Path, code: str = "async200") -> str:
-    assert tmp_path.joinpath(".flake8").write_text(
-        f"""
+    assert tmp_path.joinpath(".flake8").write_text(f"""
 [flake8]
 {code}-blocking-calls =
   other -> async,
   sync_fns.* -> the_async_equivalent,
 select = ASYNC200
 extend-ignore = E
-"""
-    )
-    assert tmp_path.joinpath("example.py").write_text(
-        """
+""")
+    assert tmp_path.joinpath("example.py").write_text("""
 import sync_fns
 
 async def foo():
     sync_fns.takes_a_long_time()
-"""
-    )
+""")
     return (
         "./example.py:5:5: ASYNC200 User-configured blocking sync call sync_fns.* "
         "in async function, consider replacing with the_async_equivalent.\n"
@@ -506,13 +500,11 @@ def test_disable_noqa_ast(
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_config_select_error_code(tmp_path: Path) -> None:
     # this ... seems to work? I'm confused
-    assert tmp_path.joinpath(".flake8").write_text(
-        """
+    assert tmp_path.joinpath(".flake8").write_text("""
 [flake8]
 select = ASYNC100
 extend-select = ASYNC100
-"""
-    )
+""")
     res = subprocess.run(
         ["flake8", "--help"], cwd=tmp_path, capture_output=True, check=False
     )
@@ -523,12 +515,10 @@ extend-select = ASYNC100
 # flake8>=6 enforces three-letter error codes in config
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_config_ignore_error_code(tmp_path: Path) -> None:
-    assert tmp_path.joinpath(".flake8").write_text(
-        """
+    assert tmp_path.joinpath(".flake8").write_text("""
 [flake8]
 ignore = ASYNC100
-"""
-    )
+""")
     res = subprocess.run(
         ["flake8", "--help"],
         cwd=tmp_path,
@@ -545,12 +535,10 @@ ignore = ASYNC100
 # flake8>=6 enforces three-letter error codes in config
 @pytest.mark.skipif(flake8 is None, reason="flake8 is not installed")
 def test_config_extend_ignore_error_code(tmp_path: Path) -> None:
-    assert tmp_path.joinpath(".flake8").write_text(
-        """
+    assert tmp_path.joinpath(".flake8").write_text("""
 [flake8]
 extend-ignore = ASYNC100
-"""
-    )
+""")
     res = subprocess.run(
         ["flake8", "--help"],
         cwd=tmp_path,
