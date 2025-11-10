@@ -340,3 +340,39 @@ except:
         ...
     except BaseException:  # ASYNC103_trio: 11, "BaseException"
         ...
+
+# structural pattern matching
+try:
+    ...
+except BaseException as e:  # ASYNC103_trio: 7, "BaseException"
+    match foo():
+        case True:
+            raise e
+        case False:
+            ...
+        case _:
+            raise e
+
+try:
+    ...
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
+    match foo():
+        case True:
+            raise
+
+try:
+    ...
+except BaseException:  # safe
+    match foo():
+        case True:
+            raise
+        case False:
+            raise
+        case _:
+            raise
+try:
+    ...
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
+    match foo():
+        case _ if foo():
+            raise

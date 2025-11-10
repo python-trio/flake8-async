@@ -227,12 +227,12 @@ async def attribute_access_on_object():
 
 # The type checker is very naive, and will not do any parsing of logic pertaining
 # to the type
-async def type_restricting_1(f: Optional[TextIOWrapper] = None):
+async def type_restricting_1(f: TextIOWrapper | None = None):
     if f is None:
         f.read()  # ASYNC232: 8, 'read', 'f', "trio"
 
 
-async def type_restricting_2(f: Optional[TextIOWrapper] = None):
+async def type_restricting_2(f: TextIOWrapper | None = None):
     if isinstance(f, TextIOWrapper):
         return
     f.read()  # ASYNC232: 4, 'read', 'f', "trio"

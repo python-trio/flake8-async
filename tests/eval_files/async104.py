@@ -104,7 +104,9 @@ def foo2():
         else:
             return  # type: ignore[unreachable] # error: 12
         finally:
-            return  # error: 12
+            # a return here would also be an error - but it's a syntax error
+            # from py314+ and we don't have the test infra to handle that properly.
+            pass
 
 
 # don't avoid re-raise with continue/break
@@ -183,3 +185,16 @@ def foo_cancelled_not_handled():
         return  # ASYNC104: 8
     except:
         return  # would otherwise error
+
+try:
+    ...
+except BaseException:  # ASYNC103_trio: 7, "BaseException"
+    match foo():
+        case 1:
+            return  # ASYNC104: 12
+        case 2:
+            raise
+        case 3:
+            return  # ASYNC104: 12
+        case blah:
+            raise

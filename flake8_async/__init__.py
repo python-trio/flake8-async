@@ -151,7 +151,9 @@ class Plugin:
     ) -> Plugin:
         plugin = Plugin.__new__(cls)
         super(Plugin, plugin).__init__()
-        plugin._tree = ast.parse(source)
+        plugin._tree = ast.parse(
+            source, filename=str(filename) if filename is not None else "<unknown>"
+        )
         plugin.filename = str(filename) if filename else None
         plugin.module = cst_parse_module_native(source)
         return plugin

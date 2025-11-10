@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 from abc import ABC
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import libcst as cst
 from libcst.metadata import PositionProvider
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from ..runner import SharedState
 
-    HasLineCol = Union[ast.expr, ast.stmt, ast.arg, ast.excepthandler, Statement]
+    HasLineCol = ast.expr | ast.stmt | ast.arg | ast.excepthandler | Statement
 
 
 class Flake8AsyncVisitor(ast.NodeVisitor, ABC):

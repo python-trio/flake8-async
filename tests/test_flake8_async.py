@@ -324,7 +324,7 @@ def test_eval(
     ):
         expected = []
 
-    plugin = Plugin.from_source(content)
+    plugin = Plugin.from_source(content, filename=path)
     errors = assert_expected_errors(
         plugin,
         *expected,
