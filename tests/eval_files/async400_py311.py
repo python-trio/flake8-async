@@ -33,7 +33,7 @@ except* ValueError as e:
     e, f = 1, 2
     e.anything  # safe
 except* TypeError as e:
-    (e, f) = (1, 2)
+    e, f = (1, 2)
     e.anything  # safe
 except* ValueError as e:
     with blah as e:
