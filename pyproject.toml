@@ -53,7 +53,14 @@ skip_glob = "tests/*_files/*"
 
 [tool.mypy]
 check_untyped_defs = true
-disable_error_code = ["no-untyped-def", "untyped-decorator", "no-untyped-call", "no-any-return"]
+disable_error_code = [
+  "no-untyped-def",
+  "no-untyped-call",
+  "no-any-return",
+  "misc",
+  # things like `@pytest.fixture` are untyped in pre-commit
+  "untyped-decorator",
+]
 python_version = "3.10"
 strict = true
 warn_unreachable = true
