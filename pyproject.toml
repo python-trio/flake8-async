@@ -59,7 +59,7 @@ disable_error_code = [
   "no-any-return",
   "misc",
   # things like `@pytest.fixture` are untyped in pre-commit
-  "untyped-decorator",
+  "untyped-decorator"
 ]
 python_version = "3.10"
 strict = true
