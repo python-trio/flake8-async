@@ -9,7 +9,7 @@ ci:
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.14.10
+      rev: v0.14.11
       hooks:
           - id: ruff-check
             args: [--fix]
@@ -46,7 +46,7 @@ repos:
             exclude: tests/(eval|autofix)_files/.*_py311.py
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.407
+      rev: v1.1.408
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
@@ -91,7 +91,7 @@ repos:
           - id: yamlfmt
 
     - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-      rev: v2.15.0
+      rev: v2.16.0
       hooks:
           - id: pretty-format-toml
             args: [--autofix]
