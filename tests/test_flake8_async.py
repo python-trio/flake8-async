@@ -395,7 +395,7 @@ def _parse_eval_file(
 ) -> tuple[list[Error], list[str], str]:
     # version check
     check_version(test)
-    test = test.split("_")[0]
+    test = test.split("_", maxsplit=1)[0]
 
     parsed_args = []
 

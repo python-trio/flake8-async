@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 # several different ones are used for the same code. Used in e.g. Visitor103
 def strip_error_subidentifier(s: str) -> str:
     """Turn e.g. ASYNC103_anyio_trio => ASYNC103."""
-    return s.split("_")[0]
+    return s.split("_", maxsplit=1)[0]
 
 
 def error_has_subidentifier(s: str) -> bool:

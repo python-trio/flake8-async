@@ -144,7 +144,7 @@ class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
 
     @property
     def library(self) -> tuple[str, ...]:
-        return self.__state.library if self.__state.library else ("trio",)
+        return self.__state.library or ("trio",)
 
     @property
     def library_str(self) -> str:
@@ -253,7 +253,7 @@ class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
 
     @property
     def library(self) -> tuple[str, ...]:
-        return self.__state.library if self.__state.library else ("trio",)
+        return self.__state.library or ("trio",)
 
     # library_str not used in cst yet
 
