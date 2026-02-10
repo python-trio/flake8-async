@@ -344,7 +344,7 @@ class InsertCheckpointsInLoopBody(CommonVisitors):
 
     @property
     def library(self) -> tuple[str, ...]:
-        return self.__library if self.__library else ("trio",)
+        return self.__library or ("trio",)
 
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
         return not self.noautofix
