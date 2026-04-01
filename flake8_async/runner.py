@@ -138,7 +138,14 @@ class Flake8AsyncRunner_cst(__CommonRunner):
 
     def run(self) -> Iterable[Error]:
         for v in (*self.utility_visitors, *self.visitors):
-            self.module = cst.MetadataWrapper(self.module).visit(v)
+            # The default deepcopy guards against the same CST node object
+            # appearing at two positions in the tree (metadata is keyed by node
+            # identity). Parser output and the result of a prior .visit() never
+            # share nodes, so the copy is wasted work. This stays safe as long
+            # as no visitor returns a cached CST node from multiple leave_* calls.
+            self.module = cst.MetadataWrapper(
+                self.module, unsafe_skip_copy=True
+            ).visit(v)
 
         yield from self.state.problems
 
