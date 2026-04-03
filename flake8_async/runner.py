@@ -143,9 +143,9 @@ class Flake8AsyncRunner_cst(__CommonRunner):
             # identity). Parser output and the result of a prior .visit() never
             # share nodes, so the copy is wasted work. This stays safe as long
             # as no visitor returns a cached CST node from multiple leave_* calls.
-            self.module = cst.MetadataWrapper(
-                self.module, unsafe_skip_copy=True
-            ).visit(v)
+            self.module = cst.MetadataWrapper(self.module, unsafe_skip_copy=True).visit(
+                v
+            )
 
         yield from self.state.problems
 
