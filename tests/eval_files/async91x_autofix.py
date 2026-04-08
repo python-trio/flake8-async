@@ -140,7 +140,7 @@ async def match_subject() -> None:
 async def match_not_all_cases() -> (  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     None
 ):
-    match foo():
+    match bar():
         case 1:
             ...
         case _:
@@ -184,7 +184,7 @@ async def match_all_cases() -> None:
 async def match_fallback_await_in_guard() -> None:
     # The case guard is only executed if the pattern matches, so we can mostly treat
     # it as part of the body, except for a special case for fallback+checkpointing guard.
-    match foo():
+    match bar():
         case 1 if await foo():
             ...
         case _ if await foo():
@@ -193,7 +193,7 @@ async def match_fallback_await_in_guard() -> None:
 
 async def match_checkpoint_guard() -> None:
     # The above pattern is quite cursed, but this seems fairly reasonable to do.
-    match foo():
+    match bar():
         case 1 if await foo():
             ...
         case _:
@@ -203,7 +203,7 @@ async def match_checkpoint_guard() -> None:
 async def match_not_checkpoint_in_all_guards() -> (  # ASYNC910: 0, "exit", Statement("function definition", lineno)
     None
 ):
-    match foo():
+    match bar():
         case 1:
             ...
         case _ if await foo():
