@@ -251,7 +251,7 @@
 
 
  async def foo_while_endless_3():
-@@ x,9 x,11 @@
+@@ x,13 x,16 @@
  # try
  async def foo_try_1():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+2)
      try:
@@ -263,14 +263,12 @@
 
 
  # no checkpoint after yield in ValueError
-@@ x,12 x,14 @@
+ async def foo_try_2():  # error: 0, "exit", Statement("yield", lineno+5)
++    await trio.lowlevel.checkpoint()
      try:
          await foo()
      except ValueError:
-+        await trio.lowlevel.checkpoint()
-         # try might not have checkpointed
-         yield  # error: 8, "yield", Statement("function definition", lineno-5)
-     except:
+@@ x,6 x,7 @@
          await foo()
      else:
          pass
@@ -278,7 +276,7 @@
 
 
  async def foo_try_3():  # error: 0, "exit", Statement("yield", lineno+6)
-@@ x,13 x,16 @@
+@@ x,10 x,13 @@
      except:
          await foo()
      else:
@@ -288,13 +286,10 @@
 
 
  async def foo_try_4():  # safe
++    await trio.lowlevel.checkpoint()
      try:
          ...
      except:
-+        await trio.lowlevel.checkpoint()
-         yield  # error: 8, "yield", Statement("function definition", lineno-4)
-     finally:
-         await foo()
 @@ x,6 x,7 @@
      try:
          await foo()

@@ -208,3 +208,44 @@ async def match_not_checkpoint_in_all_guards() -> (  # ASYNC910: 0, "exit", Stat
             ...
         case _ if await foo():
             ...
+
+
+# Issue #403: autofix should not insert checkpoints inside an except clause,
+# as that would trigger ASYNC120.  Instead insert at top of function / loop.
+async def except_return():
+    try:
+        await foo()
+    except ValueError:
+        return  # ASYNC910: 8, "return", Statement("function definition", lineno-4)
+
+
+async def except_yield():  # ASYNC911: 0, "exit", Statement("yield", lineno+4)
+    try:
+        await foo()
+    except ValueError:
+        yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-4)
+
+
+async def except_return_in_for_loop():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+    for _ in range(10):
+        try:
+            await foo()
+        except ValueError:
+            return  # ASYNC910: 12, "return", Statement("function definition", lineno-5)
+
+
+async def except_yield_in_for_loop():  # ASYNC911: 0, "exit", Statement("yield", lineno+5)
+    for _ in range(10):
+        try:
+            await foo()
+        except ValueError:
+            yield  # ASYNC911: 12, "yield", Statement("function definition", lineno-5) # ASYNC911: 12, "yield", Statement("yield", lineno)
+
+
+async def except_nested_in_if():
+    if bar():
+        try:
+            await foo()
+        except ValueError:
+            return  # ASYNC910: 12, "return", Statement("function definition", lineno-5)
+    await foo()

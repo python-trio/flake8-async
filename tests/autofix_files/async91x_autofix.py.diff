@@ -110,8 +110,54 @@
 
 
  async def match_all_cases() -> None:
-@@ x,3 x,4 @@
+@@ x,11 x,13 @@
              ...
          case _ if await foo():
              ...
 +    await trio.lowlevel.checkpoint()
+
+
+ # Issue #403: autofix should not insert checkpoints inside an except clause,
+ # as that would trigger ASYNC120.  Instead insert at top of function / loop.
+ async def except_return():
++    await trio.lowlevel.checkpoint()
+     try:
+         await foo()
+     except ValueError:
+@@ x,29 x,36 @@
+
+
+ async def except_yield():  # ASYNC911: 0, "exit", Statement("yield", lineno+4)
++    await trio.lowlevel.checkpoint()
+     try:
+         await foo()
+     except ValueError:
+         yield  # ASYNC911: 8, "yield", Statement("function definition", lineno-4)
++    await trio.lowlevel.checkpoint()
+
+
+ async def except_return_in_for_loop():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+     for _ in range(10):
++        await trio.lowlevel.checkpoint()
+         try:
+             await foo()
+         except ValueError:
+             return  # ASYNC910: 12, "return", Statement("function definition", lineno-5)
++    await trio.lowlevel.checkpoint()
+
+
+ async def except_yield_in_for_loop():  # ASYNC911: 0, "exit", Statement("yield", lineno+5)
+     for _ in range(10):
++        await trio.lowlevel.checkpoint()
+         try:
+             await foo()
+         except ValueError:
+             yield  # ASYNC911: 12, "yield", Statement("function definition", lineno-5) # ASYNC911: 12, "yield", Statement("yield", lineno)
++    await trio.lowlevel.checkpoint()
+
+
+ async def except_nested_in_if():
++    await trio.lowlevel.checkpoint()
+     if bar():
+         try:
+             await foo()
