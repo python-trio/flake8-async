@@ -373,10 +373,10 @@ async def foo_try_1():  # error: 0, "exit", Statement("function definition", lin
 
 # no checkpoint after yield in ValueError
 async def foo_try_2():  # error: 0, "exit", Statement("yield", lineno+5)
+    await trio.lowlevel.checkpoint()
     try:
         await foo()
     except ValueError:
-        await trio.lowlevel.checkpoint()
         # try might not have checkpointed
         yield  # error: 8, "yield", Statement("function definition", lineno-5)
     except:
@@ -398,10 +398,10 @@ async def foo_try_3():  # error: 0, "exit", Statement("yield", lineno+6)
 
 
 async def foo_try_4():  # safe
+    await trio.lowlevel.checkpoint()
     try:
         ...
     except:
-        await trio.lowlevel.checkpoint()
         yield  # error: 8, "yield", Statement("function definition", lineno-4)
     finally:
         await foo()
