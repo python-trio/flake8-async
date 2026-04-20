@@ -223,3 +223,23 @@
 
 
  async def foo_nested_empty_async():
+@@ x,9 x,11 @@
+ class CtxNeitherCheckpoint:
+     async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+         print("setup")
++        await trio.lowlevel.checkpoint()
+
+     async def __aexit__(self, *a):  # error: 4, "exit", Stmt("function definition", line)
+         print("teardown")
++        await trio.lowlevel.checkpoint()
+ # fmt: on
+
+
+@@ x,6 x,7 @@
+ def not_a_class():
+     async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+         print("setup")
++        await trio.lowlevel.checkpoint()
+
+
+ # class nested inside a function still gets the exemption

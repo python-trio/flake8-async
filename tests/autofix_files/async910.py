@@ -636,3 +636,83 @@ async def foo_nested_empty_async():
     async def bar(): ...
 
     await foo()
+
+
+# Issue #441: async context manager methods may legitimately skip checkpointing
+# if the partner method provides the checkpoint, or if the partner is inherited.
+class CtxWithSetup:  # safe: __aenter__ checkpoints, __aexit__ can be fast
+    async def __aenter__(self):
+        await foo()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        print("fast exit")
+
+
+class CtxWithTeardown:  # safe: __aexit__ checkpoints, __aenter__ can be fast
+    async def __aenter__(self):
+        print("fast setup")
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await foo()
+
+
+class CtxWithBothCheckpoint:  # safe: both checkpoint
+    async def __aenter__(self):
+        await foo()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await foo()
+
+
+# fmt: off
+class CtxNeitherCheckpoint:
+    async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+        print("setup")
+        await trio.lowlevel.checkpoint()
+
+    async def __aexit__(self, *a):  # error: 4, "exit", Stmt("function definition", line)
+        print("teardown")
+        await trio.lowlevel.checkpoint()
+# fmt: on
+
+
+# Only one method defined: charitably assume the other is inherited with a checkpoint.
+class CtxOnlyAenter:  # safe: __aexit__ assumed inherited with checkpoint
+    async def __aenter__(self):
+        print("setup")
+
+
+class CtxOnlyAexit:  # safe: __aenter__ assumed inherited with checkpoint
+    async def __aexit__(self, *a):
+        print("teardown")
+
+
+class CtxOnlyAenterWithCheckpoint:  # safe
+    async def __aenter__(self):
+        await foo()
+
+
+class CtxOnlyAexitWithCheckpoint:  # safe
+    async def __aexit__(self, *a):
+        await foo()
+
+
+# a nested function named `__aenter__` inside another function is not a method
+def not_a_class():
+    async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+        print("setup")
+        await trio.lowlevel.checkpoint()
+
+
+# class nested inside a function still gets the exemption
+def factory():
+    class NestedCtx:  # safe
+        async def __aenter__(self):
+            print("setup")
+
+
+# nested class; outer class has nothing relevant
+class Outer:
+    class Inner:  # safe: charitable inheritance for __aexit__
+        async def __aenter__(self):
+            print("setup")
