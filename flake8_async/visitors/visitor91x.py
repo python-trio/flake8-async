@@ -736,8 +736,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         checkpoint would not cover.
         """
         return all(
-            isinstance(stmt, ArtificialStatement)
-            or stmt.name == "function definition"
+            isinstance(stmt, ArtificialStatement) or stmt.name == "function definition"
             for stmt in self.uncheckpointed_statements
         )
 
