@@ -91,6 +91,19 @@ Run through ruff
 
 They currently only support a small subset of the ``flake8-async`` rules though, see https://github.com/astral-sh/ruff/issues/8451 for current status and https://docs.astral.sh/ruff/rules/#flake8-async-async for documentation.
 
+Using both ruff and flake8-async
+--------------------------------
+
+Ruff will by default strip any ``# noqa`` comments for codes it does not know about, which breaks suppressions for ``ASYNC`` codes that ruff hasn't reimplemented. You can tell ruff to preserve them by listing ``ASYNC`` under `lint.external <https://docs.astral.sh/ruff/settings/#lint_external>`_ in your ruff config:
+
+.. code-block:: toml
+
+   # pyproject.toml
+   [tool.ruff.lint]
+   external = ["ASYNC"]
+
+With that in place you can continue to run ``flake8-async`` (either via ``flake8``, pre-commit, or as a standalone) alongside ``ruff`` without losing ``# noqa: ASYNC...`` comments.
+
 *************
 Configuration
 *************
