@@ -4,6 +4,9 @@ ASYNC103: no-reraise-cancelled
 ASYNC104: cancelled-not-raised
 """
 
+# NOCOMPILE: `return` inside `except*` is a SyntaxError in 3.11+ but we still want
+# to exercise the plugin against it via ast.parse.
+
 # ARG --enable=ASYNC103,ASYNC104
 
 try:

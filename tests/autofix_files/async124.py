@@ -3,6 +3,9 @@ It currently does not care if 910/911 would also be triggered."""
 
 # ARG --enable=ASYNC124,ASYNC910,ASYNC911
 # ARG --no-checkpoint-warning-decorator=custom_disabled_decorator
+# NOCOMPILE: foo_nested_sync contains `await` in a sync nested function, which is
+# a SyntaxError the bytecode compiler catches but ast.parse accepts. It's only here
+# to make sure the plugin doesn't crash on such code.
 
 # 910/911 will also autofix async124, in the sense of adding a checkpoint. This is perhaps
 # not what the user wants though, so this would be a case in favor of making 910/911 not
