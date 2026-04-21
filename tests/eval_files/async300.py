@@ -42,6 +42,13 @@ async def foo():
 
     mylist = [asyncio.create_task(*args) for i in range(10)]
 
+    # returning the task is fine, the caller will save it
+    def returner():
+        return asyncio.create_task(*args)
+
+    def returner_list():
+        return [asyncio.create_task(*args)]
+
     # non-call usage is fine
     asyncio.create_task
     asyncio.create_task = args
