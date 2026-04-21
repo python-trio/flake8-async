@@ -467,11 +467,15 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         # Tracks whether the current scope is a class body and, if so, which of
         # `__aenter__`/`__aexit__` are directly defined on it (values: True if
-        # that method contains an `await`, False otherwise, missing key if not
-        # defined). Used to exempt async context manager methods from
-        # ASYNC910/911 when their partner method provides the checkpoint, or
-        # when the partner is assumed inherited (not defined on this class).
+        # that method contains a checkpoint-like construct, False otherwise,
+        # missing key if not defined). Used to exempt async context manager
+        # methods from ASYNC910/911 when their partner method provides the
+        # checkpoint, or when the partner is inherited from a base class.
         self.async_cm_class: dict[str, bool] | None = None
+        # Whether the enclosing class has an explicit base class (other than
+        # implicit `object`). We only assume a missing partner is inherited if
+        # the class actually inherits from something.
+        self.async_cm_class_has_bases = False
         # Set on entry to an exempt `__aenter__`/`__aexit__` so that
         # `error_91x` skips emitting ASYNC910/911.
         self.exempt_async_cm_method = False
@@ -548,8 +552,13 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     # from a base class (which we charitably assume contains a checkpoint).
     # See https://github.com/python-trio/flake8-async/issues/441.
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        self.save_state(node, "async_cm_class")
+        self.save_state(node, "async_cm_class", "async_cm_class_has_bases")
         defined: dict[str, bool] = {}
+        checkpointy = (
+            m.Await()
+            | m.With(asynchronous=m.Asynchronous())
+            | m.For(asynchronous=m.Asynchronous())
+        )
         if isinstance(node.body, cst.IndentedBlock):
             for stmt in node.body.body:
                 if (
@@ -557,8 +566,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                     and stmt.asynchronous is not None
                     and stmt.name.value in ("__aenter__", "__aexit__")
                 ):
-                    defined[stmt.name.value] = bool(m.findall(stmt, m.Await()))
+                    defined[stmt.name.value] = bool(m.findall(stmt, checkpointy))
         self.async_cm_class = defined
+        # Keyword args like `metaclass=` are in `node.keywords`, not `bases`.
+        self.async_cm_class_has_bases = bool(node.bases)
 
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
@@ -574,11 +585,16 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             return False
         if name not in self.async_cm_class:
             return False
+        # A method that contains any checkpoint must always checkpoint: we
+        # still check it normally so conditional checkpoints are flagged.
+        if self.async_cm_class[name]:
+            return False
         partner = "__aexit__" if name == "__aenter__" else "__aenter__"
-        # Partner not defined in this class -> assume inherited with checkpoint.
         if partner not in self.async_cm_class:
-            return True
-        # Partner defined and (charitably) contains a checkpoint.
+            # Partner is not defined on this class; only assume it is inherited
+            # (and contains a checkpoint) if the class inherits from something.
+            return self.async_cm_class_has_bases
+        # Partner defined; exempt iff it contains a checkpoint.
         return self.async_cm_class[partner]
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
@@ -609,6 +625,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "except_depth",
             "add_checkpoint_at_function_start",
             "async_cm_class",
+            "async_cm_class_has_bases",
             "exempt_async_cm_method",
             copy=True,
         )
@@ -622,6 +639,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.add_checkpoint_at_function_start = False
         # Class-level context does not apply to nested scopes.
         self.async_cm_class = None
+        self.async_cm_class_has_bases = False
         self.exempt_async_cm_method = is_exempt_cm
 
         self.async_function = (
