@@ -1,4 +1,6 @@
 # ARG --enable=ASYNC103,ASYNC104
+# NOCOMPILE: contains `return` outside a function so the bytecode compiler rejects
+# the file, but ast.parse accepts it and the plugin flags it as ASYNC104.
 try:
     ...
 # raise different exception

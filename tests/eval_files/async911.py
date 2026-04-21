@@ -1,5 +1,8 @@
 # AUTOFIX
 # ASYNCIO_NO_AUTOFIX
+# NOCOMPILE: contains a nested async comprehension inside an async function,
+# which is a SyntaxError under Python 3.10 (compile() got more permissive in 3.11).
+# ast.parse accepts it on all supported versions, which is all the plugin needs.
 from typing import Any
 
 import pytest

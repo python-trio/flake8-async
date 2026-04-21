@@ -153,6 +153,10 @@ class Visitor102(Flake8AsyncVisitor):
         self._critical_scope = Statement("try/finally", node.lineno, node.col_offset)
         self.visit_nodes(node.finalbody)
 
+        # we've manually visited the Try fields above; stop the runner from doing
+        # it a second time via generic_visit.
+        self.novisit = True
+
     visit_TryStar = visit_Try
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):

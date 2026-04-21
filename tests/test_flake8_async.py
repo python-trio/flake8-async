@@ -244,6 +244,12 @@ class MagicMarkers:
     # eval file is written using this library, so no substitution is required
     BASE_LIBRARY: str = "trio"
 
+    # File intentionally contains constructs that are syntactically valid for
+    # `ast.parse` but rejected by the bytecode compiler (e.g. `return` outside a
+    # function, `await` in a sync nested function). Used to skip the compile()
+    # sanity check in test_eval_files_compile.
+    NOCOMPILE: bool = False
+
     def library_no_error(self, library: str) -> bool:
         return {
             "anyio": self.ANYIO_NO_ERROR,
@@ -543,6 +549,19 @@ class SyncTransformer(ast.NodeTransformer):
 
     def visit_AsyncFor(self, node: ast.AsyncFor):
         return self.replace_async(node, ast.For, node.target, node.iter)
+
+
+# ast.parse() is lenient and accepts some code that the bytecode compiler will
+# reject (e.g. `x = lambda: await foo()` or `return` outside a function). Running
+# compile() on each eval file catches accidental syntax errors in test fixtures
+# that would otherwise silently slip past the plugin's ast-based checks.
+@pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])
+def test_eval_files_compile(test: str, path: Path):
+    check_version(test)
+    content = path.read_text()
+    if find_magic_markers(content).NOCOMPILE:
+        pytest.skip("file intentionally does not compile (has # NOCOMPILE marker)")
+    compile(content, str(path), "exec")
 
 
 @pytest.mark.parametrize(("test", "path"), test_files, ids=[f[0] for f in test_files])

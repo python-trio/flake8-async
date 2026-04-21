@@ -560,6 +560,7 @@ class Visitor300(Flake8AsyncVisitor_cst):
 
     visit_NamedExpr = visit_Assign
     visit_AugAssign = visit_Assign
+    visit_Return = visit_Assign
     visit_IfExp_test = visit_CompIf
 
     # because this is a Flake8AsyncVisitor_cst, we need to manually call restore_state
@@ -573,6 +574,7 @@ class Visitor300(Flake8AsyncVisitor_cst):
     leave_CompIf = leave_Assign
     leave_NamedExpr = leave_Assign
     leave_AugAssign = leave_Assign
+    leave_Return = leave_Assign
 
     def leave_IfExp_test(self, node: cst.IfExp):
         self.restore_state(node)

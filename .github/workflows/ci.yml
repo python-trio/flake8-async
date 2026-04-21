@@ -44,7 +44,7 @@ jobs:
             - name: Run tests with flake8
               run: python -m tox -e flake8
             - name: Run tests without flake8
-              run: python -m tox -e "" -- --no-cov
+              run: python -m tox -e no_flake8 -- --no-cov
 
     slow_tests:
         runs-on: ubuntu-latest
