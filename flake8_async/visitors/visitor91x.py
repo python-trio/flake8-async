@@ -465,6 +465,21 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # used to transfer new body between visit_FunctionDef and leave_FunctionDef
         self.new_body: cst.BaseSuite | None = None
 
+        # Tracks whether the current scope is a class body and, if so, which of
+        # `__aenter__`/`__aexit__` are directly defined on it (values: True if
+        # that method contains a checkpoint-like construct, False otherwise,
+        # missing key if not defined). Used to exempt async context manager
+        # methods from ASYNC910/911 when their partner method provides the
+        # checkpoint, or when the partner is inherited from a base class.
+        self.async_cm_class: dict[str, bool] | None = None
+        # Whether the enclosing class has an explicit base class (other than
+        # implicit `object`). We only assume a missing partner is inherited if
+        # the class actually inherits from something.
+        self.async_cm_class_has_bases = False
+        # Set on entry to an exempt `__aenter__`/`__aexit__` so that
+        # `error_91x` skips emitting ASYNC910/911.
+        self.exempt_async_cm_method = False
+
     def should_autofix(self, node: cst.CSTNode, code: str | None = None) -> bool:
         if code is None:
             code = "ASYNC911" if self.has_yield else "ASYNC910"
@@ -532,6 +547,60 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                         self.suppress_imported_as.append("suppress")
                     return
 
+    # Async context manager methods may legitimately skip checkpointing if the
+    # partner method provides the checkpoint, or if the partner is inherited
+    # from a base class (which we charitably assume contains a checkpoint).
+    # See https://github.com/python-trio/flake8-async/issues/441.
+    def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        self.save_state(node, "async_cm_class", "async_cm_class_has_bases")
+        defined: dict[str, bool] = {}
+        checkpointy = (
+            m.Await()
+            | m.With(asynchronous=m.Asynchronous())
+            | m.For(asynchronous=m.Asynchronous())
+        )
+        if isinstance(node.body, cst.IndentedBlock):
+            for stmt in node.body.body:
+                if (
+                    isinstance(stmt, cst.FunctionDef)
+                    and stmt.asynchronous is not None
+                    and stmt.name.value in ("__aenter__", "__aexit__")
+                ):
+                    defined[stmt.name.value] = bool(m.findall(stmt, checkpointy))
+        self.async_cm_class = defined
+        # Keyword args like `metaclass=` are in `node.keywords`, not `bases`.
+        self.async_cm_class_has_bases = bool(node.bases)
+
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> cst.ClassDef:
+        self.restore_state(original_node)
+        return updated_node
+
+    def _is_exempt_async_cm_method(self, node: cst.FunctionDef) -> bool:
+        if self.async_cm_class is None:
+            return False
+        name = node.name.value
+        if name not in ("__aenter__", "__aexit__"):
+            return False
+        if name not in self.async_cm_class:
+            return False
+        # A method that contains any checkpoint must always checkpoint: we
+        # still check it normally so conditional checkpoints are flagged.
+        if self.async_cm_class[name]:
+            return False
+        partner = "__aexit__" if name == "__aenter__" else "__aenter__"
+        if partner in self.async_cm_class:
+            # Partner is defined on the class; if it checkpoints, we're fine.
+            if self.async_cm_class[partner]:
+                return True
+            # Neither method checkpoints -- to avoid double-flagging (and a
+            # redundant autofix), we report and fix only `__aenter__`.
+            return name == "__aexit__"
+        # Partner is not defined on this class; only assume it is inherited
+        # (and contains a checkpoint) if the class inherits from something.
+        return self.async_cm_class_has_bases
+
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         # `await` in default values happen in parent scope
         # we also know we don't ever modify parameters so we can ignore the return value
@@ -542,6 +611,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # we also ignore pytest fixtures
         if func_has_decorator(node, "overload", "fixture") or func_empty_body(node):
             return False  # subnodes can be ignored
+
+        is_exempt_cm = self._is_exempt_async_cm_method(node)
 
         self.save_state(
             node,
@@ -557,6 +628,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "suppress_imported_as",  # a copy is saved, but state is not reset
             "except_depth",
             "add_checkpoint_at_function_start",
+            "async_cm_class",
+            "async_cm_class_has_bases",
+            "exempt_async_cm_method",
             copy=True,
         )
         self.uncheckpointed_statements = set()
@@ -567,6 +641,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.taskgroup_has_start_soon = {}
         self.except_depth = 0
         self.add_checkpoint_at_function_start = False
+        # Class-level context does not apply to nested scopes.
+        self.async_cm_class = None
+        self.async_cm_class_has_bases = False
+        self.exempt_async_cm_method = is_exempt_cm
 
         self.async_function = (
             node.asynchronous is not None
@@ -746,6 +824,12 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         statement: Statement,
     ) -> bool:
         assert not isinstance(statement, ArtificialStatement), statement
+
+        # Exempt `__aenter__`/`__aexit__` when the partner method contains a
+        # checkpoint, or when the partner is missing and charitably assumed
+        # inherited.
+        if self.exempt_async_cm_method:
+            return False
 
         if isinstance(node, cst.FunctionDef):
             msg = "exit"

@@ -606,3 +606,117 @@ async def foo_nested_empty_async():
     async def bar(): ...
 
     await foo()
+
+
+# Issue #441: async context manager methods may legitimately skip checkpointing
+# if the partner method provides the checkpoint, or if the partner is inherited.
+class ACM:  # a dummy base to opt into the charitable-inheritance assumption
+    pass
+
+
+class CtxWithSetup:  # safe: __aenter__ checkpoints, __aexit__ can be fast
+    async def __aenter__(self):
+        await foo()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        print("fast exit")
+
+
+class CtxWithTeardown:  # safe: __aexit__ checkpoints, __aenter__ can be fast
+    async def __aenter__(self):
+        print("fast setup")
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await foo()
+
+
+class CtxWithBothCheckpoint:  # safe: both checkpoint
+    async def __aenter__(self):
+        await foo()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await foo()
+
+
+# fmt: off
+class CtxNeitherCheckpoint:
+    async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+        print("setup")
+
+    async def __aexit__(self, *a):  # only __aenter__ is flagged to avoid redundancy
+        print("teardown")
+# fmt: on
+
+
+# A method that contains any checkpoint is still required to always checkpoint.
+class CtxAenterConditionalAexitFast(ACM):
+    async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+        if _:
+            await foo()
+
+    async def __aexit__(self, *a):
+        print("fast exit")
+
+
+# Only one method defined: charitably assume the other is inherited with a
+# checkpoint -- but only when the class inherits from something.
+class CtxOnlyAenterInherited(ACM):  # safe: __aexit__ assumed inherited
+    async def __aenter__(self):
+        print("setup")
+
+
+class CtxOnlyAexitInherited(ACM):  # safe: __aenter__ assumed inherited
+    async def __aexit__(self, *a):
+        print("teardown")
+
+
+# fmt: off
+class CtxOnlyAenter:  # no base class -> don't assume inheritance
+    async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+        print("setup")
+
+
+class CtxOnlyAexit:  # no base class -> don't assume inheritance
+    async def __aexit__(self, *a):  # error: 4, "exit", Stmt("function definition", line)
+        print("teardown")
+# fmt: on
+
+
+class CtxOnlyAenterWithCheckpoint:  # safe
+    async def __aenter__(self):
+        await foo()
+
+
+class CtxOnlyAexitWithCheckpoint:  # safe
+    async def __aexit__(self, *a):
+        await foo()
+
+
+# keyword-only bases (like `metaclass=`) don't count as inheriting.
+class Meta(type):
+    pass
+
+
+class CtxMetaclassOnly(metaclass=Meta):
+    async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+        print("setup")
+
+
+# a nested function named `__aenter__` inside another function is not a method
+def not_a_class():
+    async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+        print("setup")
+
+
+# class nested inside a function still gets the exemption when it inherits
+def factory():
+    class NestedCtx(ACM):  # safe
+        async def __aenter__(self):
+            print("setup")
+
+
+# nested class; outer class has nothing relevant
+class Outer:
+    class Inner(ACM):  # safe: charitable inheritance for __aexit__
+        async def __aenter__(self):
+            print("setup")
