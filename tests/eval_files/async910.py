@@ -643,7 +643,7 @@ class CtxNeitherCheckpoint:
     async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
         print("setup")
 
-    async def __aexit__(self, *a):  # error: 4, "exit", Stmt("function definition", line)
+    async def __aexit__(self, *a):  # only __aenter__ is flagged to avoid redundancy
         print("teardown")
 # fmt: on
 

@@ -674,9 +674,8 @@ class CtxNeitherCheckpoint:
         print("setup")
         await trio.lowlevel.checkpoint()
 
-    async def __aexit__(self, *a):  # error: 4, "exit", Stmt("function definition", line)
+    async def __aexit__(self, *a):  # only __aenter__ is flagged to avoid redundancy
         print("teardown")
-        await trio.lowlevel.checkpoint()
 # fmt: on
 
 

@@ -223,18 +223,14 @@
 
 
  async def foo_nested_empty_async():
-@@ x,9 x,11 @@
+@@ x,6 x,7 @@
  class CtxNeitherCheckpoint:
      async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
          print("setup")
 +        await trio.lowlevel.checkpoint()
 
-     async def __aexit__(self, *a):  # error: 4, "exit", Stmt("function definition", line)
+     async def __aexit__(self, *a):  # only __aenter__ is flagged to avoid redundancy
          print("teardown")
-+        await trio.lowlevel.checkpoint()
- # fmt: on
-
-
 @@ x,6 x,7 @@
      async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
          if _:

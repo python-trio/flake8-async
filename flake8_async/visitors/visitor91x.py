@@ -590,12 +590,16 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         if self.async_cm_class[name]:
             return False
         partner = "__aexit__" if name == "__aenter__" else "__aenter__"
-        if partner not in self.async_cm_class:
-            # Partner is not defined on this class; only assume it is inherited
-            # (and contains a checkpoint) if the class inherits from something.
-            return self.async_cm_class_has_bases
-        # Partner defined; exempt iff it contains a checkpoint.
-        return self.async_cm_class[partner]
+        if partner in self.async_cm_class:
+            # Partner is defined on the class; if it checkpoints, we're fine.
+            if self.async_cm_class[partner]:
+                return True
+            # Neither method checkpoints -- to avoid double-flagging (and a
+            # redundant autofix), we report and fix only `__aenter__`.
+            return name == "__aexit__"
+        # Partner is not defined on this class; only assume it is inherited
+        # (and contains a checkpoint) if the class inherits from something.
+        return self.async_cm_class_has_bases
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         # `await` in default values happen in parent scope
