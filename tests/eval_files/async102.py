@@ -345,3 +345,22 @@ async def foo():
         await x.aclose(bar=foo)  # ASYNC102: 8, Statement("try/finally", lineno-9)
         await x.aclose(*foo)  # ASYNC102: 8, Statement("try/finally", lineno-10)
         await x.aclose(None)  # ASYNC102: 8, Statement("try/finally", lineno-11)
+
+
+# aclose_forcefully is designed for cleanup and is safe in finally/except
+# see https://github.com/python-trio/flake8-async/issues/446
+async def foo_aclose_forcefully():
+    x = None
+
+    try:
+        ...
+    except BaseException:
+        await trio.aclose_forcefully(x)
+    finally:
+        await trio.aclose_forcefully(x)
+
+    # unqualified or unknown-base call is still treated as unsafe
+    try:
+        ...
+    finally:
+        await aclose_forcefully(x)  # ASYNC102: 8, Statement("try/finally", lineno-3)

@@ -521,6 +521,7 @@ error_codes_ignored_when_checking_transformed_sync_code = {
     "ASYNC122",
     "ASYNC123",
     "ASYNC125",
+    "ASYNC126",
     "ASYNC300",
     "ASYNC400",
     "ASYNC912",

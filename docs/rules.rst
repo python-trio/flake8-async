@@ -25,6 +25,7 @@ _`ASYNC102` : await-in-finally-or-cancelled
     ``await`` inside ``finally``, :ref:`cancelled-catching <cancelled>` ``except:``, or ``__aexit__`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
     If not, the async call will immediately raise a new cancellation, suppressing any cancellation that was caught.
     Not applicable to asyncio due to edge-based cancellation semantics it uses as opposed to level-based used by trio and anyio.
+    Calls to ``.aclose()`` (with no arguments) and to :func:`trio.aclose_forcefully` / :func:`anyio.aclose_forcefully` are exempt, as they are intended for use in cleanup.
     See :ref:`ASYNC120 <async120>` for the general case where other exceptions might get suppressed.
 
 ASYNC103 : no-reraise-cancelled
@@ -122,6 +123,14 @@ _`ASYNC125`: constant-absolute-deadline
     :func:`trio.fail_after`/`:func:`trio.move_on_after`/:func:`anyio.fail_after`/
     :func:`anyio.move_on_after`, or the ``relative_deadline`` parameter to
     :class:`trio.CancelScope`.
+
+_`ASYNC126`: exceptiongroup-subclass-missing-derive
+    A subclass of :class:`ExceptionGroup` or :class:`BaseExceptionGroup` must override
+    :meth:`~BaseExceptionGroup.derive` to return an instance of itself, otherwise
+    :meth:`~BaseExceptionGroup.split` and :meth:`~BaseExceptionGroup.subgroup` - which
+    are used by e.g. :ref:`taskgroup_nursery` implementations - will silently produce
+    plain ``ExceptionGroup`` instances and lose the custom subclass.
+    See `trio#3175 <https://github.com/python-trio/trio/issues/3175>`_ for motivation.
 
 Blocking sync calls in async functions
 ======================================
