@@ -55,6 +55,38 @@ class Visitor101(Flake8AsyncVisitor_cst):
                 # cancel scopes
                 or with_has_call(node, "timeout", "timeout_at", base="asyncio")
                 or with_has_call(node, *cancel_scope_names, base=("trio", "anyio"))
+                # 3rd-party context managers with internal cancel scopes /
+                # nurseries / task groups. See issue #350.
+                or with_has_call(
+                    node,
+                    "open_websocket",
+                    "open_websocket_url",
+                    "serve_websocket",
+                    base="trio_websocket",
+                )
+                or with_has_call(node, "open_loop", base="trio_asyncio")
+                or with_has_call(node, "open_worker_context", base="trio_parallel")
+                or with_has_call(
+                    node, "move_on_when", "run_and_cancelling", base="trio_util"
+                )
+                or with_has_call(
+                    node,
+                    "open_emissions_nursery",
+                    "enter_emissions_channel",
+                    base="qtrio",
+                )
+                or with_has_call(
+                    node,
+                    "BlockingPortal",
+                    "start_blocking_portal",
+                    base="anyio.from_thread",
+                )
+                or with_has_call(node, "LifespanManager", base="asgi_lifespan")
+                or with_has_call(node, "AsyncScheduler", base="apscheduler")
+                or with_has_call(
+                    node, "streamablehttp_client", base="mcp.client.streamable_http"
+                )
+                or with_has_call(node, "sse_client", base="mcp.client.sse")
             )
         )
 

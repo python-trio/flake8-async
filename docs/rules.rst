@@ -20,6 +20,7 @@ _`ASYNC101` : yield-in-cancel-scope
     ``yield`` inside a :ref:`taskgroup_nursery` or :ref:`timeout_context` is only safe when implementing a context manager - otherwise, it breaks exception handling.
     See `this thread <https://discuss.python.org/t/preventing-yield-inside-certain-context-managers/1091/23>`_ for discussion of a future PEP.
     This has substantial overlap with :ref:`ASYNC119 <ASYNC119>`, which will warn on almost all instances of ASYNC101, but ASYNC101 is about a conceptually different problem that will not get resolved by :pep:`533`.
+    Also triggered on common third-party context managers that open internal cancel scopes, nurseries, or task groups: ``trio_websocket.{open_websocket, open_websocket_url, serve_websocket}``, ``trio_asyncio.open_loop``, ``trio_parallel.open_worker_context``, ``trio_util.{move_on_when, run_and_cancelling}``, ``qtrio.{open_emissions_nursery, enter_emissions_channel}``, ``anyio.from_thread.{BlockingPortal, start_blocking_portal}``, ``asgi_lifespan.LifespanManager``, ``apscheduler.AsyncScheduler``, ``mcp.client.streamable_http.streamablehttp_client``, and ``mcp.client.sse.sse_client``.
 
 _`ASYNC102` : await-in-finally-or-cancelled
     ``await`` inside ``finally``, :ref:`cancelled-catching <cancelled>` ``except:``, or ``__aexit__`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.

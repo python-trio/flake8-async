@@ -355,7 +355,7 @@ def build_cst_matcher(attr: str) -> m.BaseExpression:
     """Build a cst matcher structure with attributes&names matching a string `a.b.c`."""
     if "." not in attr:
         return m.Name(value=attr)
-    body, tail = attr.rsplit(".")
+    body, tail = attr.rsplit(".", 1)
     return m.Attribute(value=build_cst_matcher(body), attr=m.Name(value=tail))
 
 
