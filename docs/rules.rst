@@ -25,6 +25,7 @@ _`ASYNC102` : await-in-finally-or-cancelled
     ``await`` inside ``finally``, :ref:`cancelled-catching <cancelled>` ``except:``, or ``__aexit__`` must have shielded :ref:`cancel scope <cancel_scope>` with timeout.
     If not, the async call will immediately raise a new cancellation, suppressing any cancellation that was caught.
     Not applicable to asyncio due to edge-based cancellation semantics it uses as opposed to level-based used by trio and anyio.
+    Calls to ``.aclose()`` (with no arguments) and to :func:`trio.aclose_forcefully` / :func:`anyio.aclose_forcefully` are exempt, as they are intended for use in cleanup.
     See :ref:`ASYNC120 <async120>` for the general case where other exceptions might get suppressed.
 
 ASYNC103 : no-reraise-cancelled

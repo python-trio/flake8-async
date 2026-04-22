@@ -10,6 +10,7 @@ Unreleased
 - :ref:`ASYNC910 <async910>` and :ref:`ASYNC911 <async911>` now accept ``__aenter__`` / ``__aexit__`` methods when the partner method provides the checkpoint, or when only one of the two is defined on a class that inherits from another class (charitably assuming the partner is inherited and contains a checkpoint). `(issue #441) <https://github.com/python-trio/flake8-async/issues/441>`_
 - :ref:`ASYNC300 <async300>` no longer triggers when the result of ``asyncio.create_task()`` is returned from a function. `(issue #398) <https://github.com/python-trio/flake8-async/issues/398>`_
 - Add :ref:`ASYNC126 <async126>` exceptiongroup-subclass-missing-derive. `(issue #334) <https://github.com/python-trio/flake8-async/issues/334>`_
+- :ref:`ASYNC102 <async102>` no longer warns on ``await trio.aclose_forcefully(...)`` / ``await anyio.aclose_forcefully(...)``, which are designed for cleanup and cancel immediately by design. `(issue #446) <https://github.com/python-trio/flake8-async/issues/446>`_
 
 25.7.1
 ======

@@ -84,17 +84,22 @@ class Visitor102(Flake8AsyncVisitor):
         self._potential_120.clear()
 
     def is_safe_aclose_call(self, node: ast.Await) -> bool:
-        return (
-            isinstance(node.value, ast.Call)
-            # only known safe if no arguments
+        if not isinstance(node.value, ast.Call):
+            return False
+        # allow `<x>.aclose()` with no arguments
+        if (
+            isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr == "aclose"
             and not node.value.args
             and not node.value.keywords
-            and isinstance(node.value.func, ast.Attribute)
-            and node.value.func.attr == "aclose"
-        )
+        ):
+            return True
+        # allow `trio.aclose_forcefully(<x>)` / `anyio.aclose_forcefully(<x>)`,
+        # which are specifically designed for cleanup and cancel immediately by design
+        return get_matching_call(node.value, "aclose_forcefully") is not None
 
     def visit_Await(self, node: ast.Await):
-        # allow calls to `.aclose()`
+        # allow calls to `.aclose()` and `[trio/anyio].aclose_forcefully(...)`
         if not (self.is_safe_aclose_call(node)):
             self.async_call_checker(node)
 
