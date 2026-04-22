@@ -6,6 +6,7 @@ Also contains the decorator definitions used to register error classes.
 from __future__ import annotations
 
 import ast
+from collections import defaultdict
 from collections.abc import Sized
 from dataclasses import dataclass
 from fnmatch import fnmatch
@@ -422,6 +423,24 @@ def with_has_call(
                 )
             )
     return res_list
+
+
+def calls_any_of(node: cst.With, *qualnames: str) -> bool:
+    """Return True if `node` contains a withitem matching any of `qualnames`.
+
+    Each `qualname` is a dotted string like ``"trio.open_nursery"`` or
+    ``"mcp.client.sse.sse_client"``: everything before the final dot is the
+    base, the final component is the function/class name.
+    """
+    by_base: dict[str, list[str]] = defaultdict(list)
+    for qn in qualnames:
+        base, _, name = qn.rpartition(".")
+        assert base, f"{qn!r} is not a dotted qualname"
+        assert name, f"{qn!r} is not a dotted qualname"
+        by_base[base].append(name)
+    return any(
+        with_has_call(node, *names, base=base) for base, names in by_base.items()
+    )
 
 
 def func_has_decorator(func: cst.FunctionDef, *names: str) -> bool:
