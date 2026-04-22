@@ -12,21 +12,27 @@ class NoDeriveBase(BaseExceptionGroup):  # error: 0, "NoDeriveBase", "NoDeriveBa
     pass
 
 
-class NoDeriveGeneric(ExceptionGroup[Exception]):  # error: 0, "NoDeriveGeneric", "NoDeriveGeneric"
+class NoDeriveGeneric(
+    ExceptionGroup[Exception]
+):  # error: 0, "NoDeriveGeneric", "NoDeriveGeneric"
     pass
 
 
 import exceptiongroup
 
 
-class NoDeriveQualified(exceptiongroup.ExceptionGroup):  # error: 0, "NoDeriveQualified", "NoDeriveQualified"
+class NoDeriveQualified(
+    exceptiongroup.ExceptionGroup
+):  # error: 0, "NoDeriveQualified", "NoDeriveQualified"
     pass
 
 
 class SomeMixin: ...
 
 
-class MultipleBases(SomeMixin, ExceptionGroup):  # error: 0, "MultipleBases", "MultipleBases"
+class MultipleBases(
+    SomeMixin, ExceptionGroup
+):  # error: 0, "MultipleBases", "MultipleBases"
     pass
 
 

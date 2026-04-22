@@ -552,8 +552,7 @@ class Visitor126(Flake8AsyncVisitor):
             return unparsed.rsplit(".", 1)[-1]
 
         if not any(
-            base_name(b) in ("ExceptionGroup", "BaseExceptionGroup")
-            for b in node.bases
+            base_name(b) in ("ExceptionGroup", "BaseExceptionGroup") for b in node.bases
         ):
             return
 
