@@ -11,6 +11,7 @@ Unreleased
 - :ref:`ASYNC300 <async300>` no longer triggers when the result of ``asyncio.create_task()`` is returned from a function. `(issue #398) <https://github.com/python-trio/flake8-async/issues/398>`_
 - Add :ref:`ASYNC126 <async126>` exceptiongroup-subclass-missing-derive. `(issue #334) <https://github.com/python-trio/flake8-async/issues/334>`_
 - :ref:`ASYNC102 <async102>` no longer warns on ``await trio.aclose_forcefully(...)`` / ``await anyio.aclose_forcefully(...)``, which are designed for cleanup and cancel immediately by design. `(issue #446) <https://github.com/python-trio/flake8-async/issues/446>`_
+- :ref:`ASYNC101 <async101>` now also triggers for common third-party context managers that open internal cancel scopes, nurseries, or task groups: ``trio_websocket.{open_websocket, open_websocket_url, serve_websocket}``, ``trio_asyncio.open_loop``, ``trio_parallel.open_worker_context``, ``trio_util.{move_on_when, run_and_cancelling}``, ``qtrio.{open_emissions_nursery, enter_emissions_channel}``, ``anyio.from_thread.{BlockingPortal, start_blocking_portal}``, ``asgi_lifespan.LifespanManager``, ``apscheduler.AsyncScheduler``, ``mcp.client.streamable_http.streamablehttp_client``, and ``mcp.client.sse.sse_client``. `(issue #350) <https://github.com/python-trio/flake8-async/issues/350>`_
 
 25.7.1
 ======
