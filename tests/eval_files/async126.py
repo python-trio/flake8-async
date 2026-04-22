@@ -8,31 +8,25 @@ class NoDerive(ExceptionGroup):  # error: 0, "NoDerive", "NoDerive"
     pass
 
 
-class NoDeriveBase(BaseExceptionGroup):  # error: 0, "NoDeriveBase", "NoDeriveBase"
+class NoDeriveBE(BaseExceptionGroup):  # error: 0, "NoDeriveBE", "NoDeriveBE"
     pass
 
 
-class NoDeriveGeneric(
-    ExceptionGroup[Exception]
-):  # error: 0, "NoDeriveGeneric", "NoDeriveGeneric"
+class NoDeriveG(ExceptionGroup[Exception]):  # error: 0, "NoDeriveG", "NoDeriveG"
     pass
 
 
-import exceptiongroup
+import exceptiongroup as eg
 
 
-class NoDeriveQualified(
-    exceptiongroup.ExceptionGroup
-):  # error: 0, "NoDeriveQualified", "NoDeriveQualified"
+class NoDeriveQ(eg.ExceptionGroup):  # error: 0, "NoDeriveQ", "NoDeriveQ"
     pass
 
 
-class SomeMixin: ...
+class _Mixin: ...
 
 
-class MultipleBases(
-    SomeMixin, ExceptionGroup
-):  # error: 0, "MultipleBases", "MultipleBases"
+class MultiBase(_Mixin, ExceptionGroup):  # error: 0, "MultiBase", "MultiBase"
     pass
 
 
@@ -42,20 +36,20 @@ class HasDerive(ExceptionGroup):
         return HasDerive(self.message, excs)
 
 
-class HasDeriveBase(BaseExceptionGroup):
+class HasDeriveBE(BaseExceptionGroup):
     def derive(self, excs):
-        return HasDeriveBase(self.message, excs)
+        return HasDeriveBE(self.message, excs)
 
 
-class HasDeriveGeneric(ExceptionGroup[Exception]):
+class HasDeriveG(ExceptionGroup[Exception]):
     def derive(self, excs):
-        return HasDeriveGeneric(self.message, excs)
+        return HasDeriveG(self.message, excs)
 
 
 # async derive is weird but counts
-class AsyncDerive(ExceptionGroup):
+class AsyncDer(ExceptionGroup):
     async def derive(self, excs):  # type: ignore
-        return AsyncDerive(self.message, excs)
+        return AsyncDer(self.message, excs)
 
 
 # not an ExceptionGroup subclass
@@ -65,9 +59,9 @@ class NotAnEG(Exception):
 
 # nested class
 class Outer:
-    class InnerNoDerive(ExceptionGroup):  # error: 4, "InnerNoDerive", "InnerNoDerive"
+    class InnerNo(ExceptionGroup):  # error: 4, "InnerNo", "InnerNo"
         pass
 
-    class InnerHasDerive(ExceptionGroup):
+    class InnerHas(ExceptionGroup):
         def derive(self, excs):
-            return Outer.InnerHasDerive(self.message, excs)
+            return Outer.InnerHas(self.message, excs)
