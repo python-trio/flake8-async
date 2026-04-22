@@ -10,10 +10,41 @@ from typing import TYPE_CHECKING, Any
 
 from .flake8asyncvisitor import Flake8AsyncVisitor_cst
 from .helpers import (
+    calls_any_of,
     cancel_scope_names,
     error_class_cst,
     func_has_decorator,
-    with_has_call,
+)
+
+# Qualified names of context managers that open a nursery / task group / cancel
+# scope. `yield`ing inside any of these breaks exception handling unless the
+# enclosing function is itself a context manager (see ASYNC101 docs).
+_CANCEL_SCOPE_CMS: tuple[str, ...] = (
+    # nursery/taskgroup
+    "trio.open_nursery",
+    "anyio.create_task_group",
+    "asyncio.TaskGroup",
+    # stdlib cancel scopes
+    "asyncio.timeout",
+    "asyncio.timeout_at",
+    # trio/anyio share the same cancel-scope spelling
+    *(f"{lib}.{name}" for lib in ("trio", "anyio") for name in cancel_scope_names),
+    # 3rd-party CMs with internal cancel scopes / nurseries. See issue #350.
+    "trio_websocket.open_websocket",
+    "trio_websocket.open_websocket_url",
+    "trio_websocket.serve_websocket",
+    "trio_asyncio.open_loop",
+    "trio_parallel.open_worker_context",
+    "trio_util.move_on_when",
+    "trio_util.run_and_cancelling",
+    "qtrio.open_emissions_nursery",
+    "qtrio.enter_emissions_channel",
+    "anyio.from_thread.BlockingPortal",
+    "anyio.from_thread.start_blocking_portal",
+    "asgi_lifespan.LifespanManager",
+    "apscheduler.AsyncScheduler",
+    "mcp.client.streamable_http.streamablehttp_client",
+    "mcp.client.sse.sse_client",
 )
 
 if TYPE_CHECKING:
@@ -45,49 +76,7 @@ class Visitor101(Flake8AsyncVisitor_cst):
         self._yield_is_error = (
             not self._safe_decorator
             and not self._yield_is_error
-            # It's not strictly necessary to specify the base, as raising errors on
-            # e.g. anyio.open_nursery isn't much of a problem.
-            and bool(
-                # nursery/taskgroup
-                with_has_call(node, "open_nursery", base="trio")
-                or with_has_call(node, "create_task_group", base="anyio")
-                or with_has_call(node, "TaskGroup", base="asyncio")
-                # cancel scopes
-                or with_has_call(node, "timeout", "timeout_at", base="asyncio")
-                or with_has_call(node, *cancel_scope_names, base=("trio", "anyio"))
-                # 3rd-party context managers with internal cancel scopes /
-                # nurseries / task groups. See issue #350.
-                or with_has_call(
-                    node,
-                    "open_websocket",
-                    "open_websocket_url",
-                    "serve_websocket",
-                    base="trio_websocket",
-                )
-                or with_has_call(node, "open_loop", base="trio_asyncio")
-                or with_has_call(node, "open_worker_context", base="trio_parallel")
-                or with_has_call(
-                    node, "move_on_when", "run_and_cancelling", base="trio_util"
-                )
-                or with_has_call(
-                    node,
-                    "open_emissions_nursery",
-                    "enter_emissions_channel",
-                    base="qtrio",
-                )
-                or with_has_call(
-                    node,
-                    "BlockingPortal",
-                    "start_blocking_portal",
-                    base="anyio.from_thread",
-                )
-                or with_has_call(node, "LifespanManager", base="asgi_lifespan")
-                or with_has_call(node, "AsyncScheduler", base="apscheduler")
-                or with_has_call(
-                    node, "streamablehttp_client", base="mcp.client.streamable_http"
-                )
-                or with_has_call(node, "sse_client", base="mcp.client.sse")
-            )
+            and calls_any_of(node, *_CANCEL_SCOPE_CMS)
         )
 
     def leave_With(
