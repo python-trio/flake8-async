@@ -104,11 +104,25 @@ def diff_strings(first: str, second: str, /) -> str:
     # make sure only single newline at end of file
 
 
-# replaces all instances of `original` with `new` in string
-# unless it's preceded by a `-`, which indicates it's part of a command-line flag
+# replaces all instances of `original` with `new` in string, matching at word
+# boundaries so e.g. "trio" doesn't rewrite "trio_websocket" or "qtrio", and
+# skipping occurrences preceded by a `-` (which would be part of a CLI flag).
 def replace_library(string: str, original: str = "trio", new: str = "anyio") -> str:
     def replace_str(string: str, original: str, new: str) -> str:
-        return re.sub(rf"(?<!-){original}", new, string)
+        # Match at word boundaries so e.g. "trio" doesn't rewrite
+        # "trio_websocket" or "qtrio". Library names (trio/anyio/asyncio)
+        # additionally allow a leading `_`, so the "_trio" suffix in error
+        # codes like "ASYNC103_trio" still gets rewritten when the test runs
+        # under a different library. Non-identifier patterns (like the quoted
+        # `"nursery"` error-message replacement) get no boundary anchors, as
+        # `\b"` would only match adjacent to a word char.
+        if original in ("trio", "anyio", "asyncio"):
+            pattern = rf"(?<!-)(?:\b|(?<=_)){original}\b"
+        elif re.fullmatch(r"\w+", original):
+            pattern = rf"(?<!-)\b{original}\b"
+        else:
+            pattern = rf"(?<!-){re.escape(original)}"
+        return re.sub(pattern, new, string)
 
     # this isn't super pretty, and doesn't include asyncio.TaskGroup(),
     # and could probably cover more methods, but /shrug
