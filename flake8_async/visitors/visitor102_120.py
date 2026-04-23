@@ -98,9 +98,27 @@ class Visitor102(Flake8AsyncVisitor):
         # which are specifically designed for cleanup and cancel immediately by design
         return get_matching_call(node.value, "aclose_forcefully") is not None
 
+    # trio.lowlevel.cancel_shielded_checkpoint (and the anyio equivalent) are
+    # explicitly a schedule-but-not-cancel point, so they're safe to await
+    # inside a finally / cancelled except / __aexit__.
+    def is_safe_shielded_checkpoint(self, node: ast.Await) -> bool:
+        return (
+            isinstance(node.value, ast.Call)
+            and not node.value.args
+            and not node.value.keywords
+            and ast.unparse(node.value.func)
+            in (
+                "trio.lowlevel.cancel_shielded_checkpoint",
+                "anyio.lowlevel.cancel_shielded_checkpoint",
+            )
+        )
+
     def visit_Await(self, node: ast.Await):
-        # allow calls to `.aclose()` and `[trio/anyio].aclose_forcefully(...)`
-        if not (self.is_safe_aclose_call(node)):
+        # allow calls to `.aclose()`, `[trio/anyio].aclose_forcefully(...)`, and
+        # `[trio/anyio].lowlevel.cancel_shielded_checkpoint()`
+        if not (
+            self.is_safe_aclose_call(node) or self.is_safe_shielded_checkpoint(node)
+        ):
             self.async_call_checker(node)
 
     visit_AsyncFor = async_call_checker
