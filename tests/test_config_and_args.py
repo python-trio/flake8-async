@@ -491,8 +491,7 @@ def test_disable_noqa_ast(
     out, err = capsys.readouterr()
     assert not err
     assert (
-        out
-        == "./example.py:1:1: ASYNC106 trio should be imported with `import trio`"
+        out == "./example.py:1:1: ASYNC106 trio should be imported with `import trio`"
         " for consistency.\n"
     )
 

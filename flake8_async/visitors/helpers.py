@@ -351,9 +351,7 @@ def resolve_canonical_ast(node: ast.AST, imports: Mapping[str, str]) -> str | No
     return None
 
 
-def resolve_canonical_cst(
-    node: cst.CSTNode, imports: Mapping[str, str]
-) -> str | None:
+def resolve_canonical_cst(node: cst.CSTNode, imports: Mapping[str, str]) -> str | None:
     if isinstance(node, cst.Name):
         return imports.get(node.value, node.value)
     if isinstance(node, cst.Attribute):
@@ -512,9 +510,7 @@ def with_has_call(
             if canonical is not None and canonical.startswith(f"{b}."):
                 suffix = canonical[len(b) + 1 :]
                 if suffix in names:
-                    res_list.append(
-                        MatchingCall(node=item.item, base=b, name=suffix)
-                    )
+                    res_list.append(MatchingCall(node=item.item, base=b, name=suffix))
                     break
     return res_list
 

@@ -205,7 +205,10 @@ class Visitor102(Flake8AsyncVisitor):
         self._trio_context_managers = []
         self._potential_120 = []
 
-        if self.cancelled_caught or (res := critical_except(node, self.imports)) is None:
+        if (
+            self.cancelled_caught
+            or (res := critical_except(node, self.imports)) is None
+        ):
             self._critical_scope = Statement("except", node.lineno, node.col_offset)
         else:
             self._critical_scope = res

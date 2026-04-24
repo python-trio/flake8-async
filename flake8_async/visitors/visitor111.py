@@ -12,9 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-def is_nursery_like(
-    node: ast.expr, imports: Mapping[str, str] | None = None
-) -> bool:
+def is_nursery_like(node: ast.expr, imports: Mapping[str, str] | None = None) -> bool:
     return bool(
         get_matching_call(node, "open_nursery", base="trio", imports=imports)
         or get_matching_call(node, "create_task_group", base="anyio", imports=imports)

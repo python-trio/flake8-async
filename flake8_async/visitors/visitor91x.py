@@ -32,7 +32,6 @@ from .helpers import (
     fnmatch_qualified_name_cst,
     func_has_decorator,
     get_matching_call_cst,
-    identifier_to_string,
     iter_guaranteed_once_cst,
 )
 

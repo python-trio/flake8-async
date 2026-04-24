@@ -9,7 +9,6 @@ import trio as t
 from trio import open_nursery
 from trio import open_nursery as on
 
-
 with t.open_nursery() as n:  # error: 5, "n", "nursery"
     n.start(...)
 

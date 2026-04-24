@@ -257,9 +257,7 @@ class VisitorImportTracker_cst(Flake8AsyncVisitor_cst):
     def _enter_scope(self, node: cst.CSTNode) -> None:
         self._scope_depth += 1
 
-    def _leave_scope(
-        self, original_node: cst.CSTNode, updated_node: Any
-    ) -> Any:
+    def _leave_scope(self, original_node: cst.CSTNode, updated_node: Any) -> Any:
         self._scope_depth -= 1
         return updated_node
 
