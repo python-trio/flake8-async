@@ -156,14 +156,13 @@ class VisitorLibraryHandler_cst(Flake8AsyncVisitor_cst):
 
 
 # Populate `imports` (local-name -> canonical dotted qualname) so helpers can
-# resolve call-sites regardless of import style.  Examples:
-#   import trio                  -> imports["trio"] = "trio"
-#   import trio as t             -> imports["t"] = "trio"
-#   import trio.lowlevel         -> imports["trio"]           = "trio"
-#                                   imports["trio.lowlevel"]  = "trio.lowlevel"
-#   import trio.lowlevel as ll   -> imports["ll"] = "trio.lowlevel"
-#   from trio import sleep       -> imports["sleep"] = "trio.sleep"
-#   from trio import sleep as s  -> imports["s"] = "trio.sleep"
+# resolve call-sites regardless of import style.  Mappings produced:
+#   "import trio"                 => {"trio": "trio"}
+#   "import trio as t"            => {"t": "trio"}
+#   "import trio.lowlevel"        => {"trio": "trio", "trio.lowlevel": "trio.lowlevel"}
+#   "import trio.lowlevel as ll"  => {"ll": "trio.lowlevel"}
+#   "from trio import sleep"      => {"sleep": "trio.sleep"}
+#   "from trio import sleep as s" => {"s": "trio.sleep"}
 #
 # Only module-level imports are tracked: function-/class-local imports are
 # skipped to keep them out of sibling scopes. A full scope-aware resolver

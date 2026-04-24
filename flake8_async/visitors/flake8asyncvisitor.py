@@ -10,6 +10,7 @@ import libcst as cst
 from libcst.metadata import PositionProvider
 
 from ..base import Error, Statement, strip_error_subidentifier
+from ._canonical import resolve_canonical_ast, resolve_canonical_cst
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -58,8 +59,6 @@ class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
         return self.__state.imports
 
     def canonical_name(self, node: ast.AST) -> str | None:
-        from .helpers import resolve_canonical_ast
-
         return resolve_canonical_ast(node, self.__state.imports)
 
     def visit(self, node: ast.AST):
@@ -184,8 +183,6 @@ class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
         return self.__state.imports
 
     def canonical_name(self, node: cst.CSTNode) -> str | None:
-        from .helpers import resolve_canonical_cst
-
         return resolve_canonical_cst(node, self.__state.imports)
 
     def get_state(self, *attrs: str, copy: bool = False) -> dict[str, Any]:
