@@ -87,11 +87,9 @@ async def foo_suppress_as():  # ASYNC910: 0, "exit", Statement('function definit
 # ###############################
 
 
-# Module-level imports are resolved via their canonical qualname, so the
-# `from contextlib import suppress` below is recognised as a suppressing CM
-# even though the function is defined above the import statement (Python
-# resolves the name at call time, so this more closely matches runtime
-# semantics).
+# Module-level imports are visible to any function body in the same file
+# (Python resolves names at call time), so the `from contextlib import suppress`
+# further down makes `suppress` a suppressing CM in this function too.
 async def foo_suppress_directly_imported_1():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
     with suppress():
         await foo()

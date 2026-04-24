@@ -67,8 +67,7 @@ async def foo():
     with asyncio.create_task(*args) as k:  # type: ignore[attr-defined]  # ASYNC300: 9
         ...
 
-    # module-level imports are resolved to their canonical qualname, but
-    # function-local imports are not tracked (they'd leak into sibling scopes).
+    # function-local imports aren't tracked (so they don't leak to siblings)
     from asyncio import create_task
 
     create_task(*args)

@@ -77,7 +77,7 @@ with trio.open_nursery() as nursery:
         async with trio.open_process() as bar_2:
             nursery.start(bar_2)  # safe
 
-# aliased trio import is now resolved to canonical qualname, so this errors too
+# `import trio as noterror` -- open_nursery resolves to canonical qualname
 with noterror.open_nursery() as nursery:
     with trio.open("") as bar:
         nursery.start(bar)  # error: 22, line-1, line-2, "bar", "start"

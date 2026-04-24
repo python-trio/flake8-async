@@ -58,10 +58,6 @@ class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
         return self.__state.imports
 
     def canonical_name(self, node: ast.AST) -> str | None:
-        """Resolve `node` to a dotted canonical qualname, consulting imports.
-
-        See ``resolve_canonical_ast`` for semantics.
-        """
         from .helpers import resolve_canonical_ast
 
         return resolve_canonical_ast(node, self.__state.imports)
@@ -188,10 +184,6 @@ class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
         return self.__state.imports
 
     def canonical_name(self, node: cst.CSTNode) -> str | None:
-        """Resolve `node` to a dotted canonical qualname, consulting imports.
-
-        See ``resolve_canonical_cst`` for semantics.
-        """
         from .helpers import resolve_canonical_cst
 
         return resolve_canonical_cst(node, self.__state.imports)

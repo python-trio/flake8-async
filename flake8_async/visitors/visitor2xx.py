@@ -68,32 +68,13 @@ class Visitor21X(Visitor200):
         ),
     }
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        # tracked specifically for ASYNC211, which wants to know whether urllib3
-        # itself has been imported (any form) before flagging `x.request(...)`.
-        self.urllib3_imports: set[str] = set()
-
-    def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node.module == "urllib3":
-            self.urllib3_imports.add(node.module)
-
-    def visit_Import(self, node: ast.Import):
-        for name in node.names:
-            if name.name == "urllib3":
-                # Could also save the name.asname for matching
-                self.urllib3_imports.add(name.name)
+    def _urllib3_imported(self) -> bool:
+        return any(
+            v == "urllib3" or v.startswith("urllib3.") for v in self.imports.values()
+        )
 
     def visit_blocking_call(self, node: ast.Call):
-        http_methods = {
-            "get",
-            "options",
-            "head",
-            "post",
-            "put",
-            "patch",
-            "delete",
-        }
+        http_methods = {"get", "options", "head", "post", "put", "patch", "delete"}
         func_name = ast.unparse(node.func)
         canonical = self.canonical_name(node.func) or func_name
         for http_package in "requests", "httpx":
@@ -111,16 +92,11 @@ class Visitor21X(Visitor200):
             "urllib.request.urlopen",
             "request.urlopen",
             "urlopen",
-        ) or func_name in (
-            "urllib3.request",
-            "urllib.request.urlopen",
-            "request.urlopen",
-            "urlopen",
         ):
             self.error(node, func_name, error_code="ASYNC210")
 
         elif (
-            "urllib3" in self.urllib3_imports
+            self._urllib3_imported()
             and isinstance(node.func, ast.Attribute)
             and node.func.attr == "request"
             and node.args
@@ -224,12 +200,9 @@ class Visitor22X(Visitor200):
             "getstatusoutput",
         }
 
-        raw_name = ast.unparse(node.func)
-        canonical = self.canonical_name(node.func) or raw_name
-        # What we report to the user. Prefer the raw spelling since that's what
-        # they wrote, but use canonical for matching so `import os as o; o.popen`,
-        # `from subprocess import run`, etc. also get detected.
-        func_name = raw_name
+        # Match against the canonical qualname, but report the user's literal spelling.
+        func_name = ast.unparse(node.func)
+        canonical = self.canonical_name(node.func) or func_name
         error_code: str | None = None
         if canonical in ("subprocess.Popen", "os.popen"):
             error_code = "ASYNC220"

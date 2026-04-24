@@ -26,14 +26,9 @@ LIBRARIES = ("trio", "anyio", "asyncio")
 @error_class
 @disabled_by_default
 class Visitor106(Flake8AsyncVisitor):
-    # Historically this enforced `import trio` because the linter couldn't see
-    # through aliased/from-imports. That limitation is gone (see #132), so
-    # ASYNC106 is now opt-in for projects that still want to enforce the style.
+    # Opt-in style check; other rules already handle all import styles.
     error_codes: Mapping[str, str] = {
-        "ASYNC106": (
-            "{0} should be imported with `import {0}` for consistency"
-            " (historical reasons; no longer required for the linter to work)."
-        ),
+        "ASYNC106": "{0} should be imported with `import {0}` for consistency.",
     }
 
     def visit_ImportFrom(self, node: ast.ImportFrom):

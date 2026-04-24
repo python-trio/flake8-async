@@ -37,11 +37,10 @@ class SharedState:
     library: tuple[str, ...] = ()
     typed_calls: dict[str, str] = field(default_factory=dict[str, str])
     variables: dict[str, str] = field(default_factory=dict[str, str])
-    # Maps a locally-bound name to its canonical dotted qualname, populated by
-    # VisitorImportTracker/VisitorImportTracker_cst. Used by helpers so that
-    # rules can be written against canonical qualnames and match regardless of
-    # how things were imported (bare `import x`, `import x as y`,
-    # `from x import y`, or `from x import y as z`).
+    # Local name -> canonical dotted qualname, populated by VisitorImportTracker[_cst].
+    # Helpers consult this so rules can match the canonical qualname regardless of
+    # how a symbol was imported (`import x`, `import x as y`, `from x import y`,
+    # `from x import y as z`).
     imports: dict[str, str] = field(default_factory=dict[str, str])
 
 

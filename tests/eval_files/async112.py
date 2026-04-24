@@ -86,7 +86,7 @@ async def foo_1():
         await n.start(...)
 
 
-# aliased trio import is now resolved to canonical qualname, so this errors too
+# `import trio as noterror` -- open_nursery resolves to canonical qualname
 with noterror.open_nursery(...) as n:  # error: 5, "n", "nursery"
     n.start(...)
 
