@@ -96,7 +96,10 @@ class Visitor102(Flake8AsyncVisitor):
             return True
         # allow `trio.aclose_forcefully(<x>)` / `anyio.aclose_forcefully(<x>)`,
         # which are specifically designed for cleanup and cancel immediately by design
-        return get_matching_call(node.value, "aclose_forcefully") is not None
+        return (
+            get_matching_call(node.value, "aclose_forcefully", imports=self.imports)
+            is not None
+        )
 
     # trio.lowlevel.cancel_shielded_checkpoint (and the anyio equivalent) are
     # explicitly a schedule-but-not-cancel point, so they're safe to await
@@ -106,7 +109,7 @@ class Visitor102(Flake8AsyncVisitor):
             isinstance(node.value, ast.Call)
             and not node.value.args
             and not node.value.keywords
-            and ast.unparse(node.value.func)
+            and self.canonical_name(node.value.func)
             in (
                 "trio.lowlevel.cancel_shielded_checkpoint",
                 "anyio.lowlevel.cancel_shielded_checkpoint",
@@ -133,6 +136,7 @@ class Visitor102(Flake8AsyncVisitor):
                 "open_nursery",
                 "create_task_group",
                 *cancel_scope_names,
+                imports=self.imports,
             )
             if call is None:
                 continue
@@ -151,9 +155,17 @@ class Visitor102(Flake8AsyncVisitor):
         # asyncio.TaskGroup() appears to be a source of cancellation when exiting.
         for item in node.items:
             if not (
-                get_matching_call(item.context_expr, "open_nursery", base="trio")
+                get_matching_call(
+                    item.context_expr,
+                    "open_nursery",
+                    base="trio",
+                    imports=self.imports,
+                )
                 or get_matching_call(
-                    item.context_expr, "create_task_group", base="anyio"
+                    item.context_expr,
+                    "create_task_group",
+                    base="anyio",
+                    imports=self.imports,
                 )
             ):
                 self.async_call_checker(node)
@@ -193,7 +205,7 @@ class Visitor102(Flake8AsyncVisitor):
         self._trio_context_managers = []
         self._potential_120 = []
 
-        if self.cancelled_caught or (res := critical_except(node)) is None:
+        if self.cancelled_caught or (res := critical_except(node, self.imports)) is None:
             self._critical_scope = Statement("except", node.lineno, node.col_offset)
         else:
             self._critical_scope = res

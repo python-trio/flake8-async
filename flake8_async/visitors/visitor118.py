@@ -29,6 +29,13 @@ class Visitor118(Flake8AsyncVisitor):
     def visit_Assign(self, node: ast.Assign | ast.AnnAssign):
         if node.value is None:
             return
+        value = node.value
+        func_node = value.func if isinstance(value, ast.Call) else value
+        canonical = self.canonical_name(func_node)
+        if canonical == "anyio.get_cancelled_exc_class":
+            self.error(node.value)
+            return
+        # Fallback to literal matching for un-imported or unusual forms.
         name = ast.unparse(node.value)
         if re.fullmatch(r"(anyio.)?get_cancelled_exc_class(\(\))?", name):
             self.error(node.value)

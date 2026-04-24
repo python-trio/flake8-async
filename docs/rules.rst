@@ -42,7 +42,10 @@ ASYNC105 : missing-await
     This is only supported with trio functions, but you can get similar functionality with a type-checker.
 
 ASYNC106 : bad-async-library-import
-    trio/anyio/asyncio must be imported with ``import xxx`` for the linter to work.
+    trio/anyio/asyncio should be imported with ``import xxx`` for consistency.
+    As of the canonical-qualname refactor this rule is no longer required for the
+    linter to work, and is therefore disabled by default -- enable it explicitly
+    if you want to enforce the style.
 
 ASYNC109 : async-function-with-timeout
     Async function definition with a ``timeout`` parameter.

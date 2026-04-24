@@ -38,8 +38,8 @@ async def foo():
         await trio.sleep()
         await trio.sleep_until()
 
-    # check library name
-    while ...:
+    # aliased-import resolves to canonical qualname, so this now errors too
+    while ...:  # error: 4, "trio"
         await noerror.sleep()
 
     async def sleep(): ...

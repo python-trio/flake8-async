@@ -53,6 +53,19 @@ class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
         self.__state.variables.clear()
         self.__state.variables.update(value)
 
+    @property
+    def imports(self) -> dict[str, str]:
+        return self.__state.imports
+
+    def canonical_name(self, node: ast.AST) -> str | None:
+        """Resolve `node` to a dotted canonical qualname, consulting imports.
+
+        See ``resolve_canonical_ast`` for semantics.
+        """
+        from .helpers import resolve_canonical_ast
+
+        return resolve_canonical_ast(node, self.__state.imports)
+
     def visit(self, node: ast.AST):
         """Visit a node."""
         # construct visitor for this node type
@@ -169,6 +182,19 @@ class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
 
         self.options = self.__state.options
         self.noqas = self.__state.noqas
+
+    @property
+    def imports(self) -> dict[str, str]:
+        return self.__state.imports
+
+    def canonical_name(self, node: cst.CSTNode) -> str | None:
+        """Resolve `node` to a dotted canonical qualname, consulting imports.
+
+        See ``resolve_canonical_cst`` for semantics.
+        """
+        from .helpers import resolve_canonical_cst
+
+        return resolve_canonical_cst(node, self.__state.imports)
 
     def get_state(self, *attrs: str, copy: bool = False) -> dict[str, Any]:
         # require attrs, since we inherit a *ton* of stuff which we don't want to copy

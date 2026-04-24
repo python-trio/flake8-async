@@ -13,7 +13,6 @@ from .helpers import (
     error_class_cst,
     get_matching_call,
     has_decorator,
-    identifier_to_string,
 )
 
 if TYPE_CHECKING:
@@ -25,9 +24,16 @@ LIBRARIES = ("trio", "anyio", "asyncio")
 
 
 @error_class
+@disabled_by_default
 class Visitor106(Flake8AsyncVisitor):
+    # Historically this enforced `import trio` because the linter couldn't see
+    # through aliased/from-imports. That limitation is gone (see #132), so
+    # ASYNC106 is now opt-in for projects that still want to enforce the style.
     error_codes: Mapping[str, str] = {
-        "ASYNC106": "{0} must be imported with `import {0}` for the linter to work.",
+        "ASYNC106": (
+            "{0} should be imported with `import {0}` for consistency"
+            " (historical reasons; no longer required for the linter to work)."
+        ),
     }
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
@@ -76,16 +82,16 @@ class Visitor110(Flake8AsyncVisitor):
             and isinstance(node.body[0], ast.Expr)
             and isinstance(node.body[0].value, ast.Await)
             and (
-                get_matching_call(node.body[0].value.value, "sleep", "sleep_until")
+                get_matching_call(
+                    node.body[0].value.value,
+                    "sleep",
+                    "sleep_until",
+                    imports=self.imports,
+                )
                 or (
-                    # get_matching_call doesn't (currently) support checking for trio.x.y
                     isinstance(call := node.body[0].value.value, ast.Call)
-                    and isinstance(call.func, ast.Attribute)
-                    and call.func.attr == "checkpoint"
-                    and isinstance(call.func.value, ast.Attribute)
-                    and call.func.value.attr == "lowlevel"
-                    and isinstance(call.func.value.value, ast.Name)
-                    and call.func.value.value.id in ("trio", "anyio")
+                    and self.canonical_name(call.func)
+                    in ("trio.lowlevel.checkpoint", "anyio.lowlevel.checkpoint")
                 )
             )
         ):
@@ -116,15 +122,22 @@ class Visitor112(Flake8AsyncVisitor):
 
             start_methods: tuple[str, ...] = ("start", "start_soon")
             # check for trio.open_nursery and anyio.create_task_group
-            if get_matching_call(item.context_expr, "open_nursery", base="trio"):
+            if get_matching_call(
+                item.context_expr, "open_nursery", base="trio", imports=self.imports
+            ):
                 nursery_type = "nursery"
 
             elif get_matching_call(
-                item.context_expr, "create_task_group", base="anyio"
+                item.context_expr,
+                "create_task_group",
+                base="anyio",
+                imports=self.imports,
             ):
                 nursery_type = "task group"
             # check for asyncio.TaskGroup
-            elif get_matching_call(item.context_expr, "TaskGroup", base="asyncio"):
+            elif get_matching_call(
+                item.context_expr, "TaskGroup", base="asyncio", imports=self.imports
+            ):
                 nursery_type = "task group"
                 start_methods = ("create_task",)
             else:
@@ -138,6 +151,8 @@ class Visitor112(Flake8AsyncVisitor):
             body_call = cast("ast.Call", body_call)
 
             if (
+                # start[_soon] is called on the nursery/taskgroup variable,
+                # not a canonically-resolved name, so we don't pass imports.
                 get_matching_call(body_call, *start_methods, base=var_name)
                 # check for presence of <X> as parameter
                 and not any(
@@ -304,7 +319,7 @@ class Visitor115(Flake8AsyncVisitor):
     }
 
     def visit_Call(self, node: ast.Call):
-        if not (m := get_matching_call(node, "sleep")):
+        if not (m := get_matching_call(node, "sleep", imports=self.imports)):
             return
         if (
             len(node.args) == 1
@@ -328,7 +343,7 @@ class Visitor116(Flake8AsyncVisitor):
     }
 
     def visit_Call(self, node: ast.Call):
-        if not (m := get_matching_call(node, "sleep")):
+        if not (m := get_matching_call(node, "sleep", imports=self.imports)):
             return
         if len(node.args) == 1:
             arg = node.args[0]
@@ -425,11 +440,18 @@ class Visitor121(Flake8AsyncVisitor):
         self.save_state(node, "unsafe_stack", copy=True)
 
         for item in node.items:
-            if get_matching_call(item.context_expr, "open_nursery", base="trio"):
+            if get_matching_call(
+                item.context_expr, "open_nursery", base="trio", imports=self.imports
+            ):
                 self.unsafe_stack.append("nursery")
             elif get_matching_call(
-                item.context_expr, "create_task_group", base="anyio"
-            ) or get_matching_call(item.context_expr, "TaskGroup", base="asyncio"):
+                item.context_expr,
+                "create_task_group",
+                base="anyio",
+                imports=self.imports,
+            ) or get_matching_call(
+                item.context_expr, "TaskGroup", base="asyncio", imports=self.imports
+            ):
                 self.unsafe_stack.append("task group")
 
     def visit_While(self, node: ast.While | ast.For | ast.AsyncFor):
@@ -484,7 +506,11 @@ class Visitor122(Flake8AsyncVisitor):
     def visit_Call(self, node: ast.Call):
         if not self.in_withitem and (
             match := get_matching_call(
-                node, "fail_after", "move_on_after", base=("trio", "anyio")
+                node,
+                "fail_after",
+                "move_on_after",
+                base=("trio", "anyio"),
+                imports=self.imports,
             )
         ):
             self.error(node, str(match))
@@ -510,7 +536,12 @@ class Visitor125(Flake8AsyncVisitor):
             return False
 
         match = get_matching_call(
-            node, "fail_at", "move_on_at", "CancelScope", base=("trio", "anyio")
+            node,
+            "fail_at",
+            "move_on_at",
+            "CancelScope",
+            base=("trio", "anyio"),
+            imports=self.imports,
         )
         if match is None:
             return
@@ -548,7 +579,8 @@ class Visitor126(Flake8AsyncVisitor):
             # strip generic subscripts like `ExceptionGroup[Foo]`
             if isinstance(base, ast.Subscript):
                 base = base.value
-            unparsed = ast.unparse(base)
+            canonical = self.canonical_name(base)
+            unparsed = canonical if canonical is not None else ast.unparse(base)
             return unparsed.rsplit(".", 1)[-1]
 
         if not any(
@@ -586,7 +618,7 @@ class Visitor300(Flake8AsyncVisitor_cst):
 
     def visit_Call(self, node: cst.Call):
         if (
-            identifier_to_string(node.func) == "asyncio.create_task"
+            self.canonical_name(node.func) == "asyncio.create_task"
             and not self.safe_to_create_task
         ):
             self.error(node)

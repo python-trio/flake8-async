@@ -51,6 +51,14 @@
 
  # ###############################
 @@ x,6 x,7 @@
+ async def foo_suppress_directly_imported_1():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
+     with suppress():
+         await foo()
++    await trio.lowlevel.checkpoint()
+
+
+ from contextlib import suppress
+@@ x,6 x,7 @@
  async def foo_suppress_directly_imported_2():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
      with suppress():
          await foo()

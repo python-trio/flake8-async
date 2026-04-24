@@ -76,7 +76,7 @@ class Visitor101(Flake8AsyncVisitor_cst):
         self._yield_is_error = (
             not self._safe_decorator
             and not self._yield_is_error
-            and calls_any_of(node, *_CANCEL_SCOPE_CMS)
+            and calls_any_of(node, *_CANCEL_SCOPE_CMS, imports=self.imports)
         )
 
     def leave_With(

@@ -131,7 +131,9 @@ class Visitor124(Flake8AsyncVisitor_cst):
             )
             # ignore functions with no_checkpoint_warning_decorators
             and not fnmatch_qualified_name_cst(
-                original_node.decorators, *self.options.no_checkpoint_warning_decorators
+                original_node.decorators,
+                *self.options.no_checkpoint_warning_decorators,
+                imports=self.imports,
             )
         ):
             self.error(original_node)
@@ -649,7 +651,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.async_function = (
             node.asynchronous is not None
             and not fnmatch_qualified_name_cst(
-                node.decorators, *self.options.no_checkpoint_warning_decorators
+                node.decorators,
+                *self.options.no_checkpoint_warning_decorators,
+                imports=self.imports,
             )
         )
         # only visit subnodes if there is an async function defined inside
@@ -864,6 +868,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 "contextlib.suppress",
                 *self.suppress_imported_as,
                 *self.options.exception_suppress_context_managers,
+                imports=self.imports,
             )
             is not None
         )
@@ -881,7 +886,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             return
 
         for item in node.items:
-            if isinstance(item.item, cst.Call) and identifier_to_string(
+            if isinstance(item.item, cst.Call) and self.canonical_name(
                 item.item.func
             ) in (
                 "trio.open_nursery",
@@ -919,7 +924,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         for withitem in node.items:
             self.has_checkpoint_stack.append(ContextManager())
             if get_matching_call_cst(
-                withitem.item, "open_nursery", "create_task_group"
+                withitem.item,
+                "open_nursery",
+                "create_task_group",
+                imports=self.imports,
             ):
                 if withitem.asname is not None and isinstance(
                     withitem.asname.name, cst.Name
@@ -945,6 +953,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                     "contextlib.suppress",
                     *self.suppress_imported_as,
                     *self.options.exception_suppress_context_managers,
+                    imports=self.imports,
                 )
                 is not None
             ):
@@ -955,12 +964,15 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 continue
 
             if res := (
-                get_matching_call_cst(withitem.item, *cancel_scope_names)
+                get_matching_call_cst(
+                    withitem.item, *cancel_scope_names, imports=self.imports
+                )
                 or get_matching_call_cst(
                     withitem.item,
                     "timeout",
                     "timeout_at",
                     base="asyncio",
+                    imports=self.imports,
                 )
             ):
                 # typing issue: https://github.com/Instagram/LibCST/issues/1107

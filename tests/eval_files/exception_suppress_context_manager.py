@@ -80,8 +80,12 @@ async def foo_suppress_as():  # ASYNC910: 0, "exit", Statement('function definit
 # ###############################
 
 
-# not enabled unless it's imported from contextlib
-async def foo_suppress_directly_imported_1():
+# Module-level imports are resolved via their canonical qualname, so the
+# `from contextlib import suppress` below is recognised as a suppressing CM
+# even though the function is defined above the import statement (Python
+# resolves the name at call time, so this more closely matches runtime
+# semantics).
+async def foo_suppress_directly_imported_1():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
     with suppress():
         await foo()
 

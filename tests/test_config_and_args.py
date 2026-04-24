@@ -492,8 +492,9 @@ def test_disable_noqa_ast(
     assert not err
     assert (
         out
-        == "./example.py:1:1: ASYNC106 trio must be imported with `import trio` for the"
-        " linter to work.\n"
+        == "./example.py:1:1: ASYNC106 trio should be imported with `import trio`"
+        " for consistency (historical reasons; no longer required for the linter"
+        " to work).\n"
     )
 
 
