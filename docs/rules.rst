@@ -41,7 +41,7 @@ ASYNC105 : missing-await
     async trio function called without using ``await``.
     This is only supported with trio functions, but you can get similar functionality with a type-checker.
 
-ASYNC106 : bad-async-library-import
+_`ASYNC106` : bad-async-library-import
     trio/anyio/asyncio should be imported with ``import xxx`` for consistency.
     Opt-in style check; the linter resolves other import styles correctly.
 
