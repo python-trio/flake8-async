@@ -4,8 +4,8 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
-Unreleased
-==========
+26.4.1
+======
 - Rules resolve function/class references via the canonical qualname, so checks fire regardless of import style (``import trio``, ``import trio as t``, ``from trio import open_nursery [as on]``, …). Only module-level imports are tracked. `(issue #132) <https://github.com/python-trio/flake8-async/issues/132>`_
 - :ref:`ASYNC106 <async106>` is now disabled by default; re-enable it to enforce the ``import trio`` style.
 - Autofix for :ref:`ASYNC910 <async910>` / :ref:`ASYNC911 <async911>` no longer inserts checkpoints inside ``except`` clauses (which would trigger :ref:`ASYNC120 <async120>`); instead the checkpoint is added at the top of the function or of the enclosing loop. `(issue #403) <https://github.com/python-trio/flake8-async/issues/403>`_
