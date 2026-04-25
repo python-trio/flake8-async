@@ -50,7 +50,9 @@ class Visitor200(Flake8AsyncVisitor):
 
     def visit_blocking_call(self, node: ast.Call):
         blocking_calls = self.options.async200_blocking_calls
-        if key := fnmatch_qualified_name([node.func], *blocking_calls):
+        if key := fnmatch_qualified_name(
+            [node.func], *blocking_calls, imports=self.imports
+        ):
             self.error(node, key, blocking_calls[key])
 
 
@@ -66,37 +68,26 @@ class Visitor21X(Visitor200):
         ),
     }
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        self.imports: set[str] = set()
-
-    def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node.module == "urllib3":
-            self.imports.add(node.module)
-
-    def visit_Import(self, node: ast.Import):
-        for name in node.names:
-            if name.name == "urllib3":
-                # Could also save the name.asname for matching
-                self.imports.add(name.name)
+    def _urllib3_imported(self) -> bool:
+        return any(
+            v == "urllib3" or v.startswith("urllib3.") for v in self.imports.values()
+        )
 
     def visit_blocking_call(self, node: ast.Call):
-        http_methods = {
-            "get",
-            "options",
-            "head",
-            "post",
-            "put",
-            "patch",
-            "delete",
-        }
+        http_methods = {"get", "options", "head", "post", "put", "patch", "delete"}
         func_name = ast.unparse(node.func)
+        canonical = self.canonical_name(node.func) or func_name
         for http_package in "requests", "httpx":
-            if get_matching_call(node, *http_methods | {"request"}, base=http_package):
+            if get_matching_call(
+                node,
+                *http_methods | {"request"},
+                base=http_package,
+                imports=self.imports,
+            ):
                 self.error(node, func_name, error_code="ASYNC210")
                 return
 
-        if func_name in (
+        if canonical in (
             "urllib3.request",
             "urllib.request.urlopen",
             "request.urlopen",
@@ -105,7 +96,7 @@ class Visitor21X(Visitor200):
             self.error(node, func_name, error_code="ASYNC210")
 
         elif (
-            "urllib3" in self.imports
+            self._urllib3_imported()
             and isinstance(node.func, ast.Attribute)
             and node.func.attr == "request"
             and node.args
@@ -209,22 +200,26 @@ class Visitor22X(Visitor200):
             "getstatusoutput",
         }
 
+        # Match against the canonical qualname, but report the user's literal spelling.
         func_name = ast.unparse(node.func)
+        canonical = self.canonical_name(node.func) or func_name
         error_code: str | None = None
-        if func_name in ("subprocess.Popen", "os.popen"):
+        if canonical in ("subprocess.Popen", "os.popen"):
             error_code = "ASYNC220"
 
-        elif func_name in (
+        elif canonical in (
             "os.system",
             "os.posix_spawn",
             "os.posix_spawnp",
-        ) or get_matching_call(node, *subprocess_calls, base="subprocess"):
+        ) or get_matching_call(
+            node, *subprocess_calls, base="subprocess", imports=self.imports
+        ):
             error_code = "ASYNC221"
 
-        elif re.fullmatch("os.wait([34]|(id)|(pid))?", func_name):
+        elif re.fullmatch("os.wait([34]|(id)|(pid))?", canonical):
             error_code = "ASYNC222"
 
-        elif re.fullmatch("os.spawn[vl]p?e?", func_name):
+        elif re.fullmatch("os.spawn[vl]p?e?", canonical):
             error_code = "ASYNC221"
 
             # if mode= is given and not [os.]P_WAIT: ASYNC220
@@ -265,8 +260,8 @@ class Visitor23X(Visitor200):
     }
 
     def visit_Call(self, node: ast.Call):
-        func_name = ast.unparse(node.func)
-        if re.fullmatch(r"(trio|anyio)\.wrap_file", func_name) and len(node.args) == 1:
+        canonical = self.canonical_name(node.func)
+        if canonical in ("trio.wrap_file", "anyio.wrap_file") and len(node.args) == 1:
             setattr(node.args[0], "wrapped", True)  # noqa: B010
         super().visit_Call(node)
 
@@ -274,9 +269,10 @@ class Visitor23X(Visitor200):
         if getattr(node, "wrapped", False):
             return
         func_name = ast.unparse(node.func)
-        if func_name in ("open", "io.open", "io.open_code"):
+        canonical = self.canonical_name(node.func) or func_name
+        if canonical in ("builtins.open", "open", "io.open", "io.open_code"):
             error_code = "ASYNC230"
-        elif func_name == "os.fdopen":
+        elif canonical == "os.fdopen":
             error_code = "ASYNC231"
         else:
             return
@@ -381,9 +377,10 @@ class Visitor24X(Visitor200):
             return
         error_code = "ASYNC240_asyncio" if self.library == ("asyncio",) else "ASYNC240"
         func_name = ast.unparse(node.func)
+        canonical = self.canonical_name(node.func) or func_name
         if func_name in self.imports_from_ospath:
             self.error(node, func_name, self.library_str, error_code=error_code)
-        elif (m := re.fullmatch(r"os\.path\.(?P<func>.*)", func_name)) and m.group(
+        elif (m := re.fullmatch(r"os\.path\.(?P<func>.*)", canonical)) and m.group(
             "func"
         ) in self.os_funcs:
             self.error(node, m.group("func"), self.library_str, error_code=error_code)
@@ -410,13 +407,14 @@ class Visitor25X(Visitor200):
         if not self.async_function:
             return
         func_name = ast.unparse(node.func)
-        if func_name == "input":
+        canonical = self.canonical_name(node.func) or func_name
+        if canonical in ("input", "builtins.input"):
             error_code = "ASYNC250"
             if len(self.library) == 1:
                 msg_param = wrappers[self.library_str]
             else:
                 msg_param = "/".join(wrappers[lib] for lib in self.library)
-        elif func_name == "time.sleep":
+        elif canonical == "time.sleep":
             error_code = "ASYNC251"
             msg_param = self.library_str
         else:

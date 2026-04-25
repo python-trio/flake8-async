@@ -87,10 +87,13 @@ async def foo_suppress_as():  # ASYNC910: 0, "exit", Statement('function definit
 # ###############################
 
 
-# not enabled unless it's imported from contextlib
-async def foo_suppress_directly_imported_1():
+# Module-level imports are visible to any function body in the same file
+# (Python resolves names at call time), so the `from contextlib import suppress`
+# further down makes `suppress` a suppressing CM in this function too.
+async def foo_suppress_directly_imported_1():  # ASYNC910: 0, "exit", Statement('function definition', lineno)
     with suppress():
         await foo()
+    await trio.lowlevel.checkpoint()
 
 
 from contextlib import suppress

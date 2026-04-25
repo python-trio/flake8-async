@@ -24,9 +24,10 @@ from . import (
     utility_visitors,
     utility_visitors_cst,
 )
+from ._canonical import resolve_canonical_ast, resolve_canonical_cst
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Sequence
+    from collections.abc import Iterable, Iterator, Mapping, Sequence
 
     from .flake8asyncvisitor import (
         Flake8AsyncVisitor,
@@ -101,15 +102,21 @@ def has_decorator(node: ast.FunctionDef | ast.AsyncFunctionDef, *names: str):
 # matches the fully qualified name against fnmatch pattern
 # used to match decorators and methods to user-supplied patterns
 # used in 910/911 and 200
-def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | None:
+def fnmatch_qualified_name(
+    name_list: Iterable[ast.expr],
+    *patterns: str,
+    imports: Mapping[str, str] | None = None,
+) -> str | None:
     for name in name_list:
         if isinstance(name, ast.Call):
             name = name.func
-        qualified_name = ast.unparse(name)
-
+        candidates = {ast.unparse(name)}
+        if imports is not None and (canonical := resolve_canonical_ast(name, imports)):
+            candidates.add(canonical)
         for pattern in patterns:
             # strip leading "@"s for when we're working with decorators
-            if fnmatch(qualified_name, pattern.lstrip("@")):
+            stripped = pattern.lstrip("@")
+            if any(fnmatch(c, stripped) for c in candidates):
                 return pattern
     return None
 
@@ -117,13 +124,22 @@ def fnmatch_qualified_name(name_list: list[ast.expr], *patterns: str) -> str | N
 def fnmatch_qualified_name_cst(
     name_list: Iterable[cst.Decorator | cst.Call | cst.Attribute | cst.Name],
     *patterns: str,
+    imports: Mapping[str, str] | None = None,
 ) -> str | None:
     for name in name_list:
-        qualified_name = get_full_name_for_node_or_raise(name)
-
+        candidates = {get_full_name_for_node_or_raise(name)}
+        if imports is not None:
+            inner: cst.CSTNode = name
+            if isinstance(inner, cst.Decorator):
+                inner = inner.decorator
+            if isinstance(inner, cst.Call):
+                inner = inner.func
+            if (canonical := resolve_canonical_cst(inner, imports)) is not None:
+                candidates.add(canonical)
         for pattern in patterns:
             # strip leading "@"s for when we're working with decorators
-            if fnmatch(qualified_name, pattern.lstrip("@")):
+            stripped = pattern.lstrip("@")
+            if any(fnmatch(c, stripped) for c in candidates):
                 return pattern
     return None
 
@@ -240,7 +256,9 @@ def iter_guaranteed_once_cst(iterable: cst.BaseExpression) -> bool:
 
 
 # used in 102, 103 and 104
-def critical_except(node: ast.ExceptHandler) -> Statement | None:
+def critical_except(
+    node: ast.ExceptHandler, imports: Mapping[str, str] | None = None
+) -> Statement | None:
     def has_exception(node: ast.expr) -> str | None:
         name = ast.unparse(node)
         if name in (
@@ -253,6 +271,27 @@ def critical_except(node: ast.ExceptHandler) -> Statement | None:
             "CancelledError",
         ):
             return name
+        if imports is None:
+            return None
+        # Resolve via canonical qualname for aliased / `from`-imported forms.
+        # The non-call spellings (`except anyio.get_cancelled_exc_class:`, or a
+        # Call with arguments) are type-errors that critical_except intentionally
+        # ignores, so only zero-arg calls count for get_cancelled_exc_class.
+        if isinstance(node, ast.Call):
+            if node.args or node.keywords:
+                return None
+            canonical = resolve_canonical_ast(node.func, imports)
+            if canonical == "anyio.get_cancelled_exc_class":
+                return "anyio.get_cancelled_exc_class()"
+            return None
+        canonical = resolve_canonical_ast(node, imports)
+        if canonical == "trio.Cancelled":
+            return "trio.Cancelled"
+        if canonical in (
+            "asyncio.exceptions.CancelledError",
+            "asyncio.CancelledError",
+        ):
+            return "asyncio.exceptions.CancelledError"
         return None
 
     name: str | None = None
@@ -302,36 +341,56 @@ class MatchingCall(Generic[T_Call]):
 
 # convenience function used in a lot of visitors
 def get_matching_call(
-    node: ast.AST, *names: str, base: Iterable[str] = ("trio", "anyio")
+    node: ast.AST,
+    *names: str,
+    base: Iterable[str] = ("trio", "anyio"),
+    imports: Mapping[str, str] | None = None,
 ) -> MatchingCall[ast.Call] | None:
     if isinstance(base, str):
         base = (base,)
+    if not isinstance(node, ast.Call):
+        return None
     if (
-        isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
+        isinstance(node.func, ast.Attribute)
         and isinstance(node.func.value, ast.Name)
         and node.func.value.id in base
         and node.func.attr in names
     ):
         return MatchingCall(node, node.func.attr, node.func.value.id)
+    if imports is not None:
+        canonical = resolve_canonical_ast(node.func, imports)
+        for b in base:
+            for n in names:
+                if canonical == f"{b}.{n}":
+                    return MatchingCall(node, n, b)
     return None
 
 
 # ___ CST helpers ___
 def get_matching_call_cst(
-    node: cst.CSTNode, *names: str, base: Iterable[str] = ("trio", "anyio")
+    node: cst.CSTNode,
+    *names: str,
+    base: Iterable[str] = ("trio", "anyio"),
+    imports: Mapping[str, str] | None = None,
 ) -> MatchingCall[cst.Call] | None:
     if isinstance(base, str):
         base = (base,)
+    if not isinstance(node, cst.Call):
+        return None
     if (
-        isinstance(node, cst.Call)
-        and isinstance(node.func, cst.Attribute)
+        isinstance(node.func, cst.Attribute)
         and node.func.attr.value in names
         and isinstance(node.func.value, (cst.Name, cst.Attribute))
     ):
         attr_base = identifier_to_string(node.func.value)
         if attr_base is not None and attr_base in base:
             return MatchingCall(node, node.func.attr.value, attr_base)
+    if imports is not None:
+        canonical = resolve_canonical_cst(node.func, imports)
+        for b in base:
+            for n in names:
+                if canonical == f"{b}.{n}":
+                    return MatchingCall(node, n, b)
     return None
 
 
@@ -377,12 +436,17 @@ def identifier_to_string(node: cst.CSTNode) -> str | None:
 
 
 def with_has_call(
-    node: cst.With, *names: str, base: Iterable[str] | str = ("trio", "anyio")
+    node: cst.With,
+    *names: str,
+    base: Iterable[str] | str = ("trio", "anyio"),
+    imports: Mapping[str, str] | None = None,
 ) -> list[MatchingCall[cst.Call]]:
     """Check if a with statement has a matching call, returning a list with matches.
 
     `names` specify the names of functions to match, `base` specifies the
-    library/module(s) the function must be in.
+    library/module(s) the function must be in. If `imports` is given, matches
+    are also made against the canonical qualname so aliased / `from`-imports
+    are detected.
     The list elements in the return value are named tuples with the matched node,
     base and function.
 
@@ -393,19 +457,15 @@ def with_has_call(
       `foo.bar`, `foo.bee`, `a.b.c.bar`, and `a.b.c.bee`.
 
     """
-    if isinstance(base, str):
-        base = (base,)
+    base_tuple = (base,) if isinstance(base, str) else tuple(base)
 
     # build matcher, using SaveMatchedNode to save the base and the function name.
     matcher = m.Call(
         func=m.Attribute(
             value=m.SaveMatchedNode(
-                m.OneOf(*(build_cst_matcher(b) for b in base)), name="base"
+                m.OneOf(*(build_cst_matcher(b) for b in base_tuple)), name="base"
             ),
-            attr=m.SaveMatchedNode(
-                oneof_names(*names),
-                name="function",
-            ),
+            attr=m.SaveMatchedNode(oneof_names(*names), name="function"),
         )
     )
 
@@ -422,10 +482,22 @@ def with_has_call(
                     node=item.item, base=base_string, name=res["function"].value
                 )
             )
+            continue
+        if imports is None or not isinstance(item.item, cst.Call):
+            continue
+        canonical = resolve_canonical_cst(item.item.func, imports)
+        for b in base_tuple:
+            if canonical is not None and canonical.startswith(f"{b}."):
+                suffix = canonical[len(b) + 1 :]
+                if suffix in names:
+                    res_list.append(MatchingCall(node=item.item, base=b, name=suffix))
+                    break
     return res_list
 
 
-def calls_any_of(node: cst.With, *qualnames: str) -> bool:
+def calls_any_of(
+    node: cst.With, *qualnames: str, imports: Mapping[str, str] | None = None
+) -> bool:
     """Return True if `node` contains a withitem matching any of `qualnames`.
 
     Each `qualname` is a dotted string like ``"trio.open_nursery"`` or
@@ -439,7 +511,8 @@ def calls_any_of(node: cst.With, *qualnames: str) -> bool:
         assert name, f"{qn!r} is not a dotted qualname"
         by_base[base].append(name)
     return any(
-        with_has_call(node, *names, base=base) for base, names in by_base.items()
+        with_has_call(node, *names, base=base, imports=imports)
+        for base, names in by_base.items()
     )
 
 

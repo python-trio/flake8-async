@@ -6,6 +6,8 @@ Changelog
 
 Unreleased
 ==========
+- Rules resolve function/class references via the canonical qualname, so checks fire regardless of import style (``import trio``, ``import trio as t``, ``from trio import open_nursery [as on]``, …). Only module-level imports are tracked. `(issue #132) <https://github.com/python-trio/flake8-async/issues/132>`_
+- :ref:`ASYNC106 <async106>` is now disabled by default; re-enable it to enforce the ``import trio`` style.
 - Autofix for :ref:`ASYNC910 <async910>` / :ref:`ASYNC911 <async911>` no longer inserts checkpoints inside ``except`` clauses (which would trigger :ref:`ASYNC120 <async120>`); instead the checkpoint is added at the top of the function or of the enclosing loop. `(issue #403) <https://github.com/python-trio/flake8-async/issues/403>`_
 - :ref:`ASYNC910 <async910>` and :ref:`ASYNC911 <async911>` now accept ``__aenter__`` / ``__aexit__`` methods when the partner method provides the checkpoint, or when only one of the two is defined on a class that inherits from another class (charitably assuming the partner is inherited and contains a checkpoint). `(issue #441) <https://github.com/python-trio/flake8-async/issues/441>`_
 - :ref:`ASYNC300 <async300>` no longer triggers when the result of ``asyncio.create_task()`` is returned from a function. `(issue #398) <https://github.com/python-trio/flake8-async/issues/398>`_

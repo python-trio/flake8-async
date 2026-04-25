@@ -86,8 +86,8 @@ async def foo_1():
         await n.start(...)
 
 
-# not *trio*.open_nursery
-with noterror.open_nursery(...) as n:
+# `import trio as noterror` -- open_nursery resolves to canonical qualname
+with noterror.open_nursery(...) as n:  # error: 5, "n", "nursery"
     n.start(...)
 
 # not trio.*open_nursery*

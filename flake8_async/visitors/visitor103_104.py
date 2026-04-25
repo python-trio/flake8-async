@@ -75,7 +75,7 @@ class Visitor103_104(Flake8AsyncVisitor):
     # set self.unraised, and if it's still set after visiting child nodes
     # then there might be a code path that doesn't re-raise.
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
-        marker = critical_except(node)
+        marker = critical_except(node, self.imports)
 
         if marker is None:
             # not a critical exception handler

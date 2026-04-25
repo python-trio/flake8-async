@@ -18,9 +18,10 @@ async def afoo():
     trio.sleep(0)  # error: 4, "trio"
     trio.sleep(1)
 
-    # don't error on other sleeps
+    # unrelated sleeps don't match
     time.sleep(0)
-    sleep(0)
+    # `from trio import sleep` -- resolves to canonical `trio.sleep`
+    sleep(0)  # error: 4, "trio"
 
     # in trio it's called 'seconds', in anyio it's 'delay', but
     # we don't care about the kwarg name. #382

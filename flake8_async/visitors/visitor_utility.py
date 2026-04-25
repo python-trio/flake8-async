@@ -7,16 +7,16 @@ import functools
 import re
 from typing import TYPE_CHECKING, Any, cast
 
+import libcst as cst
 import libcst.matchers as m
 from libcst.metadata import PositionProvider
 
 from .flake8asyncvisitor import Flake8AsyncVisitor, Flake8AsyncVisitor_cst
-from .helpers import utility_visitor, utility_visitor_cst
+from .helpers import identifier_to_string, utility_visitor, utility_visitor_cst
 
 if TYPE_CHECKING:
     from re import Match
 
-    import libcst as cst
     from libcst.metadata import CodeRange
 
 
@@ -153,6 +153,119 @@ class VisitorLibraryHandler_cst(Flake8AsyncVisitor_cst):
             ):
                 assert isinstance(alias.name.value, str)
                 self.add_library(alias.name.value)
+
+
+# Populate `imports` (local-name -> canonical dotted qualname) so helpers can
+# resolve call-sites regardless of import style.  Mappings produced:
+#   "import trio"                 => {"trio": "trio"}
+#   "import trio as t"            => {"t": "trio"}
+#   "import trio.lowlevel"        => {"trio": "trio", "trio.lowlevel": "trio.lowlevel"}
+#   "import trio.lowlevel as ll"  => {"ll": "trio.lowlevel"}
+#   "from trio import sleep"      => {"sleep": "trio.sleep"}
+#   "from trio import sleep as s" => {"s": "trio.sleep"}
+#
+# Only module-level imports are tracked: function-/class-local imports are
+# skipped to keep them out of sibling scopes. A full scope-aware resolver
+# would also need to know the call site's position, which isn't justified
+# given how uncommon local imports of async APIs are.
+@utility_visitor
+class VisitorImportTracker(Flake8AsyncVisitor):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._scope_depth = 0
+
+    def _at_module_level(self) -> bool:
+        return self._scope_depth == 0
+
+    def visit_Import(self, node: ast.Import):
+        if not self._at_module_level():
+            return
+        for alias in node.names:
+            if alias.asname is not None:
+                self.imports[alias.asname] = alias.name
+                continue
+            # `import a.b.c` binds `a` and also resolves `a.b.c.<x>` through
+            # the Attribute chain, so we record both.
+            top = alias.name.partition(".")[0]
+            self.imports.setdefault(top, top)
+            self.imports.setdefault(alias.name, alias.name)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if node.module is None or node.level or not self._at_module_level():
+            return
+        for alias in node.names:
+            if alias.name == "*":
+                continue
+            local = alias.asname if alias.asname is not None else alias.name
+            self.imports[local] = f"{node.module}.{alias.name}"
+
+    def _enter_scope(self, node: ast.AST):
+        self.save_state(node, "_scope_depth")
+        self._scope_depth += 1
+
+    visit_FunctionDef = _enter_scope
+    visit_AsyncFunctionDef = _enter_scope
+    visit_ClassDef = _enter_scope
+    visit_Lambda = _enter_scope
+
+
+@utility_visitor_cst
+class VisitorImportTracker_cst(Flake8AsyncVisitor_cst):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._scope_depth = 0
+
+    def _at_module_level(self) -> bool:
+        return self._scope_depth == 0
+
+    def visit_Import(self, node: cst.Import):
+        if not self._at_module_level():
+            return
+        for alias in node.names:
+            full_name = identifier_to_string(alias.name)
+            if full_name is None:
+                continue
+            if alias.asname is not None and isinstance(alias.asname.name, cst.Name):
+                self.imports[alias.asname.name.value] = full_name
+                continue
+            top = full_name.partition(".")[0]
+            self.imports.setdefault(top, top)
+            self.imports.setdefault(full_name, full_name)
+
+    def visit_ImportFrom(self, node: cst.ImportFrom):
+        if (
+            node.module is None
+            or node.relative
+            or isinstance(node.names, cst.ImportStar)
+            or not self._at_module_level()
+        ):
+            return
+        module = identifier_to_string(node.module)
+        if module is None:
+            return
+        for alias in node.names:
+            name = identifier_to_string(alias.name)
+            if name is None:
+                continue
+            if alias.asname is not None and isinstance(alias.asname.name, cst.Name):
+                local = alias.asname.name.value
+            else:
+                local = name
+            self.imports[local] = f"{module}.{name}"
+
+    def _enter_scope(self, node: cst.CSTNode) -> None:
+        self._scope_depth += 1
+
+    def _leave_scope(self, original_node: cst.CSTNode, updated_node: Any) -> Any:
+        self._scope_depth -= 1
+        return updated_node
+
+    visit_FunctionDef = _enter_scope
+    visit_ClassDef = _enter_scope
+    visit_Lambda = _enter_scope
+    leave_FunctionDef = _leave_scope
+    leave_ClassDef = _leave_scope
+    leave_Lambda = _leave_scope
 
 
 # taken from

@@ -12,11 +12,11 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-def is_nursery_like(node: ast.expr) -> bool:
+def is_nursery_like(node: ast.expr, imports: Mapping[str, str] | None = None) -> bool:
     return bool(
-        get_matching_call(node, "open_nursery", base="trio")
-        or get_matching_call(node, "create_task_group", base="anyio")
-        or get_matching_call(node, "TaskGroup", base="asyncio")
+        get_matching_call(node, "open_nursery", base="trio", imports=imports)
+        or get_matching_call(node, "create_task_group", base="anyio", imports=imports)
+        or get_matching_call(node, "TaskGroup", base="asyncio", imports=imports)
     )
 
 
@@ -56,7 +56,7 @@ class Visitor111(Flake8AsyncVisitor):
                     self.TrioContextManager(
                         item.context_expr.lineno,
                         item.optional_vars.id,
-                        is_nursery_like(item.context_expr),
+                        is_nursery_like(item.context_expr, self.imports),
                     )
                 )
 

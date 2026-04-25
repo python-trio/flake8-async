@@ -10,6 +10,7 @@ import libcst as cst
 from libcst.metadata import PositionProvider
 
 from ..base import Error, Statement, strip_error_subidentifier
+from ._canonical import resolve_canonical_ast, resolve_canonical_cst
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -52,6 +53,13 @@ class Flake8AsyncVisitor(ast.NodeVisitor, ABC):
     def variables(self, value: dict[str, str]) -> None:
         self.__state.variables.clear()
         self.__state.variables.update(value)
+
+    @property
+    def imports(self) -> dict[str, str]:
+        return self.__state.imports
+
+    def canonical_name(self, node: ast.AST) -> str | None:
+        return resolve_canonical_ast(node, self.__state.imports)
 
     def visit(self, node: ast.AST):
         """Visit a node."""
@@ -169,6 +177,13 @@ class Flake8AsyncVisitor_cst(cst.CSTTransformer, ABC):
 
         self.options = self.__state.options
         self.noqas = self.__state.noqas
+
+    @property
+    def imports(self) -> dict[str, str]:
+        return self.__state.imports
+
+    def canonical_name(self, node: cst.CSTNode) -> str | None:
+        return resolve_canonical_cst(node, self.__state.imports)
 
     def get_state(self, *attrs: str, copy: bool = False) -> dict[str, Any]:
         # require attrs, since we inherit a *ton* of stuff which we don't want to copy

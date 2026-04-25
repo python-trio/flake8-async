@@ -37,6 +37,11 @@ class SharedState:
     library: tuple[str, ...] = ()
     typed_calls: dict[str, str] = field(default_factory=dict[str, str])
     variables: dict[str, str] = field(default_factory=dict[str, str])
+    # Local name -> canonical dotted qualname, populated by VisitorImportTracker[_cst].
+    # Helpers consult this so rules can match the canonical qualname regardless of
+    # how a symbol was imported (`import x`, `import x as y`, `from x import y`,
+    # `from x import y as z`).
+    imports: dict[str, str] = field(default_factory=dict[str, str])
 
 
 class __CommonRunner:

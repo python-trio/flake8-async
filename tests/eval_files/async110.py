@@ -38,8 +38,8 @@ async def foo():
         await trio.sleep()
         await trio.sleep_until()
 
-    # check library name
-    while ...:
+    # `import trio as noerror` -- resolves to canonical `trio.sleep`.
+    while ...:  # error: 4, "trio"
         await noerror.sleep()
 
     async def sleep(): ...

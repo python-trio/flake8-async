@@ -69,6 +69,8 @@ class Visitor123(Flake8AsyncVisitor):
             "child_exception_names",
             copy=True,
         )
+        # [Base]ExceptionGroup are builtins and almost always used unqualified,
+        # so a substring match on the literal source is sufficient.
         if node.name is None or (
             not self.try_star
             and (node.type is None or "ExceptionGroup" not in ast.unparse(node.type))

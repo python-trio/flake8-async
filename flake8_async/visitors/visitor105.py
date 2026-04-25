@@ -56,8 +56,11 @@ class Visitor105(Flake8AsyncVisitor):
         if getattr(node, "awaited", False) or "trio" not in self.library:
             return
 
-        if (name := ast.unparse(node.func)) in trio_async_funcs:
-            self.error(node, name, "function")
+        canonical = self.canonical_name(node.func)
+        if canonical in trio_async_funcs:
+            # report the canonical qualname (rather than the user's local alias)
+            # so the message reads consistently.
+            self.error(node, canonical, "function")
         elif isinstance(node.func, ast.Attribute) and node.func.attr == "start":
             var = ast.unparse(node.func.value)
 
