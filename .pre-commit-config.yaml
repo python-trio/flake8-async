@@ -9,7 +9,7 @@ ci:
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.15.10
+      rev: v0.15.12
       hooks:
           - id: ruff-check
             args: [--fix]
@@ -34,19 +34,19 @@ repos:
             exclude: tests/eval_files/async(103|232|232_asyncio).py
 
     - repo: https://github.com/pycqa/isort
-      rev: 8.0.1
+      rev: 9.0.0a3
       hooks:
           - id: isort
 
     - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.20.1
+      rev: v1.20.2
       hooks:
           - id: mypy
             # uses py311 syntax, mypy configured for py310
             exclude: tests/(eval|autofix)_files/.*_py311.py
 
     - repo: https://github.com/RobertCraigie/pyright-python
-      rev: v1.1.408
+      rev: v1.1.409
       hooks:
           - id: pyright
             # ignore warnings about new version being available, no other warnings
