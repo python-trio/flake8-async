@@ -891,6 +891,54 @@ def test_async400_excgroup_attributes():
         assert attr in EXCGROUP_ATTRS
 
 
+def test_resolve_canonical_does_not_elide_nested_calls():
+    """A Call inside an Attribute chain must not collapse to a dotted name.
+
+    Regression test: previously `foo("x").bar` resolved to "foo.bar" because
+    the recursive case for ``ast.Call`` / ``cst.Call`` fired on calls nested
+    inside an Attribute chain, not just at the outermost position. That made
+    ``*session.get`` fnmatch ``read_session("a").get`` in ASYNC200.
+    """
+    from flake8_async.visitors._canonical import (
+        resolve_canonical_ast,
+        resolve_canonical_cst,
+    )
+
+    imports: dict[str, str] = {}
+
+    # outermost-Call unwrapping is preserved: trio.open_nursery() -> "trio.open_nursery"
+    ast_call = ast.parse("trio.open_nursery()", mode="eval").body
+    assert isinstance(ast_call, ast.Call)
+    assert resolve_canonical_ast(ast_call, imports) == "trio.open_nursery"
+
+    # plain attribute chain still resolves
+    ast_attr = ast.parse("session.get", mode="eval").body
+    assert resolve_canonical_ast(ast_attr, imports) == "session.get"
+
+    # the regression: Call nested inside Attribute should NOT collapse
+    ast_nested = ast.parse('foo("x").bar', mode="eval").body
+    assert resolve_canonical_ast(ast_nested, imports) is None
+
+    # also when the outer node is itself a call (`foo("x").bar()`):
+    # outer call unwraps to `foo("x").bar`, which then can't resolve.
+    ast_nested_call = ast.parse('foo("x").bar()', mode="eval").body
+    assert isinstance(ast_nested_call, ast.Call)
+    assert resolve_canonical_ast(ast_nested_call, imports) is None
+
+    # cst variant: same expectations
+    cst_call = cst.parse_expression("trio.open_nursery()")
+    assert resolve_canonical_cst(cst_call, imports) == "trio.open_nursery"
+
+    cst_attr = cst.parse_expression("session.get")
+    assert resolve_canonical_cst(cst_attr, imports) == "session.get"
+
+    cst_nested = cst.parse_expression('foo("x").bar')
+    assert resolve_canonical_cst(cst_nested, imports) is None
+
+    cst_nested_call = cst.parse_expression('foo("x").bar()')
+    assert resolve_canonical_cst(cst_nested_call, imports) is None
+
+
 # from https://docs.python.org/3/library/itertools.html#itertools-recipes
 def consume(iterator: Iterable[Any]):
     deque(iterator, maxlen=0)

@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+26.4.2
+======
+- Fixed a regression in canonical-qualname resolution where a call nested inside an attribute chain (e.g. ``foo("x").bar``) was silently elided into a dotted name (``"foo.bar"``). This caused :ref:`ASYNC200 <async200>` false alarms for patterns like ``*session.get`` matching ``read_session("a").get(...)``, where ``.get`` is a method on the *return value* of ``read_session()``.
+
 26.4.1
 ======
 - Rules resolve function/class references via the canonical qualname, so checks fire regardless of import style (``import trio``, ``import trio as t``, ``from trio import open_nursery [as on]``, …). Only module-level imports are tracked. `(issue #132) <https://github.com/python-trio/flake8-async/issues/132>`_
