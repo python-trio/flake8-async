@@ -2,7 +2,7 @@
 # specify command-line arguments to be used when testing this file.
 # Test spaces in options, and trailing comma
 # Cannot test newlines, since argparse splits on those if passed on the CLI
-# ARG --async200-blocking-calls=bar -> BAR, bee-> SHOULD_NOT_BE_PRINTED,bonnet ->SHOULD_NOT_BE_PRINTED,bee.bonnet->BEEBONNET,*.postwild->POSTWILD,prewild.*->PREWILD,*.*.*->TRIPLEDOT,
+# ARG --async200-blocking-calls=bar -> BAR, bee-> SHOULD_NOT_BE_PRINTED,bonnet ->SHOULD_NOT_BE_PRINTED,bee.bonnet->BEEBONNET,*.postwild->POSTWILD,prewild.*->PREWILD,*.*.*->TRIPLEDOT,*session.get->SESSIONGET,
 
 
 # don't error in sync function
@@ -63,3 +63,8 @@ async def afoo():
 
     # check that errors are enabled again
     bar()  # ASYNC200: 4, "bar", "BAR"
+
+    # `foo("x").bar` calls a method on the *return value* of foo(), so the
+    # canonical name should not collapse to "foo.bar".
+    session.get("k")  # ASYNC200: 4, "*session.get", "SESSIONGET"
+    read_session("a").get("k")
