@@ -26,6 +26,10 @@ from hypothesmith import from_grammar, from_node
 from flake8_async import Plugin
 from flake8_async.base import Error, Statement
 from flake8_async.visitors import ERROR_CLASSES, ERROR_CLASSES_CST
+from flake8_async.visitors._canonical import (
+    resolve_canonical_ast,
+    resolve_canonical_cst,
+)
 from flake8_async.visitors.visitor4xx import EXCGROUP_ATTRS
 
 if sys.version_info < (3, 11):
@@ -899,11 +903,6 @@ def test_resolve_canonical_does_not_elide_nested_calls():
     inside an Attribute chain, not just at the outermost position. That made
     ``*session.get`` fnmatch ``read_session("a").get`` in ASYNC200.
     """
-    from flake8_async.visitors._canonical import (
-        resolve_canonical_ast,
-        resolve_canonical_cst,
-    )
-
     imports: dict[str, str] = {}
 
     # outermost-Call unwrapping is preserved: trio.open_nursery() -> "trio.open_nursery"
