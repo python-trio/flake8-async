@@ -31,9 +31,7 @@ def resolve_canonical_ast(node: ast.AST, imports: Mapping[str, str]) -> str | No
     return _resolve_attr_chain_ast(node, imports)
 
 
-def _resolve_attr_chain_ast(
-    node: ast.AST, imports: Mapping[str, str]
-) -> str | None:
+def _resolve_attr_chain_ast(node: ast.AST, imports: Mapping[str, str]) -> str | None:
     if isinstance(node, ast.Name):
         return imports.get(node.id, node.id)
     if isinstance(node, ast.Attribute):
