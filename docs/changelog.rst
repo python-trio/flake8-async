@@ -4,6 +4,11 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+26.6.1
+======
+- Add :ref:`ASYNC127 <async127>` unmaintained-httpx: use ``httpx2`` instead of ``httpx``, which is no longer maintained, to get security updates. `(issue #460) <https://github.com/python-trio/flake8-async/issues/460>`_
+- :ref:`ASYNC210 <async210>`, :ref:`ASYNC211 <async211>` and :ref:`ASYNC212 <async212>` now also detect blocking calls made through ``httpx2``, and their messages recommend ``httpx2.AsyncClient`` instead of ``httpx.AsyncClient``.
+
 26.4.2
 ======
 - Fixed a regression in canonical-qualname resolution where a call nested inside an attribute chain (e.g. ``foo("x").bar``) was silently elided into a dotted name (``"foo.bar"``). This caused :ref:`ASYNC200 <async200>` false alarms for patterns like ``*session.get`` matching ``read_session("a").get(...)``, where ``.get`` is a method on the *return value* of ``read_session()``.

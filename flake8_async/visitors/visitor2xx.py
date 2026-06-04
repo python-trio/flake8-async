@@ -62,9 +62,9 @@ class Visitor200(Flake8AsyncVisitor):
 @error_class
 class Visitor21X(Visitor200):
     error_codes: Mapping[str, str] = {
-        "ASYNC210": "Sync HTTP call {} in async function, use `httpx.AsyncClient`.",
+        "ASYNC210": "Sync HTTP call {} in async function, use `httpx2.AsyncClient`.",
         "ASYNC211": (
-            "Likely sync HTTP call {} in async function, use `httpx.AsyncClient`."
+            "Likely sync HTTP call {} in async function, use `httpx2.AsyncClient`."
         ),
     }
 
@@ -77,17 +77,12 @@ class Visitor21X(Visitor200):
         http_methods = {"get", "options", "head", "post", "put", "patch", "delete"}
         func_name = ast.unparse(node.func)
         canonical = self.canonical_name(node.func) or func_name
-        for http_package in "requests", "httpx":
-            if get_matching_call(
-                node,
-                *http_methods | {"request"},
-                base=http_package,
-                imports=self.imports,
-            ):
-                self.error(node, func_name, error_code="ASYNC210")
-                return
-
-        if canonical in (
+        if get_matching_call(
+            node,
+            *http_methods | {"request"},
+            base=("requests", "httpx", "httpx2"),
+            imports=self.imports,
+        ) or canonical in (
             "urllib3.request",
             "urllib.request.urlopen",
             "request.urlopen",
@@ -107,53 +102,61 @@ class Visitor21X(Visitor200):
             self.error(node, func_name, error_code="ASYNC211")
 
 
+httpx_blocking_methods = (
+    "close",
+    "delete",
+    "get",
+    "head",
+    "options",
+    "patch",
+    "post",
+    "put",
+    "request",
+    "send",
+    "stream",
+)
+
+
 @error_class
 class Visitor212(Visitor200):
     error_codes: Mapping[str, str] = {
         "ASYNC212": (
-            "Blocking sync HTTP call {0} on httpx object {1}, use httpx.AsyncClient."
+            "Blocking sync HTTP call {0} on httpx/httpx2 object {1},"
+            " use httpx2.AsyncClient."
         )
     }
 
     def __init__(self, *args: Any, **kwargs: Any):
-        self.dangerous_classes = (
-            "httpx.Client",
-            "urllib3.HTTPConnectionPool",
-            "urllib3.HTTPSConnectionPool",
-            "urllib3.PoolManager",
-            "urllib3.ProxyManager",
-            "urllib3.connectionpool.ConnectionPool",
-            "urllib3.connectionpool.HTTPConnectionPool",
-            "urllib3.connectionpool.HTTPSConnectionPool",
-            "urllib3.poolmanager.PoolManager",
-            "urllib3.poolmanager.ProxyManager",
-            "urllib3.request.RequestMethods",
-        )
+        # class -> methods that block. None means all methods block.
+        self.dangerous_classes: dict[str, tuple[str, ...] | None] = {
+            "httpx.Client": httpx_blocking_methods,
+            "httpx2.Client": httpx_blocking_methods,
+            "urllib3.HTTPConnectionPool": None,
+            "urllib3.HTTPSConnectionPool": None,
+            "urllib3.PoolManager": None,
+            "urllib3.ProxyManager": None,
+            "urllib3.connectionpool.ConnectionPool": None,
+            "urllib3.connectionpool.HTTPConnectionPool": None,
+            "urllib3.connectionpool.HTTPSConnectionPool": None,
+            "urllib3.poolmanager.PoolManager": None,
+            "urllib3.poolmanager.ProxyManager": None,
+            "urllib3.request.RequestMethods": None,
+        }
         super().__init__(*args, **kwargs)
         for c in self.dangerous_classes:
             self.typed_calls[c] = c
 
     def visit_blocking_call(self, node: ast.Call):
-        httpx_blocking_methods = (
-            "close",
-            "delete",
-            "get",
-            "head",
-            "options",
-            "patch",
-            "post",
-            "put",
-            "request",
-            "send",
-            "stream",
-        )
         if (
             isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
             and node.func.value.id in self.variables
             and (anno := self.variables.get(node.func.value.id))
-            and (anno != "httpx.Client" or node.func.attr in httpx_blocking_methods)
             and anno in self.dangerous_classes
+            and (
+                (blocking_methods := self.dangerous_classes[anno]) is None
+                or node.func.attr in blocking_methods
+            )
         ):
             self.error(node, node.func.attr, node.func.value.id)
 

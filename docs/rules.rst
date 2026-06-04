@@ -134,6 +134,13 @@ _`ASYNC126`: exceptiongroup-subclass-missing-derive
     plain ``ExceptionGroup`` instances and lose the custom subclass.
     See `trio#3175 <https://github.com/python-trio/trio/issues/3175>`_ for motivation.
 
+_`ASYNC127`: unmaintained-httpx
+    The original ``httpx`` package is no longer maintained, which is a problem for a
+    networking library.  Use `httpx2`_ - the continuation of the project, maintained
+    by Pydantic - to keep getting security updates.  It uses the same API, so
+    migration is usually just a matter of replacing ``httpx`` with ``httpx2`` in
+    imports.  This rule triggers on any import of ``httpx``.
+
 Blocking sync calls in async functions
 ======================================
 
@@ -141,8 +148,10 @@ Our 2xx lint rules warn you to use the async equivalent for slow sync calls whic
 would otherwise block the event loop (and therefore cause performance problems,
 or even deadlock).
 
+.. _httpx2: https://httpx2.pydantic.dev/
 .. _httpx.Client: https://www.python-httpx.org/api/#client
-.. _httpx.AsyncClient: https://www.python-httpx.org/api/#asyncclient
+.. _httpx2.Client: https://httpx2.pydantic.dev/api/#client
+.. _httpx2.AsyncClient: https://httpx2.pydantic.dev/api/#asyncclient
 .. _urllib3: https://github.com/urllib3/urllib3
 .. _aiofiles: https://pypi.org/project/aiofiles/
 .. _anyio: https://github.com/agronholm/anyio
@@ -151,16 +160,17 @@ _`ASYNC200` : blocking-configured-call
     User-configured error for blocking sync calls in async functions.
     Does nothing by default, see :ref:`async200-blocking-calls` for how to configure it.
 
-ASYNC210 : blocking-http-call
-    Sync HTTP call in async function, use `httpx.AsyncClient`_.
-    This and the other :ref:`ASYNC21x <ASYNC211>` checks look for usage of `urllib3`_ and `httpx.Client`_, and recommend using `httpx.AsyncClient`_ as that's the largest http client supporting anyio/trio.
+_`ASYNC210` : blocking-http-call
+    Sync HTTP call in async function, use `httpx2.AsyncClient`_.
+    This and the other :ref:`ASYNC21x <ASYNC211>` checks look for usage of `urllib3`_, `httpx.Client`_, and `httpx2.Client`_, and recommend using `httpx2.AsyncClient`_ as that's the largest http client supporting anyio/trio.
+    Sync calls through the unmaintained ``httpx`` package are detected the same way as ``httpx2`` ones, but the recommendation is always `httpx2.AsyncClient`_ - see :ref:`ASYNC127 <ASYNC127>`.
 
 _`ASYNC211` : blocking-http-call-pool
-    Likely sync HTTP call in async function, use `httpx.AsyncClient`_.
+    Likely sync HTTP call in async function, use `httpx2.AsyncClient`_.
     Looks for `urllib3`_ method calls on pool objects, but only matching on the method signature and not the object.
 
-ASYNC212 : blocking-http-call-httpx
-    Blocking sync HTTP call on httpx object, use `httpx.AsyncClient`_.
+_`ASYNC212` : blocking-http-call-httpx
+    Blocking sync HTTP call on httpx/httpx2 object, use `httpx2.AsyncClient`_.
 
 ASYNC220 : blocking-create-subprocess
     Sync call to :class:`subprocess.Popen` (or equivalent) in async function, use :func:`trio.run_process`/:func:`anyio.run_process`/:ref:`asyncio.create_subprocess_[exec/shell] <asyncio-subprocess>` in a :ref:`taskgroup_nursery`.

@@ -593,6 +593,30 @@ class Visitor126(Flake8AsyncVisitor):
         self.error(node, node.name, node.name)
 
 
+@error_class
+class Visitor127(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC127": (
+            "Use `httpx2` instead of `httpx`, which is no longer maintained,"
+            " to get security updates."
+        ),
+    }
+
+    @staticmethod
+    def _is_httpx(module: str) -> bool:
+        return module == "httpx" or module.startswith("httpx.")
+
+    def visit_Import(self, node: ast.Import):
+        if any(self._is_httpx(name.name) for name in node.names):
+            self.error(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        # relative imports (level != 0) refer to local modules, not the httpx package,
+        # and `from . import x` has no module name at all
+        if node.level == 0 and self._is_httpx(node.module or ""):
+            self.error(node)
+
+
 @error_class_cst
 class Visitor300(Flake8AsyncVisitor_cst):
     error_codes: Mapping[str, str] = {
