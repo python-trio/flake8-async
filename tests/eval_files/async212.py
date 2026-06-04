@@ -60,6 +60,35 @@ async def foo_global_client_overriden():
     glob_client.send()
 
 
+# httpx2 (the maintained continuation of httpx) is treated identically
+async def foo_httpx2_call():
+    client = httpx2.Client()
+    client.close()  # ASYNC212: 4, "close", "client"
+    client.delete()  # ASYNC212: 4, "delete", "client"
+    client.get()  # ASYNC212: 4, "get", "client"
+    client.head()  # ASYNC212: 4, "head", "client"
+    client.options()  # ASYNC212: 4, "options", "client"
+    client.patch()  # ASYNC212: 4, "patch", "client"
+    client.post()  # ASYNC212: 4, "post", "client"
+    client.put()  # ASYNC212: 4, "put", "client"
+    client.request()  # ASYNC212: 4, "request", "client"
+    client.send()  # ASYNC212: 4, "send", "client"
+    client.stream()  # ASYNC212: 4, "stream", "client"
+
+    client.anything()
+    client.build_request()
+    client.is_closed
+
+
+async def foo_httpx2_ann_par(client: httpx2.Client):
+    client.send(...)  # ASYNC212: 4, "send", "client"
+
+
+async def foo_httpx2_ann_var():
+    client: httpx2.Client = ...
+    client.send()  # ASYNC212: 4, "send", "client"
+
+
 # not implemented
 from httpx import Client
 
