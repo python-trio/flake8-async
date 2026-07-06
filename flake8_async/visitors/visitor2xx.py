@@ -253,9 +253,7 @@ class Visitor23X(Visitor200):
     error_codes: Mapping[str, str] = {
         "ASYNC230": "Sync call {0} in async function, use `{1}.open_file(...)`.",
         "ASYNC231": "Sync call {0} in async function, use `{1}.wrap_file({0})`.",
-        "ASYNC233": (
-            "Sync call {0} on pathlib.Path in async function, use `{1}.Path`."
-        ),
+        "ASYNC233": "Sync call {0} on pathlib.Path in async function, use `{1}.Path`.",
         "ASYNC230_asyncio": (
             "Sync call {0} in async function, "
             " use a library such as aiofiles or anyio."
