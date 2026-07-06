@@ -6,6 +6,7 @@ Changelog
 
 26.6.1
 ======
+- Add :ref:`ASYNC233 <async233>` blocking-pathlib-call to detect blocking ``pathlib.Path`` I/O methods in async functions. `(issue #396) <https://github.com/python-trio/flake8-async/issues/396>`_
 - Add :ref:`ASYNC127 <async127>` unmaintained-httpx: use ``httpx2`` instead of ``httpx``, which is no longer maintained, to get security updates. `(issue #460) <https://github.com/python-trio/flake8-async/issues/460>`_
 - :ref:`ASYNC210 <async210>`, :ref:`ASYNC211 <async211>` and :ref:`ASYNC212 <async212>` now also detect blocking calls made through ``httpx2``, and their messages recommend ``httpx2.AsyncClient`` instead of ``httpx.AsyncClient``.
 

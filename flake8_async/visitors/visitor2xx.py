@@ -4,7 +4,8 @@
 210 looks for usage of HTTP requests from common http libraries.
 211 additionally matches on object methods whose signature looks like an http request.
 220&221 looks for subprocess and os calls that should be wrapped.
-230&231 looks for os.open and os.fdopen that should be wrapped.
+230&231 looks for open and os.fdopen that should be wrapped.
+233 looks for pathlib.Path methods that should use an async path object.
 240 looks for os.path functions that interact with the disk in various ways.
 250 looks for input() that should be wrapped
 """
@@ -252,6 +253,9 @@ class Visitor23X(Visitor200):
     error_codes: Mapping[str, str] = {
         "ASYNC230": "Sync call {0} in async function, use `{1}.open_file(...)`.",
         "ASYNC231": "Sync call {0} in async function, use `{1}.wrap_file({0})`.",
+        "ASYNC233": (
+            "Sync call {0} on pathlib.Path in async function, use `{1}.Path`."
+        ),
         "ASYNC230_asyncio": (
             "Sync call {0} in async function, "
             " use a library such as aiofiles or anyio."
@@ -260,13 +264,103 @@ class Visitor23X(Visitor200):
             "Sync call {0} in async function, "
             " use a library such as aiofiles or anyio."
         ),
+        "ASYNC233_asyncio": (
+            "Sync call {0} on pathlib.Path in async function, "
+            " use `asyncio.loop.run_in_executor` or a library such as aiopath "
+            "or anyio."
+        ),
     }
+
+    pathlib_path_types = ("pathlib.Path", "pathlib.PosixPath", "pathlib.WindowsPath")
+    pathlib_path_constructors = pathlib_path_types + tuple(
+        f"{path_type}.{method}"
+        for path_type in pathlib_path_types
+        for method in ("cwd", "home")
+    )
+    pathlib_blocking_methods = (
+        "open",
+        "read_bytes",
+        "read_text",
+        "touch",
+        "write_bytes",
+        "write_text",
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.pathlib_variables: set[str] = set()
+
+    def _is_pathlib_annotation(self, node: ast.AST | None) -> bool:
+        def or_none(node: ast.AST | None):
+            if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.BitOr):
+                return None
+            if isinstance(node.left, ast.Constant) and node.left.value is None:
+                return node.right
+            if isinstance(node.right, ast.Constant) and node.right.value is None:
+                return node.left
+            return None
+
+        if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name):
+            if node.value.id == "Optional":
+                node = node.slice
+        elif res := or_none(node):
+            node = res
+
+        return (
+            isinstance(node, (ast.Name, ast.Attribute))
+            and self.canonical_name(node) in self.pathlib_path_types
+        )
+
+    def visit_AsyncFunctionDef(
+        self, node: ast.AsyncFunctionDef | ast.FunctionDef | ast.Lambda
+    ):
+        self.save_state(node, "async_function", "pathlib_variables", copy=True)
+        self.async_function = isinstance(node, ast.AsyncFunctionDef)
+
+        args = node.args
+        for arg in *args.args, *args.posonlyargs, *args.kwonlyargs:
+            if self._is_pathlib_annotation(arg.annotation):
+                self.pathlib_variables.add(arg.arg)
+
+    visit_FunctionDef = visit_AsyncFunctionDef
+    visit_Lambda = visit_AsyncFunctionDef
+
+    def visit_ClassDef(self, node: ast.ClassDef):
+        self.save_state(node, "pathlib_variables", copy=True)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign):
+        if isinstance(node.target, ast.Name) and self._is_pathlib_annotation(
+            node.annotation
+        ):
+            self.pathlib_variables.add(node.target.id)
+
+    def visit_Assign(self, node: ast.Assign):
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+            return
+        if self._is_pathlib_path_expr(node.value) or (
+            isinstance(node.value, ast.Name) and node.value.id in self.pathlib_variables
+        ):
+            self.pathlib_variables.add(node.targets[0].id)
 
     def visit_Call(self, node: ast.Call):
         canonical = self.canonical_name(node.func)
         if canonical in ("trio.wrap_file", "anyio.wrap_file") and len(node.args) == 1:
             setattr(node.args[0], "wrapped", True)  # noqa: B010
         super().visit_Call(node)
+
+    def _is_pathlib_path_expr(self, node: ast.expr) -> bool:
+        if isinstance(node, ast.Name):
+            return node.id in self.pathlib_variables
+        if isinstance(node, ast.Call):
+            return self.canonical_name(node.func) in self.pathlib_path_constructors
+        return False
+
+    def _is_pathlib_blocking_call(self, node: ast.Call) -> bool:
+        return (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr in self.pathlib_blocking_methods
+            and self._is_pathlib_path_expr(node.func.value)
+        )
 
     def visit_blocking_call(self, node: ast.Call):
         if getattr(node, "wrapped", False):
@@ -277,6 +371,8 @@ class Visitor23X(Visitor200):
             error_code = "ASYNC230"
         elif canonical == "os.fdopen":
             error_code = "ASYNC231"
+        elif self._is_pathlib_blocking_call(node):
+            error_code = "ASYNC233"
         else:
             return
         if self.library == ("asyncio",):
