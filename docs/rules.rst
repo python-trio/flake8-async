@@ -190,7 +190,7 @@ ASYNC231 : blocking-fdopen-call
 ASYNC232 : blocking-file-call
     Blocking sync call on file object, wrap the file object in :func:`trio.wrap_file`/:func:`anyio.wrap_file` to get an async file object.
 
-ASYNC233 : blocking-pathlib-call
+_`ASYNC233` : blocking-pathlib-call
     Blocking sync call to ``pathlib.Path`` I/O methods in async function, use :class:`trio.Path`/:class:`anyio.Path`. ``asyncio`` users should consider `aiopath <https://pypi.org/project/aiopath>`__ or `anyio`_.
 
 ASYNC240 : blocking-path-usage

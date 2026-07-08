@@ -17,12 +17,10 @@ async def foo(path: Path, other_path: pathlib.Path):
 
     other_path.read_text()  # ASYNC233: 4, 'other_path.read_text', "trio"
     Path("foo").read_text()  # ASYNC233: 4, "Path('foo').read_text", "trio"
-    pathlib.Path(
-        "foo"
-    ).read_bytes()  # ASYNC233: 4, "pathlib.Path('foo').read_bytes", "trio"
-    pathlib.Path.cwd().write_text(
-        "content"
-    )  # ASYNC233: 4, 'pathlib.Path.cwd().write_text', "trio"
+    module_path = pathlib.Path("foo")
+    module_path.read_bytes()  # ASYNC233: 4, 'module_path.read_bytes', "trio"
+    cwd = pathlib.Path.cwd()
+    cwd.write_text("content")  # ASYNC233: 4, 'cwd.write_text', "trio"
     UnixPath("foo").touch()  # ASYNC233: 4, "UnixPath('foo').touch", "trio"
 
     assigned = Path("foo")
