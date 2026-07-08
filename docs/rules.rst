@@ -220,6 +220,10 @@ ExceptionGroup rules
 _`ASYNC400` : except-star-invalid-attribute
     When converting a codebase to use `except* <except_star>` it's easy to miss that the caught exception(s) are wrapped in a group, so accessing attributes on the caught exception must now check the contained exceptions. This checks for any attribute access on a caught ``except*`` that's not a known valid attribute on `ExceptionGroup`. This can be safely disabled on a type-checked or coverage-covered code base.
 
+_`ASYNC401` : pytest-raises-exception-group
+    ``pytest.raises(ExceptionGroup)`` and ``pytest.raises(BaseExceptionGroup)`` usually hide the structure of exception groups. Prefer ``pytest.RaisesGroup``.
+    This rule is disabled by default because some uses of ``pytest.raises`` with exception groups are valid.
+
 Optional rules disabled by default
 ==================================
 
