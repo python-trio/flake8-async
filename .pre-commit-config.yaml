@@ -9,7 +9,7 @@ ci:
 
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.15.20
+      rev: v0.15.21
       hooks:
           - id: ruff-check
             args: [--fix]
@@ -34,12 +34,12 @@ repos:
             exclude: tests/eval_files/async(103|232|232_asyncio).py
 
     - repo: https://github.com/pycqa/isort
-      rev: 9.0.0a3
+      rev: 9.0.0b1
       hooks:
           - id: isort
 
     - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v2.1.0
+      rev: v2.3.0
       hooks:
           - id: mypy
             # uses py311 syntax, mypy configured for py310
