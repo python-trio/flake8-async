@@ -10,7 +10,7 @@ import ast
 from typing import TYPE_CHECKING, Any
 
 from .flake8asyncvisitor import Flake8AsyncVisitor
-from .helpers import disabled_by_default, error_class
+from .helpers import error_class
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -110,7 +110,6 @@ EXCGROUP_QUALNAMES = (
 
 
 @error_class
-@disabled_by_default
 class Visitor401(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC401": (

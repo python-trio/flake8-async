@@ -222,7 +222,6 @@ _`ASYNC400` : except-star-invalid-attribute
 
 _`ASYNC401` : pytest-raises-exception-group
     ``pytest.raises(ExceptionGroup)`` and ``pytest.raises(BaseExceptionGroup)`` usually hide the structure of exception groups. Prefer ``pytest.RaisesGroup``.
-    This rule is disabled by default because some uses of ``pytest.raises`` with exception groups are valid.
 
 Optional rules disabled by default
 ==================================
