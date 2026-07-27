@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 import sys
 from pathlib import Path
@@ -22,6 +23,10 @@ INIT_FILE = ROOT_PATH / "flake8_async" / "__init__.py"
 ALLOW_FUTURE = "--allow-future-in-changelog" in sys.argv
 
 T = TypeVar("T", bound="Version")
+
+
+def today() -> datetime.date:
+    return datetime.datetime.now(tz=datetime.timezone.utc).date()
 
 
 class Version(NamedTuple):
@@ -77,6 +82,19 @@ def test_last_release_against_changelog() -> None:
     assert latest_release >= VERSION, f"{latest_release}, {VERSION}"
 
 
+def test_latest_release_is_not_in_the_future() -> None:
+    # With CalVer, a typo'd year or month gives a version that quietly sorts
+    # after every correct release (https://github.com/python-trio/flake8-async/issues/469),
+    # so the newest changelog entry may never be dated later than today.
+    latest = next(iter(get_releases()))
+    now = today()
+    assert 1 <= latest.month <= 12, f"{latest} does not have a valid month"
+    assert (latest.year + 2000, latest.month) <= (
+        now.year,
+        now.month,
+    ), f"latest release {latest} is dated in the future (today is {now:%Y-%m})"
+
+
 def test_version_increments_are_correct() -> None:
     versions = list(get_releases())
     for prev, current in zip(versions[1:], versions):
@@ -90,15 +108,48 @@ def test_version_increments_are_correct() -> None:
             assert current == prev._replace(patch=prev.patch + 1), msg
 
 
+def check_version_info_is_in_sync() -> None:
+    """Assert that all places stating a version agree, before release.
+
+    In pre-commit, update_version() auto-fixes these instead; but at release
+    time nothing may be patched up on the fly, or the built package would not
+    match the repository contents.
+    """
+    latest = next(iter(get_releases()))
+    assert (
+        latest == VERSION
+    ), f"changelog head is {latest}, but __version__ is {VERSION}"
+    m = re.search(r"^     rev: (\d+\.\d+\.\d+)$", USAGE.read_text(), flags=re.MULTILINE)
+    assert m is not None, "pre-commit example not found in usage.rst"
+    assert m.group(1) == str(VERSION), (
+        f"pre-commit example in usage.rst pins rev {m.group(1)}, "
+        f"but __version__ is {VERSION}"
+    )
+
+
 def ensure_tagged() -> None:
     last_version = next(iter(get_releases()))
     repo = Repo(ROOT_PATH)
-    if str(last_version) not in iter(map(str, repo.tags)):
-        # create_tag is partially unknown in pyright, which kinda looks like
-        # https://github.com/gitpython-developers/GitPython/issues/1473
-        # which should be resolved?
-        repo.create_tag(str(last_version))  # type: ignore
-        repo.remotes.origin.push(str(last_version))
+    # Local tags can be missing in a shallow CI checkout, so ask the remote.
+    if repo.git.ls_remote("origin", f"refs/tags/{last_version}"):
+        return
+    if last_version.patch == 1:
+        # A new year.month series must match the date it is released (patch
+        # releases keep the year.month of their series, so aren't checked).
+        # One month of slack covers a release PR merged just after month end.
+        now = today()
+        months_ago = (now.year - 2000 - last_version.year) * 12 + (
+            now.month - last_version.month
+        )
+        assert 0 <= months_ago <= 1, (
+            f"refusing to tag {last_version}: today is {now:%Y-%m}, and with"
+            " CalVer the version should match the date of release"
+        )
+    # create_tag is partially unknown in pyright, which kinda looks like
+    # https://github.com/gitpython-developers/GitPython/issues/1473
+    # which should be resolved?
+    repo.create_tag(str(last_version))  # type: ignore
+    repo.remotes.origin.push(str(last_version))
 
 
 def update_version() -> None:
@@ -128,7 +179,10 @@ def update_version() -> None:
 if __name__ == "__main__":
     test_last_release_against_changelog()
     test_version_increments_are_correct()
+    test_latest_release_is_not_in_the_future()
 
-    update_version()
     if "--ensure-tag" in sys.argv:
+        check_version_info_is_in_sync()
         ensure_tagged()
+    else:
+        update_version()
