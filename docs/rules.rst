@@ -141,6 +141,18 @@ _`ASYNC127`: unmaintained-httpx
     migration is usually just a matter of replacing ``httpx`` with ``httpx2`` in
     imports.  This rule triggers on any import of ``httpx``.
 
+_`ASYNC128`: task-status-never-started
+    A startable function - one taking a ``task_status`` keyword parameter, or with a
+    parameter annotated as ``TaskStatus`` - never calls ``task_status.started()``.
+    :meth:`trio.Nursery.start`/:meth:`anyio.abc.TaskGroup.start` wait for the callee
+    to call ``task_status.started()``: if it returns without doing so they raise
+    ``RuntimeError``, and if it never returns they block until cancelled.
+    This check is intentionally strict: passing ``task_status`` on to a helper
+    function or assigning it to another variable does not count, only a direct call
+    in the function body, or in a nested function where the parameter isn't shadowed.
+    Functions with stub bodies (only ``pass``, ``...``, string constants, and/or
+    ``raise``) are ignored, e.g. overloads, protocols, and abstract methods.
+
 Blocking sync calls in async functions
 ======================================
 

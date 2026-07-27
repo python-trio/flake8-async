@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+26.8.1
+======
+- Add :ref:`ASYNC128 <async128>` task-status-never-started, warning about startable functions (i.e. with a ``task_status`` parameter) that never call ``task_status.started()``. `(issue #471) <https://github.com/python-trio/flake8-async/issues/471>`_
+
 26.7.1
 ======
 - Add :ref:`ASYNC401 <async401>` pytest-raises-exception-group, recommending ``pytest.RaisesGroup`` over ``pytest.raises(ExceptionGroup)``. `(issue #430) <https://github.com/python-trio/flake8-async/issues/430>`_
