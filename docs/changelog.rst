@@ -4,7 +4,7 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
-27.7.1
+26.7.1
 ======
 - Add :ref:`ASYNC401 <async401>` pytest-raises-exception-group, recommending ``pytest.RaisesGroup`` over ``pytest.raises(ExceptionGroup)``. `(issue #430) <https://github.com/python-trio/flake8-async/issues/430>`_
 
