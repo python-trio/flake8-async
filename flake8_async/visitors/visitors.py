@@ -16,7 +16,7 @@ from .helpers import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
 
     import libcst as cst
 
@@ -615,6 +615,59 @@ class Visitor127(Flake8AsyncVisitor):
         # and `from . import x` has no module name at all
         if node.level == 0 and self._is_httpx(node.module or ""):
             self.error(node)
+
+
+@error_class
+class Visitor128(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC128": (
+            "Startable function {} never calls `{}.started()`, so `.start()`"
+            " calls on it will fail, or block forever."
+        ),
+    }
+
+    # Look for a `<name>.started()` call anywhere in the function body, including
+    # in nested functions closing over the parameter. Nested functions that rebind
+    # the name are startable functions of their own, checked separately.
+    def _calls_started(self, node: ast.AST, name: str) -> bool:
+        if isinstance(node, ast.Call) and ast.unparse(node.func) == f"{name}.started":
+            return True
+        children: Iterable[ast.AST] = ast.iter_child_nodes(node)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            a = node.args
+            if any(
+                p is not None and p.arg == name
+                for p in (*a.posonlyargs, *a.args, *a.kwonlyargs, a.vararg, a.kwarg)
+            ):
+                return False
+            # only look in the body - decorators, defaults and annotations are
+            # evaluated in the enclosing scope, but a call in them is nonsensical
+            children = [node.body] if isinstance(node, ast.Lambda) else node.body
+        return any(self._calls_started(child, name) for child in children)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        args = node.args
+        for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs):
+            # startable: a `task_status` parameter - unless positional-only, when it
+            # can't be passed by keyword - or a `TaskStatus`-annotated parameter
+            ann = arg.annotation
+            if isinstance(ann, ast.Subscript):  # strip generics: `TaskStatus[int]`
+                ann = ann.value
+            if not (
+                (
+                    ann is not None
+                    and ast.unparse(ann).rsplit(".", 1)[-1] == "TaskStatus"
+                )
+                or (arg.arg == "task_status" and arg not in args.posonlyargs)
+            ):
+                continue
+            if not all(  # stub bodies are fine: overloads, protocols, abstractmethods
+                isinstance(stmt, (ast.Pass, ast.Raise))
+                or (isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant))
+                for stmt in node.body
+            ) and not any(self._calls_started(stmt, arg.arg) for stmt in node.body):
+                self.error(node, node.name, arg.arg)
+            return
 
 
 @error_class_cst
