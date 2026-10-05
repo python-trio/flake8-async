@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+Future
+======
+- Extend :ref:`ASYNC401 <async401>` to catch more exception-group assertions. `(issue #475) <https://github.com/python-trio/flake8-async/issues/475>`_
+
 26.8.1
 ======
 - Add :ref:`ASYNC128 <async128>` task-status-never-started, warning about startable functions (i.e. with a ``task_status`` parameter) that never call ``task_status.started()``. `(issue #471) <https://github.com/python-trio/flake8-async/issues/471>`_

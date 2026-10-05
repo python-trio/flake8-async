@@ -112,10 +112,7 @@ EXCGROUP_QUALNAMES = (
 @error_class
 class Visitor401(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
-        "ASYNC401": (
-            "Use `pytest.RaisesGroup` instead of `pytest.raises({})` when expecting"
-            " exception groups."
-        )
+        "ASYNC401": "Use `pytest.RaisesGroup` instead of expecting {} directly."
     }
 
     def _exception_group_name(self, node: ast.expr) -> str | None:
@@ -125,7 +122,9 @@ class Visitor401(Flake8AsyncVisitor):
                     return name
             return None
 
-        canonical = self.canonical_name(node)
+        canonical = self.canonical_name(
+            node.value if isinstance(node, ast.Subscript) else node
+        )
         if canonical in EXCGROUP_QUALNAMES:
             return ast.unparse(node)
         return None
@@ -139,9 +138,22 @@ class Visitor401(Flake8AsyncVisitor):
         return None
 
     def visit_Call(self, node: ast.Call):
-        if (
-            self.canonical_name(node.func) == "pytest.raises"
-            and (expected_exception := self._expected_exception_arg(node)) is not None
-            and (exception_group := self._exception_group_name(expected_exception))
-        ):
-            self.error(node, exception_group)
+        name = self.canonical_name(node.func)
+        if name == "pytest.mark.xfail":
+            expected_exceptions = [
+                kw.value for kw in node.keywords if kw.arg == "raises"
+            ]
+        elif name == "pytest.RaisesGroup":
+            expected_exceptions = node.args
+        elif name in ("pytest.raises", "pytest.RaisesExc"):
+            expected_exception = self._expected_exception_arg(node)
+            expected_exceptions = (
+                [] if expected_exception is None else [expected_exception]
+            )
+        else:
+            return
+
+        for expected_exception in expected_exceptions:
+            if exception_group := self._exception_group_name(expected_exception):
+                self.error(node, exception_group)
+                break
