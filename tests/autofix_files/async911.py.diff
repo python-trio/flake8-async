@@ -10,7 +10,7 @@
      yield  # error: 4, "yield", Statement("yield", lineno-1)
      await foo()
 
-@@ x,22 x,29 @@
+@@ x,12 x,16 @@
  async def foo_yield_3():  # error: 0, "exit", Statement("yield", lineno+2)
      await foo()
      yield
@@ -26,13 +26,8 @@
 +    await trio.lowlevel.checkpoint()
 
 
- async def foo_yield_return_1():
-+    await trio.lowlevel.checkpoint()
-     yield  # error: 4, "yield", Statement("function definition", lineno-1)
-+    await trio.lowlevel.checkpoint()
-     return  # error: 4, "return", Statement("yield", lineno-1)
-
-
+ async def foo_yield_return_1():  # ASYNC124 fires (no await), ASYNC911 suppressed
+@@ x,6 x,7 @@
  async def foo_yield_return_2():
      await foo()
      yield
@@ -98,7 +93,7 @@
 
 
  # no checkpoint after yield if else is entered
-@@ x,39 x,52 @@
+@@ x,35 x,46 @@
          await foo()
          yield
      else:
@@ -144,13 +139,7 @@
 +        await trio.lowlevel.checkpoint()
          yield  # error: 8, "yield", Statement("yield", lineno)
 
-         async def foo_nested_error():  # error: 8, "exit", Statement("yield", lineno+1)
-+            await trio.lowlevel.checkpoint()
-             yield  # error: 12, "yield", Statement("function definition", lineno-1)
-+            await trio.lowlevel.checkpoint()
-
-     await foo()
-
+         async def foo_nested_error():  # ASYNC124 fires (no await), ASYNC911 suppressed
 @@ x,16 x,19 @@
  async def foo_while_continue_1():  # error: 0, "exit", Statement("yield", lineno+3)
      await foo()
@@ -251,16 +240,7 @@
 
 
  async def foo_while_endless_3():
-@@ x,13 x,16 @@
- # try
- async def foo_try_1():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+2)
-     try:
-+        await trio.lowlevel.checkpoint()
-         yield  # error: 8, "yield", Statement("function definition", lineno-2)
-     except:
-         pass
-+    await trio.lowlevel.checkpoint()
-
+@@ x,6 x,7 @@
 
  # no checkpoint after yield in ValueError
  async def foo_try_2():  # error: 0, "exit", Statement("yield", lineno+5)
@@ -452,16 +432,6 @@
 
 
  # normal function
-@@ x,7 x,9 @@
-     await foo()
-
-     async def foo_func_2():  # error: 4, "exit", Statement("yield", lineno+1)
-+        await trio.lowlevel.checkpoint()
-         yield  # error: 8, "yield", Statement("function definition", lineno-1)
-+        await trio.lowlevel.checkpoint()
-
-
- # autofix doesn't insert newline after nested function def and before checkpoint
 @@ x,6 x,7 @@
 
      async def foo_func_4():

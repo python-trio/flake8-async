@@ -69,6 +69,72 @@ def func_empty_body(node: cst.FunctionDef) -> bool:
     )
 
 
+def func_has_await(node: cst.FunctionDef) -> bool:
+    """Check if function body contains any await, async with, or async for.
+
+    This matches Visitor124's logic for determining if ASYNC124 should fire.
+    Nested functions are not checked - they're handled separately.
+    """
+    return _func_has_await_impl(node.body)
+
+
+def _func_has_await_impl(body: cst.BaseSuite) -> bool:
+    """Check for await/async with/async for in function body, excluding nested functions."""
+    visitor = _AwaitFinderVisitor()
+    if isinstance(body, cst.SimpleStatementSuite) or isinstance(
+        body, cst.IndentedBlock
+    ):
+        for stmt in body.body:
+            stmt.visit(visitor)
+            if visitor.found:
+                return True
+        return False
+    return False
+
+
+class _AwaitFinderVisitor(cst.CSTVisitor):
+    """Visitor that finds await/async with/async for, but not inside nested functions."""
+
+    def __init__(self):
+        super().__init__()
+        self.found = False
+        self.nesting_depth = 0
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        self.nesting_depth += 1
+        return True
+
+    def leave_FunctionDef(self, original_node: cst.FunctionDef) -> None:
+        self.nesting_depth -= 1
+
+    def visit_Lambda(self, node: cst.Lambda) -> bool:
+        self.nesting_depth += 1
+        return True
+
+    def leave_Lambda(self, original_node: cst.Lambda) -> None:
+        self.nesting_depth -= 1
+
+    def visit_Await(self, node: cst.Await) -> bool:
+        if self.nesting_depth == 0:
+            self.found = True
+        return False  # don't need to visit children
+
+    def visit_With(self, node: cst.With) -> bool:
+        if self.nesting_depth == 0 and getattr(node, "asynchronous", None):
+            self.found = True
+        return True
+
+    def visit_For(self, node: cst.For) -> bool:
+        if self.nesting_depth == 0 and getattr(node, "asynchronous", None):
+            self.found = True
+        return True
+
+    def visit_CompFor(self, node: cst.CompFor) -> bool:
+        if self.nesting_depth == 0 and node.asynchronous:
+            self.found = True
+        return True
+
+
 # this could've been implemented as part of visitor91x, but /shrug
 @error_class_cst
 class Visitor124(Flake8AsyncVisitor_cst):
@@ -442,6 +508,9 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         self.async_function = False
         self.uncheckpointed_statements: set[Statement] = set()
         self.comp_unknown = False
+        self.has_await = False
+        self.function_has_await = False
+        self.in_class = False
 
         self.loop_state = LoopState()
         self.try_state = TryState()
@@ -553,7 +622,8 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
     # from a base class (which we charitably assume contains a checkpoint).
     # See https://github.com/python-trio/flake8-async/issues/441.
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        self.save_state(node, "async_cm_class", "async_cm_class_has_bases")
+        self.save_state(node, "async_cm_class", "async_cm_class_has_bases", "in_class")
+        self.in_class = True
         defined: dict[str, bool] = {}
         checkpointy = (
             m.Await()
@@ -615,6 +685,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         is_exempt_cm = self._is_exempt_async_cm_method(node)
 
+        # Pre-scan for awaits to match Visitor124's behavior for ASYNC124 suppression.
+        # Class methods are treated as having awaits (for ASYNC124 compatibility).
+        function_has_await = self.in_class or func_has_await(node)
+
         self.save_state(
             node,
             "has_yield",
@@ -632,11 +706,20 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
             "async_cm_class",
             "async_cm_class_has_bases",
             "exempt_async_cm_method",
+            "has_await",
+            "in_class",
+            "function_has_await",
             copy=True,
         )
         self.uncheckpointed_statements = set()
         self.has_checkpoint_stack = []
         self.has_yield = False
+        self.has_await = self.in_class
+        self.function_has_await = function_has_await
+        # Class methods (including __aenter__/__aexit__) are treated as having
+        # awaits for ASYNC124 compatibility, so ASYNC910/911 suppression doesn't
+        # apply to them. Nested functions inside a class are not class methods.
+        self.in_class = False
         self.loop_state = LoopState()
         # try_state is reset upon entering try
         self.taskgroup_has_start_soon = {}
@@ -834,6 +917,10 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         if self.exempt_async_cm_method:
             return False
 
+        # Suppress ASYNC910/911 when ASYNC124 would fire (no awaits in function)
+        if not self.function_has_await:
+            return False
+
         if isinstance(node, cst.FunctionDef):
             msg = "exit"
         else:
@@ -853,6 +940,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # so only set checkpoint after the await node
 
         # all nodes are now checkpointed
+        self.has_await = True
         self.checkpoint()
         return updated_node
 
@@ -938,6 +1026,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
                 continue
 
             if bool(getattr(node, "asynchronous", False)):
+                self.has_await = True
                 self.checkpoint()
 
             # not a clean function call
@@ -1282,6 +1371,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
         # appropriate errors if the loop doesn't checkpoint
 
         if getattr(node, "asynchronous", None):
+            self.has_await = True
             self.checkpoint()
         else:
             self.uncheckpointed_statements = {ARTIFICIAL_STATEMENT}
@@ -1504,6 +1594,7 @@ class Visitor91X(Flake8AsyncVisitor_cst, CommonVisitors):
 
         # if async comprehension, checkpoint
         if node.asynchronous:
+            self.has_await = True
             self.checkpoint()
             self.comp_unknown = False
             return False

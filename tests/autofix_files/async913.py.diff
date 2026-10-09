@@ -23,14 +23,7 @@
          if condition():
              await foo()
 
-@@ x,19 x,23 @@
-     while True:
-         if condition():
-             break
-+    await trio.lowlevel.checkpoint()
-
-
- # the inner loop will suppress the error in the outer loop
+@@ x,13 x,16 @@
  async def foo_nested():
      while True:
          while True:  # ASYNC913: 8
@@ -58,10 +51,10 @@
 @@ x,6 x,7 @@
 
  async def foo_indef_and_910_2():
-     while True:  # ASYNC913: 4
+     while True:  # ASYNC913: 4  # ASYNC124 fires (no await), ASYNC910 suppressed
 +        await trio.lowlevel.checkpoint()
          if ...:
-             return  # ASYNC910: 12, "return", Stmt("function definition", line-3)
+             return
 
 @@ x,14 x,18 @@
  async def foo_indef_and_911():

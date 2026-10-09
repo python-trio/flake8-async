@@ -53,11 +53,9 @@ async def foo_yield_4():  # error: 0, "exit", Statement("yield", lineno+3)
     await trio.lowlevel.checkpoint()
 
 
-async def foo_yield_return_1():
-    await trio.lowlevel.checkpoint()
-    yield  # error: 4, "yield", Statement("function definition", lineno-1)
-    await trio.lowlevel.checkpoint()
-    return  # error: 4, "return", Statement("yield", lineno-1)
+async def foo_yield_return_1():  # ASYNC124 fires (no await), ASYNC911 suppressed
+    yield
+    return
 
 
 async def foo_yield_return_2():
@@ -203,10 +201,8 @@ async def foo_while_5():
         await trio.lowlevel.checkpoint()
         yield  # error: 8, "yield", Statement("yield", lineno)
 
-        async def foo_nested_error():  # error: 8, "exit", Statement("yield", lineno+1)
-            await trio.lowlevel.checkpoint()
-            yield  # error: 12, "yield", Statement("function definition", lineno-1)
-            await trio.lowlevel.checkpoint()
+        async def foo_nested_error():  # ASYNC124 fires (no await), ASYNC911 suppressed
+            yield
 
     await foo()
 
@@ -365,13 +361,11 @@ async def foo_while_endless_4():
 
 
 # try
-async def foo_try_1():  # error: 0, "exit", Statement("function definition", lineno) # error: 0, "exit", Statement("yield", lineno+2)
+async def foo_try_1():  # ASYNC124 fires (no await), ASYNC911 suppressed
     try:
-        await trio.lowlevel.checkpoint()
-        yield  # error: 8, "yield", Statement("function definition", lineno-2)
+        yield
     except:
         pass
-    await trio.lowlevel.checkpoint()
 
 
 # no checkpoint after yield in ValueError
@@ -670,10 +664,8 @@ def foo_sync_7():
 async def foo_func_1():
     await foo()
 
-    async def foo_func_2():  # error: 4, "exit", Statement("yield", lineno+1)
-        await trio.lowlevel.checkpoint()
-        yield  # error: 8, "yield", Statement("function definition", lineno-1)
-        await trio.lowlevel.checkpoint()
+    async def foo_func_2():  # ASYNC124 fires (no await), ASYNC911 suppressed
+        yield
 
 
 # autofix doesn't insert newline after nested function def and before checkpoint

@@ -28,11 +28,10 @@ async def foo3():
 
 # ASYNC913 does not trigger on loops with break, but those will generally be handled
 # by 910/911/912 if necessary
-async def foo_break():  # ASYNC910: 0, "exit", Statement("function definition", lineno)
+async def foo_break():  # ASYNC124 fires (no await), ASYNC910 suppressed, no ASYNC913 (has break)
     while True:
         if condition():
             break
-    await trio.lowlevel.checkpoint()
 
 
 # the inner loop will suppress the error in the outer loop
@@ -65,10 +64,10 @@ async def foo_indef_and_910():
 
 
 async def foo_indef_and_910_2():
-    while True:  # ASYNC913: 4
+    while True:  # ASYNC913: 4  # ASYNC124 fires (no await), ASYNC910 suppressed
         await trio.lowlevel.checkpoint()
         if ...:
-            return  # ASYNC910: 12, "return", Stmt("function definition", line-3)
+            return
 
 
 async def foo_indef_and_911():

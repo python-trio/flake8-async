@@ -50,9 +50,8 @@ async def foo_empty_4():
     """comment2"""
 
 
-async def foo1():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo1():
     bar()
-    await trio.lowlevel.checkpoint()
 
 
 # If
@@ -97,32 +96,27 @@ async def foo_ifexp_2():  # error: 0, "exit", Statement("function definition", l
 async def foo_func_1():
     await foo()
 
-    async def foo_func_2():  # error: 4, "exit", Statement("function definition", lineno)
+    async def foo_func_2():
         bar()
-        await trio.lowlevel.checkpoint()
 
 
 # we don't get a newline after the nested function definition before the checkpoint
 # when autofixing
 # fmt: off
-async def foo_func_3():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_func_3():
     async def foo_func_4():
         await foo()
-    await trio.lowlevel.checkpoint()
 
 
-async def foo_func_5():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_func_5():
     def foo_func_6():  # safe
-        async def foo_func_7():  # error: 8, "exit", Statement("function definition", lineno)
+        async def foo_func_7():
             bar()
-            await trio.lowlevel.checkpoint()
-    await trio.lowlevel.checkpoint()
 
 
-async def foo_func_8():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_func_8():
     def foo_func_9():
         raise
-    await trio.lowlevel.checkpoint()
 # fmt: on
 
 
@@ -248,12 +242,11 @@ async def foo_while_break_3():  # error: 0, "exit", Statement("function definiti
     await trio.lowlevel.checkpoint()
 
 
-async def foo_while_break_4():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_while_break_4():
     while bar():
         break
     else:
         ...
-    await trio.lowlevel.checkpoint()
 
 
 async def foo_while_continue_1():  # safe
@@ -280,12 +273,11 @@ async def foo_while_continue_3():  # error: 0, "exit", Statement("function defin
     await trio.lowlevel.checkpoint()
 
 
-async def foo_while_continue_4():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_while_continue_4():
     while bar():
         continue
     else:
         ...
-    await trio.lowlevel.checkpoint()
 
 
 async def foo_async_for_1():
@@ -368,14 +360,13 @@ async def foo_try_5():  # safe
         pass
 
 
-async def foo_try_6():  # error: 0, "exit", Statement("function definition", lineno)
+async def foo_try_6():
     try:
         pass
     except:
         pass
     else:
         pass
-    await trio.lowlevel.checkpoint()
 
 
 async def foo_try_7():  # safe
@@ -452,8 +443,7 @@ async def try_bare_except_reraises():
 
 # early return
 async def foo_return_1():
-    await trio.lowlevel.checkpoint()
-    return  # error: 4, "return", Statement("function definition", lineno-1)
+    return
 
 
 async def foo_return_2():  # safe
@@ -624,11 +614,10 @@ async def fn_226():  # error: 0, "exit", Statement("function definition", lineno
 
 # the await() is evaluated in the parent scope
 async def foo_default_value_await():
-    async def bar(  # error: 4, "exit", Statement("function definition", lineno)
+    async def bar(  # ASYNC124 would fire here (await in default is parent scope), suppress ASYNC910
         arg=await foo(),
     ):
         print()
-        await trio.lowlevel.checkpoint()
 
 
 async def foo_nested_empty_async():
@@ -739,9 +728,8 @@ class CtxMetaclassOnly(metaclass=Meta):
 
 # a nested function named `__aenter__` inside another function is not a method
 def not_a_class():
-    async def __aenter__(self):  # error: 4, "exit", Stmt("function definition", line)
+    async def __aenter__(self):
         print("setup")
-        await trio.lowlevel.checkpoint()
 
 
 # class nested inside a function still gets the exemption when it inherits

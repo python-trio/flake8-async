@@ -4,11 +4,9 @@
 # ASYNCIO_NO_AUTOFIX
 
 
-import trio
 def condition() -> bool:
     return False
 
 
-async def foo():  # ASYNC910: 0, "exit", Stmt("function definition", line)
+async def foo():
     print()
-    await trio.lowlevel.checkpoint()
