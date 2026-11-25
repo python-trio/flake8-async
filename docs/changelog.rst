@@ -4,6 +4,10 @@ Changelog
 
 `CalVer, YY.month.patch <https://calver.org/>`_
 
+26.11.1
+======
+- Rename ASYNC126 exceptiongroup-subclass-missing-derive to :ref:`ASYNC402 <async402>`, since it is about ``ExceptionGroup`` handling rather than async code. Update any ``noqa: ASYNC126`` comments and ``--enable``/``--disable`` settings. `(issue #457) <https://github.com/python-trio/flake8-async/issues/457>`_
+
 26.8.1
 ======
 - Add :ref:`ASYNC128 <async128>` task-status-never-started, warning about startable functions (i.e. with a ``task_status`` parameter) that never call ``task_status.started()``. `(issue #471) <https://github.com/python-trio/flake8-async/issues/471>`_
@@ -28,7 +32,7 @@ Changelog
 - Autofix for :ref:`ASYNC910 <async910>` / :ref:`ASYNC911 <async911>` no longer inserts checkpoints inside ``except`` clauses (which would trigger :ref:`ASYNC120 <async120>`); instead the checkpoint is added at the top of the function or of the enclosing loop. `(issue #403) <https://github.com/python-trio/flake8-async/issues/403>`_
 - :ref:`ASYNC910 <async910>` and :ref:`ASYNC911 <async911>` now accept ``__aenter__`` / ``__aexit__`` methods when the partner method provides the checkpoint, or when only one of the two is defined on a class that inherits from another class (charitably assuming the partner is inherited and contains a checkpoint). `(issue #441) <https://github.com/python-trio/flake8-async/issues/441>`_
 - :ref:`ASYNC300 <async300>` no longer triggers when the result of ``asyncio.create_task()`` is returned from a function. `(issue #398) <https://github.com/python-trio/flake8-async/issues/398>`_
-- Add :ref:`ASYNC126 <async126>` exceptiongroup-subclass-missing-derive. `(issue #334) <https://github.com/python-trio/flake8-async/issues/334>`_
+- Add ASYNC126 exceptiongroup-subclass-missing-derive. `(issue #334) <https://github.com/python-trio/flake8-async/issues/334>`_
 - :ref:`ASYNC102 <async102>` no longer warns on ``await trio.aclose_forcefully(...)`` / ``await anyio.aclose_forcefully(...)``, which are designed for cleanup and cancel immediately by design. `(issue #446) <https://github.com/python-trio/flake8-async/issues/446>`_
 - :ref:`ASYNC101 <async101>` now also triggers for common third-party context managers that open internal cancel scopes, nurseries, or task groups: ``trio_websocket.{open_websocket, open_websocket_url, serve_websocket}``, ``trio_asyncio.open_loop``, ``trio_parallel.open_worker_context``, ``trio_util.{move_on_when, run_and_cancelling}``, ``qtrio.{open_emissions_nursery, enter_emissions_channel}``, ``anyio.from_thread.{BlockingPortal, start_blocking_portal}``, ``asgi_lifespan.LifespanManager``, ``apscheduler.AsyncScheduler``, ``mcp.client.streamable_http.streamablehttp_client``, and ``mcp.client.sse.sse_client``. `(issue #350) <https://github.com/python-trio/flake8-async/issues/350>`_
 - :ref:`ASYNC102 <async102>` and :ref:`ASYNC120 <async120>` no longer trigger on ``await trio.lowlevel.cancel_shielded_checkpoint()`` (or the ``anyio.lowlevel`` equivalent), which is explicitly a schedule-but-not-cancel point and therefore safe inside ``finally`` / cancelled ``except`` / ``__aexit__``.

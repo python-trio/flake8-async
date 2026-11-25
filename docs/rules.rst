@@ -126,14 +126,6 @@ _`ASYNC125`: constant-absolute-deadline
     :func:`anyio.move_on_after`, or the ``relative_deadline`` parameter to
     :class:`trio.CancelScope`.
 
-_`ASYNC126`: exceptiongroup-subclass-missing-derive
-    A subclass of :class:`ExceptionGroup` or :class:`BaseExceptionGroup` must override
-    :meth:`~BaseExceptionGroup.derive` to return an instance of itself, otherwise
-    :meth:`~BaseExceptionGroup.split` and :meth:`~BaseExceptionGroup.subgroup` - which
-    are used by e.g. :ref:`taskgroup_nursery` implementations - will silently produce
-    plain ``ExceptionGroup`` instances and lose the custom subclass.
-    See `trio#3175 <https://github.com/python-trio/trio/issues/3175>`_ for motivation.
-
 _`ASYNC127`: unmaintained-httpx
     The original ``httpx`` package is no longer maintained, which is a problem for a
     networking library.  Use `httpx2`_ - the continuation of the project, maintained
@@ -234,6 +226,14 @@ _`ASYNC400` : except-star-invalid-attribute
 
 _`ASYNC401` : pytest-raises-exception-group
     ``pytest.raises(ExceptionGroup)`` and ``pytest.raises(BaseExceptionGroup)`` usually hide the structure of exception groups. Prefer ``pytest.RaisesGroup``.
+
+_`ASYNC402` : exceptiongroup-subclass-missing-derive
+    A subclass of :class:`ExceptionGroup` or :class:`BaseExceptionGroup` must override
+    :meth:`~BaseExceptionGroup.derive` to return an instance of itself, otherwise
+    :meth:`~BaseExceptionGroup.split` and :meth:`~BaseExceptionGroup.subgroup` - which
+    are used by e.g. :ref:`taskgroup_nursery` implementations - will silently produce
+    plain ``ExceptionGroup`` instances and lose the custom subclass.
+    See `trio#3175 <https://github.com/python-trio/trio/issues/3175>`_ for motivation.
 
 Optional rules disabled by default
 ==================================

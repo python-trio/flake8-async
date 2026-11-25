@@ -13,9 +13,10 @@ ROOT_PATH = Path(__file__).parent.parent
 CHANGELOG = ROOT_PATH / "docs" / "changelog.rst"
 RULES_DOC = ROOT_PATH / "docs" / "rules.rst"
 
-# 107, 108 & 117 are removed (but still mentioned in changelog & readme)
+# 107, 108 & 117 are removed, and 126 was renamed to 402
+# (but still mentioned in changelog & readme)
 # ASYNCxxx_* are fake codes to get different error messages for the same code
-IGNORED_CODES_REGEX = r"(TRIO|ASYNC)(107|108|117)|ASYNC\d\d\d_.*"
+IGNORED_CODES_REGEX = r"(TRIO|ASYNC)(107|108|117|126)|ASYNC\d\d\d_.*"
 
 
 # temp function for eval files

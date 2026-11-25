@@ -2,6 +2,8 @@
 
 ASYNC400 except-star-invalid-attribute checks for invalid attribute access on except*
 ASYNC401 pytest-raises-exception-group checks for pytest.raises(ExceptionGroup)
+ASYNC402 exceptiongroup-subclass-missing-derive checks that ExceptionGroup subclasses
+  override derive
 """
 
 from __future__ import annotations
@@ -145,3 +147,38 @@ class Visitor401(Flake8AsyncVisitor):
             and (exception_group := self._exception_group_name(expected_exception))
         ):
             self.error(node, exception_group)
+
+
+@error_class
+class Visitor402(Flake8AsyncVisitor):
+    error_codes: Mapping[str, str] = {
+        "ASYNC402": (
+            "ExceptionGroup subclass {} should override `derive`, otherwise"
+            " `split`/`subgroup` (used by e.g. nursery/TaskGroup"
+            " implementations) will silently produce plain `ExceptionGroup`"
+            " instances instead of `{}`."
+        )
+    }
+
+    def visit_ClassDef(self, node: ast.ClassDef):
+        def base_name(base: ast.expr) -> str:
+            # strip generic subscripts like `ExceptionGroup[Foo]`
+            if isinstance(base, ast.Subscript):
+                base = base.value
+            canonical = self.canonical_name(base)
+            unparsed = canonical if canonical is not None else ast.unparse(base)
+            return unparsed.rsplit(".", 1)[-1]
+
+        if not any(
+            base_name(b) in ("ExceptionGroup", "BaseExceptionGroup") for b in node.bases
+        ):
+            return
+
+        for item in node.body:
+            if (
+                isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and item.name == "derive"
+            ):
+                return
+
+        self.error(node, node.name, node.name)

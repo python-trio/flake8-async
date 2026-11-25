@@ -559,41 +559,6 @@ class Visitor125(Flake8AsyncVisitor):
 
 
 @error_class
-class Visitor126(Flake8AsyncVisitor):
-    error_codes: Mapping[str, str] = {
-        "ASYNC126": (
-            "ExceptionGroup subclass {} should override `derive`, otherwise"
-            " `split`/`subgroup` (used by e.g. nursery/TaskGroup"
-            " implementations) will silently produce plain `ExceptionGroup`"
-            " instances instead of `{}`."
-        )
-    }
-
-    def visit_ClassDef(self, node: ast.ClassDef):
-        def base_name(base: ast.expr) -> str:
-            # strip generic subscripts like `ExceptionGroup[Foo]`
-            if isinstance(base, ast.Subscript):
-                base = base.value
-            canonical = self.canonical_name(base)
-            unparsed = canonical if canonical is not None else ast.unparse(base)
-            return unparsed.rsplit(".", 1)[-1]
-
-        if not any(
-            base_name(b) in ("ExceptionGroup", "BaseExceptionGroup") for b in node.bases
-        ):
-            return
-
-        for item in node.body:
-            if (
-                isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
-                and item.name == "derive"
-            ):
-                return
-
-        self.error(node, node.name, node.name)
-
-
-@error_class
 class Visitor127(Flake8AsyncVisitor):
     error_codes: Mapping[str, str] = {
         "ASYNC127": (
